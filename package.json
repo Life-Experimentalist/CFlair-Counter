@@ -5,7 +5,7 @@
 	"main": "functions/api/[[path]].ts",
 	"scripts": {
 		"dev": "wrangler pages dev public --compatibility-date=2024-03-20",
-		"deploy": "wrangler pages deploy public",
+		"deploy": "wrangler pages deploy public --project-name=cflaircounter",
 		"build": "tsc",
 		"type-check": "tsc --noEmit",
 		"db:create": "wrangler d1 create cflaircounter-db",

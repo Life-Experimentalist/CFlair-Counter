@@ -34,8 +34,8 @@ preview_database_id = "cflaircounter-db-preview"
 [pages]
 # The "main" branch will be used for production deployments
 branch = "main"
-# The directory containing your static assets
-dir = "public"
+# The directory containing your static assets (required for Pages)
+pages_build_output_dir = "public"
 # The directory containing your Functions
 functions = "functions"
 # The pattern of Functions to include
