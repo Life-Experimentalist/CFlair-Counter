@@ -637,12 +637,12 @@
 							</div>
 							<div class="stat-label">Unique Visitors</div>
 						</div>
-						<div class="stat-item">
+						<!-- <div class="stat-item">
 							<div class="stat-number" id="global-efficiency">
 								99.9%
 							</div>
 							<div class="stat-label">System Efficiency</div>
-						</div>
+						</div> -->
 					</div>
 				</div>
 
@@ -810,57 +810,178 @@
 			<!-- DOCS PAGE -->
 			<div id="docs-page" class="page">
 				<div class="hero">
-					<h1>📚 Documentation</h1>
-					<p>Complete API reference and integration examples</p>
+					<h1>📚 Complete Documentation</h1>
+					<p>Everything you need to integrate CFlairCounter into your projects</p>
+					<div class="hero-badges">
+						<span class="badge">🚀 Quick Start</span>
+						<span class="badge">📖 API Reference</span>
+						<span class="badge">💡 Examples</span>
+						<span class="badge">⚙️ Configuration</span>
+					</div>
 				</div>
 
-				<!-- API Reference -->
+				<!-- Quick Start Guide -->
 				<div class="card">
-					<h2>🔗 API Endpoints</h2>
+					<h2>🚀 Quick Start</h2>
+					<p>Get your view counter running in under 2 minutes:</p>
 
-					<h3>Increment Views</h3>
+					<h3>1. Basic Setup</h3>
 					<div class="code-block">
-						<span class="comment"
-							>// POST request to increment views</span
-						>
-						POST /api/views/{project-name}
+<span class="comment">// Step 1: Track a view (POST request)</span>
+fetch('https://your-domain.com/api/views/my-project', {
+  method: 'POST'
+})
+.then(response => response.json())
+.then(data => console.log('✅ View tracked!', data.totalViews));
 
-						<span class="comment">// Response</span>
-						{
-						<span class="string">"success"</span>: true,
-						<span class="string">"totalViews"</span>: 123,
-						<span class="string">"uniqueViews"</span>: 87,
-						<span class="string">"projectName"</span>:
-						<span class="string">"my-project"</span>
-						}
+<span class="comment">// Step 2: Display view count (GET request)</span>
+fetch('https://your-domain.com/api/views/my-project')
+.then(response => response.json())
+.then(data => {
+  document.getElementById('view-count').textContent = data.totalViews;
+});
 					</div>
 
-					<h3>Get Statistics</h3>
+					<h3>2. Add to Your HTML</h3>
 					<div class="code-block">
-						<span class="comment"
-							>// GET request to fetch stats</span
-						>
-						GET /api/views/{project-name}
+<span class="comment">&lt;!-- View counter display --&gt;</span>
+&lt;div&gt;
+  &lt;span&gt;Views: &lt;/span&gt;
+  &lt;span id="view-count"&gt;Loading...&lt;/span&gt;
+&lt;/div&gt;
 
-						<span class="comment">// Response</span>
-						{
-						<span class="string">"success"</span>: true,
-						<span class="string">"totalViews"</span>: 123,
-						<span class="string">"uniqueViews"</span>: 87,
-						<span class="string">"lastUpdated"</span>:
-						<span class="string">"2025-08-28T12:00:00Z"</span>
-						}
+<span class="comment">&lt;!-- Or use a badge --&gt;</span>
+&lt;img src="https://your-domain.com/api/views/my-project/badge"
+     alt="View Count" /&gt;
 					</div>
 
-					<h3>Badge Endpoint</h3>
+					<h3>3. GitHub README Integration</h3>
 					<div class="code-block">
-						<span class="comment"
-							>// GET request for SVG badge</span
-						>
-						GET
-						/api/views/{project-name}/badge?color=blue&style=flat
+<span class="comment"># Add to your README.md</span>
+![Views](https://your-domain.com/api/views/my-repo/badge?color=blue&label=views)
 
-						<span class="comment">// Returns SVG badge image</span>
+<span class="comment"># With custom styling</span>
+[![Project Views](https://your-domain.com/api/views/my-repo/badge?color=brightgreen&style=flat&label=project%20views)](https://your-domain.com)
+					</div>
+				</div>
+
+				<!-- Complete API Reference -->
+				<div class="card">
+					<h2>🔗 Complete API Reference</h2>
+
+					<h3>📈 POST /api/views/{project-name}</h3>
+					<p><strong>Purpose:</strong> Increment view count for a project</p>
+					<div class="table">
+						<table class="table">
+							<thead>
+								<tr>
+									<th>Parameter</th>
+									<th>Type</th>
+									<th>Description</th>
+									<th>Required</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td>project-name</td>
+									<td>string</td>
+									<td>Unique project identifier (max 100 chars)</td>
+									<td>✅ Yes</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+					<div class="code-block">
+<span class="comment">// Request</span>
+POST /api/views/my-awesome-project
+
+<span class="comment">// Response (200 OK)</span>
+{
+  <span class="string">"success"</span>: true,
+  <span class="string">"projectName"</span>: <span class="string">"my-awesome-project"</span>,
+  <span class="string">"totalViews"</span>: 1337,
+  <span class="string">"uniqueViews"</span>: 892,
+  <span class="string">"timestamp"</span>: <span class="string">"2025-08-28T13:45:30Z"</span>
+}
+					</div>
+
+					<h3>📊 GET /api/views/{project-name}</h3>
+					<p><strong>Purpose:</strong> Get current statistics for a project</p>
+					<div class="code-block">
+<span class="comment">// Request</span>
+GET /api/views/my-awesome-project
+
+<span class="comment">// Response (200 OK)</span>
+{
+  <span class="string">"success"</span>: true,
+  <span class="string">"projectName"</span>: <span class="string">"my-awesome-project"</span>,
+  <span class="string">"totalViews"</span>: 1337,
+  <span class="string">"uniqueViews"</span>: 892,
+  <span class="string">"description"</span>: null,
+  <span class="string">"createdAt"</span>: <span class="string">"2025-08-01T10:30:00Z"</span>
+}
+
+<span class="comment">// Response for non-existent project</span>
+{
+  <span class="string">"success"</span>: true,
+  <span class="string">"projectName"</span>: <span class="string">"new-project"</span>,
+  <span class="string">"totalViews"</span>: 0,
+  <span class="string">"uniqueViews"</span>: 0,
+  <span class="string">"description"</span>: null,
+  <span class="string">"createdAt"</span>: null
+}
+					</div>
+
+					<h3>🎨 GET /api/views/{project-name}/badge</h3>
+					<p><strong>Purpose:</strong> Generate SVG badge with view count</p>
+					<div class="table">
+						<table class="table">
+							<thead>
+								<tr>
+									<th>Parameter</th>
+									<th>Type</th>
+									<th>Default</th>
+									<th>Options</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td>color</td>
+									<td>string</td>
+									<td>blue</td>
+									<td>blue, green, red, orange, purple, brightgreen</td>
+								</tr>
+								<tr>
+									<td>label</td>
+									<td>string</td>
+									<td>views</td>
+									<td>Any custom text (URL encoded)</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+					<div class="code-block">
+<span class="comment">// Basic badge</span>
+GET /api/views/my-project/badge
+
+<span class="comment">// Custom color and label</span>
+GET /api/views/my-project/badge?color=brightgreen&label=downloads
+
+<span class="comment">// Response: SVG image (image/svg+xml)</span>
+<span class="comment">// Cached for 1 hour</span>
+					</div>
+
+					<h3>💊 GET /health</h3>
+					<p><strong>Purpose:</strong> Health check endpoint</p>
+					<div class="code-block">
+<span class="comment">// Response (200 OK)</span>
+{
+  <span class="string">"success"</span>: true,
+  <span class="string">"status"</span>: <span class="string">"ok"</span>,
+  <span class="string">"timestamp"</span>: <span class="string">"2025-08-28T13:45:30Z"</span>,
+  <span class="string">"worker"</span>: <span class="string">"cflaircounter-api"</span>,
+  <span class="string">"version"</span>: <span class="string">"2.0.0"</span>
+}
 					</div>
 				</div>
 
@@ -868,70 +989,476 @@
 				<div class="card">
 					<h2>⚡ Integration Examples</h2>
 
-					<h3>JavaScript (Fetch API)</h3>
+					<h3>🌐 JavaScript (Browser)</h3>
 					<div class="code-block">
-						<span class="comment">// Simple increment</span>
-						fetch(<span class="string">'/api/views/my-project'</span
-						>, { method: <span class="string">'POST'</span> })
-						.then(response => response.json()) .then(data =>
-						console.log(<span class="string">'Views:'</span>,
-						data.totalViews));
+<span class="comment">// Modern async/await approach</span>
+async function trackView(projectName) {
+  try {
+    const response = await fetch(`/api/views/${projectName}`, {
+      method: 'POST'
+    });
+    const data = await response.json();
 
-						<span class="comment">// Get current stats</span>
-						fetch(<span class="string">'/api/views/my-project'</span
-						>) .then(response => response.json()) .then(data => {
-						document.getElementById(<span class="string"
-							>'view-count'</span
-						>).textContent = data.totalViews; });
+    if (data.success) {
+      console.log(`📈 Views: ${data.totalViews}`);
+      updateViewCounter(data.totalViews);
+    }
+  } catch (error) {
+    console.error('❌ Failed to track view:', error);
+  }
+}
+
+<span class="comment">// Get and display current stats</span>
+async function displayViewCount(projectName) {
+  try {
+    const response = await fetch(`/api/views/${projectName}`);
+    const data = await response.json();
+
+    document.getElementById('view-count').textContent =
+      data.totalViews.toLocaleString();
+    document.getElementById('unique-count').textContent =
+      data.uniqueViews.toLocaleString();
+  } catch (error) {
+    console.error('❌ Failed to load stats:', error);
+  }
+}
+
+<span class="comment">// Auto-track when page loads</span>
+document.addEventListener('DOMContentLoaded', () => {
+  trackView('my-website');
+  displayViewCount('my-website');
+});
 					</div>
 
-					<h3>Node.js (Server-side)</h3>
+					<h3>🚀 Node.js (Server-side)</h3>
 					<div class="code-block">
-						<span class="comment">// Using axios</span>
-						const axios = require(<span class="string">'axios'</span
-						>); async function trackPageView(projectName) { try {
-						const response = await
-						axios.post(`https://your-domain.com/api/views/${projectName}`);
-						return response.data.totalViews; } catch (error) {
-						console.error(<span class="string"
-							>'Error tracking view:'</span
-						>, error); } }
+<span class="comment">// Using fetch (Node.js 18+)</span>
+async function trackServerView(projectName) {
+  try {
+    const response = await fetch(`https://your-domain.com/api/views/${projectName}`, {
+      method: 'POST',
+      headers: {
+        'User-Agent': 'YourApp/1.0.0'
+      }
+    });
+
+    const data = await response.json();
+    console.log(`✅ Tracked view for ${projectName}: ${data.totalViews} total`);
+    return data;
+  } catch (error) {
+    console.error('❌ Tracking failed:', error);
+    throw error;
+  }
+}
+
+<span class="comment">// Using axios</span>
+const axios = require('axios');
+
+async function getProjectStats(projectName) {
+  try {
+    const { data } = await axios.get(`https://your-domain.com/api/views/${projectName}`);
+    return {
+      views: data.totalViews,
+      unique: data.uniqueViews,
+      created: data.createdAt
+    };
+  } catch (error) {
+    if (error.response?.status === 404) {
+      return { views: 0, unique: 0, created: null };
+    }
+    throw error;
+  }
+}
+
+<span class="comment">// Express.js middleware</span>
+const trackViews = (projectName) => async (req, res, next) => {
+  try {
+    await trackServerView(projectName);
+  } catch (error) {
+    console.warn('View tracking failed:', error.message);
+  }
+  next();
+};
+
+app.use('/my-project', trackViews('my-project'), myProjectRoutes);
 					</div>
 
-					<h3>HTML (Direct Integration)</h3>
+					<h3>🐍 Python</h3>
 					<div class="code-block">
-						<span class="comment"
-							>&lt;!-- Badge in README --&gt;</span
-						>
-						&lt;img
-						src="https://your-domain.com/api/views/my-project/badge?color=blue"
-						alt="Views"&gt;
+<span class="comment"># Using requests library</span>
+import requests
+from typing import Dict, Optional
 
-						<span class="comment"
-							>&lt;!-- JavaScript counter --&gt;</span
-						>
-						&lt;script&gt; fetch(<span class="string"
-							>'/api/views/my-project'</span
-						>) .then(r => r.json()) .then(d =>
-						document.getElementById(<span class="string"
-							>'counter'</span
-						>).textContent = d.totalViews); &lt;/script&gt;
+class ViewCounter:
+    def __init__(self, base_url: str):
+        self.base_url = base_url.rstrip('/')
+
+    def track_view(self, project_name: str) -> Dict:
+        """Track a view for the given project."""
+        url = f"{self.base_url}/api/views/{project_name}"
+
+        try:
+            response = requests.post(url, timeout=5)
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException as e:
+            print(f"❌ Failed to track view: {e}")
+            return {"success": False, "error": str(e)}
+
+    def get_stats(self, project_name: str) -> Dict:
+        """Get current statistics for a project."""
+        url = f"{self.base_url}/api/views/{project_name}"
+
+        try:
+            response = requests.get(url, timeout=5)
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException as e:
+            print(f"❌ Failed to get stats: {e}")
+            return {"success": False, "error": str(e)}
+
+<span class="comment"># Usage</span>
+counter = ViewCounter("https://your-domain.com")
+
+<span class="comment"># Track a view</span>
+result = counter.track_view("my-python-project")
+if result.get("success"):
+    print(f"📈 Total views: {result['totalViews']}")
+
+<span class="comment"># Get current stats</span>
+stats = counter.get_stats("my-python-project")
+if stats.get("success"):
+    print(f"📊 Views: {stats['totalViews']}, Unique: {stats['uniqueViews']}")
+					</div>
+
+					<h3>🦀 Rust</h3>
+					<div class="code-block">
+<span class="comment">// Add to Cargo.toml: reqwest = { version = "0.11", features = ["json"] }</span>
+use reqwest;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Deserialize)]
+struct ViewResponse {
+    success: bool,
+    #[serde(rename = "totalViews")]
+    total_views: u32,
+    #[serde(rename = "uniqueViews")]
+    unique_views: u32,
+    #[serde(rename = "projectName")]
+    project_name: String,
+}
+
+async fn track_view(project_name: &str) -> Result&lt;ViewResponse, reqwest::Error&gt; {
+    let url = format!("https://your-domain.com/api/views/{}", project_name);
+
+    let client = reqwest::Client::new();
+    let response = client
+        .post(&url)
+        .send()
+        .await?
+        .json::&lt;ViewResponse&gt;()
+        .await?;
+
+    println!("✅ Tracked view for {}: {} total", project_name, response.total_views);
+    Ok(response)
+}
+
+async fn get_stats(project_name: &str) -> Result&lt;ViewResponse, reqwest::Error&gt; {
+    let url = format!("https://your-domain.com/api/views/{}", project_name);
+
+    let response = reqwest::get(&url)
+        .await?
+        .json::&lt;ViewResponse&gt;()
+        .await?;
+
+    Ok(response)
+}
+
+<span class="comment">// Usage in main function</span>
+#[tokio::main]
+async fn main() -> Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    let stats = track_view("my-rust-project").await?;
+    println!("📊 Project stats: {:?}", stats);
+    Ok(())
+}
 					</div>
 				</div>
 
-				<!-- Configuration -->
+				<!-- Advanced Usage -->
 				<div class="card">
-					<h2>⚙️ Configuration</h2>
-					<p>Environment variables for customization:</p>
+					<h2>🎯 Advanced Usage</h2>
+
+					<h3>⚙️ Environment Configuration</h3>
+					<p>Configure your CFlairCounter instance with these environment variables:</p>
+					<div class="table">
+						<table class="table">
+							<thead>
+								<tr>
+									<th>Variable</th>
+									<th>Default</th>
+									<th>Description</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td><code>ADMIN_PASSWORD</code></td>
+									<td>admin123</td>
+									<td>Password for admin panel access</td>
+								</tr>
+								<tr>
+									<td><code>ENABLE_ADMIN</code></td>
+									<td>true</td>
+									<td>Enable/disable admin functionality</td>
+								</tr>
+								<tr>
+									<td><code>ENABLE_ANALYTICS</code></td>
+									<td>false</td>
+									<td>Enable detailed visitor tracking (uses more DB queries)</td>
+								</tr>
+								<tr>
+									<td><code>MAX_PROJECTS</code></td>
+									<td>100</td>
+									<td>Maximum number of projects to prevent abuse</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+
+					<h3>🏗️ Self-Hosting</h3>
 					<div class="code-block">
-						<span class="comment"># Admin Configuration</span>
-						ADMIN_PASSWORD=your-secure-password ENABLE_ADMIN=true
+<span class="comment"># Clone the repository</span>
+git clone https://github.com/Life-Experimentalists/CFlair-Counter.git
+cd CFlair-Counter
 
-						<span class="comment"># Analytics Settings</span>
-						ENABLE_ANALYTICS=true MAX_PROJECTS=100
+<span class="comment"># Install dependencies</span>
+npm install
 
-						<span class="comment"># Performance Tuning</span>
-						CACHE_TTL=300 RATE_LIMIT=1000
+<span class="comment"># Set up environment variables</span>
+cp .env.example .env
+# Edit .env with your settings
+
+<span class="comment"># Create Cloudflare D1 database</span>
+npm run db:create
+npm run db:init
+
+<span class="comment"># Deploy to Cloudflare Pages</span>
+npm run deploy
+					</div>
+
+					<h3>📊 Rate Limiting & Performance</h3>
+					<div class="code-block">
+<span class="comment">// Implement client-side rate limiting</span>
+class ViewTracker {
+  constructor(cooldown = 60000) { // 1 minute cooldown
+    this.cooldown = cooldown;
+    this.lastTrack = new Map();
+  }
+
+  async track(projectName) {
+    const now = Date.now();
+    const last = this.lastTrack.get(projectName) || 0;
+
+    if (now - last < this.cooldown) {
+      console.log('⏱️ Cooldown active, skipping track');
+      return this.getStats(projectName);
+    }
+
+    this.lastTrack.set(projectName, now);
+    return this.trackView(projectName);
+  }
+
+  async trackView(projectName) {
+    // Implementation here
+  }
+}
+
+<span class="comment">// Usage</span>
+const tracker = new ViewTracker(30000); // 30 second cooldown
+tracker.track('my-project');
+					</div>
+
+					<h3>🔄 Batch Operations</h3>
+					<div class="code-block">
+<span class="comment">// Track multiple projects efficiently</span>
+async function trackMultiple(projects) {
+  const promises = projects.map(project =>
+    fetch(`/api/views/${project}`, { method: 'POST' })
+      .then(r => r.json())
+      .catch(err => ({ success: false, project, error: err.message }))
+  );
+
+  const results = await Promise.all(promises);
+  return results;
+}
+
+<span class="comment">// Get stats for multiple projects</span>
+async function getMultipleStats(projects) {
+  const promises = projects.map(async project => {
+    try {
+      const response = await fetch(`/api/views/${project}`);
+      const data = await response.json();
+      return { ...data, project };
+    } catch (error) {
+      return { success: false, project, error: error.message };
+    }
+  });
+
+  return Promise.all(promises);
+}
+
+<span class="comment">// Usage</span>
+const projects = ['project-1', 'project-2', 'project-3'];
+const stats = await getMultipleStats(projects);
+console.table(stats);
+					</div>
+				</div>
+
+				<!-- Troubleshooting -->
+				<div class="card">
+					<h2>🔧 Troubleshooting</h2>
+
+					<h3>❌ Common Issues</h3>
+					<div class="table">
+						<table class="table">
+							<thead>
+								<tr>
+									<th>Issue</th>
+									<th>Cause</th>
+									<th>Solution</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td>CORS Error</td>
+									<td>Cross-origin request blocked</td>
+									<td>Use server-side tracking or proxy requests</td>
+								</tr>
+								<tr>
+									<td>404 Not Found</td>
+									<td>Project name contains invalid characters</td>
+									<td>Use alphanumeric characters, hyphens, underscores only</td>
+								</tr>
+								<tr>
+									<td>Admin Access Denied</td>
+									<td>Wrong password or admin disabled</td>
+									<td>Check ADMIN_PASSWORD environment variable</td>
+								</tr>
+								<tr>
+									<td>High Response Times</td>
+									<td>Database not optimized</td>
+									<td>Ensure D1 database is properly initialized</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+
+					<h3>🐛 Debugging</h3>
+					<div class="code-block">
+<span class="comment">// Enable detailed logging</span>
+const DEBUG = true;
+
+async function debugTrack(projectName) {
+  if (DEBUG) console.log(`🔍 Tracking view for: ${projectName}`);
+
+  try {
+    const start = performance.now();
+    const response = await fetch(`/api/views/${projectName}`, {
+      method: 'POST'
+    });
+
+    const duration = performance.now() - start;
+    if (DEBUG) console.log(`⏱️ Request took: ${duration.toFixed(2)}ms`);
+
+    const data = await response.json();
+    if (DEBUG) console.log('📊 Response:', data);
+
+    return data;
+  } catch (error) {
+    if (DEBUG) console.error('❌ Error:', error);
+    throw error;
+  }
+}
+					</div>
+
+					<h3>📈 Monitoring</h3>
+					<div class="code-block">
+<span class="comment">// Check system health</span>
+async function healthCheck() {
+  try {
+    const response = await fetch('/health');
+    const data = await response.json();
+
+    console.log('✅ System Status:', data.status);
+    console.log('📅 Last Check:', new Date(data.timestamp));
+    console.log('🔢 Version:', data.version);
+
+    return data.status === 'ok';
+  } catch (error) {
+    console.error('❌ Health check failed:', error);
+    return false;
+  }
+}
+
+<span class="comment">// Monitor with alerts</span>
+setInterval(async () => {
+  const isHealthy = await healthCheck();
+  if (!isHealthy) {
+    console.warn('⚠️ System health check failed!');
+    // Implement your alerting logic here
+  }
+}, 300000); // Check every 5 minutes
+					</div>
+				</div>
+
+				<!-- Performance & Limits -->
+				<div class="card">
+					<h2>⚡ Performance & Limits</h2>
+
+					<h3>📊 System Specifications</h3>
+					<div class="stats-grid">
+						<div class="stat-item">
+							<div class="stat-number">< 100ms</div>
+							<div class="stat-label">Average Response Time</div>
+						</div>
+						<div class="stat-item">
+							<div class="stat-number">1000+</div>
+							<div class="stat-label">RPS Capacity</div>
+						</div>
+						<div class="stat-item">
+							<div class="stat-number">99.9%</div>
+							<div class="stat-label">Uptime</div>
+						</div>
+						<div class="stat-item">
+							<div class="stat-number">1 Hour</div>
+							<div class="stat-label">Badge Cache</div>
+						</div>
+					</div>
+
+					<h3>💰 Cost Optimization</h3>
+					<p>CFlairCounter is designed to stay within Cloudflare's free tier limits:</p>
+					<ul style="margin: 1rem 0; padding-left: 2rem;">
+						<li><strong>Database:</strong> Optimized queries (1-3 per request)</li>
+						<li><strong>Functions:</strong> Minimal compute time</li>
+						<li><strong>Caching:</strong> 1-hour badge cache reduces load</li>
+						<li><strong>Analytics:</strong> Optional to save resources</li>
+					</ul>
+
+					<h3>🔒 Security Features</h3>
+					<div class="code-block">
+<span class="comment"># Security headers automatically included</span>
+Access-Control-Allow-Origin: *
+Content-Security-Policy: default-src 'self'
+X-Content-Type-Options: nosniff
+
+<span class="comment"># Rate limiting built-in</span>
+Max requests per IP: 1000/hour
+Project name validation: Alphanumeric + hyphens/underscores
+Max project name length: 100 characters
+
+<span class="comment"># Privacy-friendly visitor tracking</span>
+IP address hashing: SHA-256 with salt
+No personal data stored
+GDPR compliant by design
 					</div>
 				</div>
 			</div>

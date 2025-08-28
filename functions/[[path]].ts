@@ -113,6 +113,14 @@ const initDatabase = async (db: D1Database) => {
 
 // Health check endpoint
 app.get("/health", (c) => {
+	// 🔧 DEBUG: Log environment configuration for testing
+	const adminPassword = c.env.ADMIN_PASSWORD || "admin123";
+	const enableAdmin = c.env.ENABLE_ADMIN !== "false";
+	console.log("🔧 [DEBUG] System Configuration:");
+	console.log("  - Admin Password:", adminPassword);
+	console.log("  - Admin Enabled:", enableAdmin);
+	console.log("  - Analytics Enabled:", c.env.ENABLE_ANALYTICS !== "false");
+	
 	return c.json({
 		success: true,
 		status: "ok",
@@ -342,6 +350,13 @@ app.post("/api/admin/stats", async (c) => {
 		const adminPassword = c.env.ADMIN_PASSWORD || "admin123";
 		const enableAdmin = c.env.ENABLE_ADMIN !== "false";
 
+		// 🔧 DEBUG: Log admin credentials for testing (remove in production)
+		console.log("🔧 [DEBUG] Admin Authentication Check:");
+		console.log("  - Expected Password:", adminPassword);
+		console.log("  - Received Password:", password);
+		console.log("  - Admin Enabled:", enableAdmin);
+		console.log("  - Password Match:", password === adminPassword);
+
 		if (!enableAdmin) {
 			return c.json(
 				{
@@ -393,6 +408,8 @@ app.post("/api/admin/stats", async (c) => {
 				uniqueViews: stats?.unique_views || 0,
 				totalProjects: stats?.total_projects || 0,
 				uptime: "99.9%", // Static for now
+				topP: "",
+				name: "VKrishna04",
 			},
 			projects: topProjects.results,
 			todayRequests: 0,
