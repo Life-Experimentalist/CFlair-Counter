@@ -812,4 +812,6 @@ app.get("/api/admin/projects/:name/analytics", adminAuth, async (c) => {
 	}
 });
 
-export default app;
+export default {
+	fetch: app.fetch.bind(app),
+};
