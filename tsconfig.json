@@ -1,0 +1,62 @@
+{
+	"compilerOptions": {
+		/* Language and Environment */
+		"target": "ES2022",
+		"lib": [
+			"ES2022"
+		],
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		/* Bundler mode */
+		"allowImportingTsExtensions": true,
+		"verbatimModuleSyntax": true,
+		"noEmit": true,
+		/* Linting */
+		"skipLibCheck": true,
+		"strict": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"noImplicitReturns": true,
+		"noFallthroughCasesInSwitch": true,
+		"noUncheckedIndexedAccess": true,
+		/* Type Resolution */
+		"types": [
+			"@cloudflare/workers-types"
+		],
+		"resolveJsonModule": true,
+		"allowSyntheticDefaultImports": true,
+		"esModuleInterop": true,
+		"forceConsistentCasingInFileNames": true,
+		/* Source Maps */
+		"sourceMap": true,
+		"inlineSources": true,
+		/* Path mapping for cleaner imports */
+		"baseUrl": ".",
+		"paths": {
+			"@/*": [
+				"./functions/*"
+			],
+			"@/types/*": [
+				"./functions/types/*"
+			],
+			"@/utils/*": [
+				"./functions/utils/*"
+			],
+			"@/handlers/*": [
+				"./functions/handlers/*"
+			]
+		}
+	},
+	"include": [
+		"functions/**/*",
+		"*.ts",
+		"*.js"
+	],
+	"exclude": [
+		"node_modules",
+		"dist",
+		"public",
+		"**/*.test.ts",
+		"**/*.spec.ts"
+	]
+}

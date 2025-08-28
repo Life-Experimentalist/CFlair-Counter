@@ -1,0 +1,47 @@
+{
+	"name": "cflaircounter",
+	"version": "1.0.0",
+	"description": "Ultra-lightweight serverless telemetry system for headless project tracking. Optimized for minimal Cloudflare costs.",
+	"main": "functions/api/[[path]].ts",
+	"scripts": {
+		"dev": "wrangler pages dev public --compatibility-date=2024-03-20",
+		"deploy": "wrangler pages deploy public",
+		"build": "tsc",
+		"type-check": "tsc --noEmit",
+		"db:create": "wrangler d1 create cflaircounter-db",
+		"db:init": "wrangler d1 execute cflaircounter-db --file=./schema.sql",
+		"db:migrate": "wrangler d1 migrations apply cflaircounter-db",
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"keywords": [
+		"view-counter",
+		"cloudflare-workers",
+		"typescript",
+		"serverless",
+		"analytics",
+		"d1-database",
+		"hono",
+		"project-tracking",
+		"visitor-counter",
+		"github-readme-stats"
+	],
+	"author": "VKrishna04 <https://github.com/VKrishna04>",
+	"license": "Apache-2.0",
+	"type": "module",
+	"homepage": "https://vkrishna04.github.io",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/VKrishna04/CFlairCounter"
+	},
+	"bugs": {
+		"url": "https://github.com/VKrishna04/CFlairCounter/issues"
+	},
+	"dependencies": {
+		"hono": "^4.9.4"
+	},
+	"devDependencies": {
+		"@cloudflare/workers-types": "^4.20250826.0",
+		"typescript": "^5.9.2",
+		"wrangler": "^4.33.0"
+	}
+}

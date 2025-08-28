@@ -1,0 +1,44 @@
+name = "cflaircounter"
+main = "functions/api/[[path]].ts"
+compatibility_date = "2024-03-20"
+
+# Environment variables for production
+[env.production.vars]
+ADMIN_PASSWORD = "your-secure-admin-password-here"
+ENABLE_ADMIN = "true"
+ENABLE_ANALYTICS = "false"  # Disable heavy analytics to save queries
+MAX_PROJECTS = "100"        # Limit projects to control usage
+
+# Environment variables for development
+[env.development.vars]
+ADMIN_PASSWORD = "admin123"
+ENABLE_ADMIN = "true"
+ENABLE_ANALYTICS = "true"
+MAX_PROJECTS = "1000"
+
+# Dev server configuration
+[dev]
+ip = "127.0.0.1"
+port = 8788
+local_protocol = "http"
+
+# Bindings for D1, R2, KV, etc.
+# Docs: https://developers.cloudflare.com/workers/wrangler/configuration/#bindings
+[[d1_databases]]
+binding = "DB"
+database_name = "cflaircounter-db"
+database_id = "" # This will be filled in after you create the DB
+preview_database_id = "cflaircounter-db-preview"
+
+# Pages configuration
+[pages]
+# The "main" branch will be used for production deployments
+branch = "main"
+# The directory containing your static assets
+dir = "public"
+# The directory containing your Functions
+functions = "functions"
+# The pattern of Functions to include
+functions-pattern = "[[path]].ts"
+# The pattern of Functions to exclude
+# functions-exclude = "excluded-function.ts"

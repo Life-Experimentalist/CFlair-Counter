@@ -1,0 +1,1402 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>CFlairCounter - Professional View Counter</title>
+		<meta
+			name="description"
+			content="Professional serverless view counter with advanced analytics and admin management."
+		/>
+
+		<style>
+			/* Professional CSS Framework */
+			* {
+				margin: 0;
+				padding: 0;
+				box-sizing: border-box;
+			}
+
+			:root {
+				--primary: #667eea;
+				--primary-dark: #5a6fd8;
+				--secondary: #764ba2;
+				--success: #28a745;
+				--warning: #ffc107;
+				--danger: #dc3545;
+				--info: #17a2b8;
+				--light: #f8f9fa;
+				--dark: #343a40;
+				--white: #ffffff;
+			}
+
+			body {
+				font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+					Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+				line-height: 1.6;
+				color: var(--dark);
+				background: linear-gradient(
+					135deg,
+					var(--primary) 0%,
+					var(--secondary) 100%
+				);
+				min-height: 100vh;
+			}
+
+			/* Navigation */
+			.navbar {
+				background: rgba(255, 255, 255, 0.95);
+				backdrop-filter: blur(10px);
+				box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+				position: sticky;
+				top: 0;
+				z-index: 100;
+			}
+
+			.nav-container {
+				max-width: 1200px;
+				margin: 0 auto;
+				padding: 1rem 2rem;
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+			}
+
+			.nav-brand {
+				font-size: 1.5rem;
+				font-weight: 700;
+				color: var(--primary);
+				text-decoration: none;
+			}
+
+			.nav-links {
+				display: flex;
+				gap: 2rem;
+				align-items: center;
+			}
+
+			.nav-link {
+				color: var(--dark);
+				text-decoration: none;
+				font-weight: 500;
+				transition: color 0.3s ease;
+			}
+
+			.nav-link:hover {
+				color: var(--primary);
+			}
+
+			.nav-link.active {
+				color: var(--primary);
+				font-weight: 600;
+			}
+
+			/* Container & Layout */
+			.container {
+				max-width: 1200px;
+				margin: 0 auto;
+				padding: 2rem;
+			}
+
+			.page {
+				display: none;
+			}
+
+			.page.active {
+				display: block;
+			}
+
+			.hero {
+				text-align: center;
+				color: white;
+				margin: 4rem 0;
+			}
+
+			.hero h1 {
+				font-size: 3.5rem;
+				margin-bottom: 1rem;
+				font-weight: 800;
+				text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+			}
+
+			.hero p {
+				font-size: 1.3rem;
+				margin-bottom: 2rem;
+				opacity: 0.9;
+			}
+
+			.hero-badges {
+				display: flex;
+				justify-content: center;
+				gap: 1rem;
+				flex-wrap: wrap;
+				margin-bottom: 2rem;
+			}
+
+			.badge {
+				background: rgba(255, 255, 255, 0.2);
+				color: white;
+				padding: 0.5rem 1rem;
+				border-radius: 25px;
+				font-size: 0.9rem;
+				font-weight: 500;
+				backdrop-filter: blur(10px);
+			}
+
+			/* Cards */
+			.card {
+				background: white;
+				border-radius: 16px;
+				padding: 2rem;
+				margin: 2rem 0;
+				box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+				border: 1px solid rgba(255, 255, 255, 0.2);
+			}
+
+			.card h2 {
+				color: var(--primary);
+				margin-bottom: 1.5rem;
+				font-size: 1.8rem;
+			}
+
+			.card h3 {
+				color: var(--dark);
+				margin: 1.5rem 0 1rem 0;
+				font-size: 1.3rem;
+			}
+
+			/* Grid Systems */
+			.stats-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+				gap: 1.5rem;
+			}
+
+			.feature-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+				gap: 2rem;
+			}
+
+			.stat-item {
+				text-align: center;
+				background: linear-gradient(
+					135deg,
+					var(--light) 0%,
+					white 100%
+				);
+				padding: 2rem;
+				border-radius: 12px;
+				border: 2px solid transparent;
+				transition: all 0.3s ease;
+			}
+
+			.stat-item:hover {
+				border-color: var(--primary);
+				transform: translateY(-5px);
+			}
+
+			.stat-number {
+				font-size: 2.5rem;
+				font-weight: 800;
+				color: var(--primary);
+				margin-bottom: 0.5rem;
+			}
+
+			.stat-label {
+				font-size: 1rem;
+				color: var(--dark);
+				font-weight: 500;
+			}
+
+			.feature-card {
+				background: white;
+				padding: 2rem;
+				border-radius: 12px;
+				text-align: center;
+				border: 2px solid var(--light);
+				transition: all 0.3s ease;
+			}
+
+			.feature-card:hover {
+				border-color: var(--primary);
+				transform: translateY(-5px);
+			}
+
+			.feature-icon {
+				font-size: 3rem;
+				margin-bottom: 1rem;
+			}
+
+			/* Form Elements */
+			.form-group {
+				margin-bottom: 1.5rem;
+			}
+
+			.form-label {
+				display: block;
+				margin-bottom: 0.5rem;
+				font-weight: 600;
+				color: var(--dark);
+			}
+
+			.form-input {
+				width: 100%;
+				padding: 0.75rem 1rem;
+				border: 2px solid var(--light);
+				border-radius: 8px;
+				font-size: 1rem;
+				transition: border-color 0.3s ease;
+			}
+
+			.form-input:focus {
+				outline: none;
+				border-color: var(--primary);
+			}
+
+			.form-row {
+				display: flex;
+				gap: 1rem;
+				align-items: end;
+				flex-wrap: wrap;
+			}
+
+			.form-row .form-group {
+				flex: 1;
+				min-width: 200px;
+			}
+
+			/* Buttons */
+			.btn {
+				display: inline-block;
+				padding: 0.75rem 1.5rem;
+				border: none;
+				border-radius: 8px;
+				font-size: 1rem;
+				font-weight: 600;
+				text-decoration: none;
+				cursor: pointer;
+				transition: all 0.3s ease;
+				white-space: nowrap;
+			}
+
+			.btn-primary {
+				background: linear-gradient(
+					135deg,
+					var(--primary) 0%,
+					var(--primary-dark) 100%
+				);
+				color: white;
+			}
+
+			.btn-primary:hover {
+				transform: translateY(-2px);
+				box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+			}
+
+			.btn-secondary {
+				background: var(--light);
+				color: var(--dark);
+				border: 2px solid var(--light);
+			}
+
+			.btn-secondary:hover {
+				background: white;
+				border-color: var(--primary);
+				color: var(--primary);
+			}
+
+			.btn-success {
+				background: var(--success);
+				color: white;
+			}
+
+			.btn-danger {
+				background: var(--danger);
+				color: white;
+			}
+
+			.btn-sm {
+				padding: 0.5rem 1rem;
+				font-size: 0.9rem;
+			}
+
+			/* Code blocks */
+			.code-block {
+				background: var(--dark);
+				color: #50fa7b;
+				padding: 1.5rem;
+				border-radius: 8px;
+				font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+				font-size: 0.9rem;
+				overflow-x: auto;
+				margin: 1rem 0;
+				border-left: 4px solid var(--primary);
+			}
+
+			.code-block .comment {
+				color: #6272a4;
+			}
+
+			.code-block .string {
+				color: #f1fa8c;
+			}
+
+			/* Tables */
+			.table {
+				width: 100%;
+				border-collapse: collapse;
+				margin: 1rem 0;
+			}
+
+			.table th,
+			.table td {
+				padding: 1rem;
+				text-align: left;
+				border-bottom: 1px solid var(--light);
+			}
+
+			.table th {
+				background: var(--light);
+				font-weight: 600;
+				color: var(--dark);
+			}
+
+			.table tr:hover {
+				background: rgba(102, 126, 234, 0.05);
+			}
+
+			/* Modals */
+			.modal {
+				display: none;
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				background: rgba(0, 0, 0, 0.8);
+				z-index: 1000;
+				backdrop-filter: blur(5px);
+			}
+
+			.modal.active {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+
+			.modal-content {
+				background: white;
+				padding: 2rem;
+				border-radius: 16px;
+				width: 90%;
+				max-width: 600px;
+				max-height: 80vh;
+				overflow-y: auto;
+				animation: modalSlideIn 0.3s ease;
+			}
+
+			@keyframes modalSlideIn {
+				from {
+					transform: translateY(-50px);
+					opacity: 0;
+				}
+				to {
+					transform: translateY(0);
+					opacity: 1;
+				}
+			}
+
+			.modal-header {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				margin-bottom: 1.5rem;
+				padding-bottom: 1rem;
+				border-bottom: 2px solid var(--light);
+			}
+
+			.modal-title {
+				font-size: 1.5rem;
+				font-weight: 700;
+				color: var(--primary);
+			}
+
+			.modal-close {
+				background: none;
+				border: none;
+				font-size: 1.5rem;
+				cursor: pointer;
+				color: var(--dark);
+				padding: 0.5rem;
+				border-radius: 50%;
+				transition: background 0.3s ease;
+			}
+
+			.modal-close:hover {
+				background: var(--light);
+			}
+
+			/* Notifications */
+			.notification {
+				position: fixed;
+				top: 20px;
+				right: 20px;
+				padding: 1rem 1.5rem;
+				border-radius: 8px;
+				z-index: 1001;
+				display: none;
+				min-width: 300px;
+				box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+				animation: notificationSlideIn 0.3s ease;
+			}
+
+			@keyframes notificationSlideIn {
+				from {
+					transform: translateX(100%);
+					opacity: 0;
+				}
+				to {
+					transform: translateX(0);
+					opacity: 1;
+				}
+			}
+
+			.notification.success {
+				background: var(--success);
+				color: white;
+			}
+
+			.notification.error {
+				background: var(--danger);
+				color: white;
+			}
+
+			.notification.info {
+				background: var(--info);
+				color: white;
+			}
+
+			.notification.warning {
+				background: var(--warning);
+				color: var(--dark);
+			}
+
+			/* Loading States */
+			.loading {
+				opacity: 0.6;
+				pointer-events: none;
+			}
+
+			.spinner {
+				border: 3px solid var(--light);
+				border-top: 3px solid var(--primary);
+				border-radius: 50%;
+				width: 20px;
+				height: 20px;
+				animation: spin 1s linear infinite;
+				display: inline-block;
+				margin-right: 0.5rem;
+			}
+
+			@keyframes spin {
+				0% {
+					transform: rotate(0deg);
+				}
+				100% {
+					transform: rotate(360deg);
+				}
+			}
+
+			/* Responsive Design */
+			@media (max-width: 768px) {
+				.nav-container {
+					padding: 1rem;
+					flex-direction: column;
+					gap: 1rem;
+				}
+
+				.nav-links {
+					gap: 1rem;
+				}
+
+				.hero h1 {
+					font-size: 2.5rem;
+				}
+
+				.hero p {
+					font-size: 1.1rem;
+				}
+
+				.container {
+					padding: 1rem;
+				}
+
+				.stats-grid,
+				.feature-grid {
+					grid-template-columns: 1fr;
+				}
+
+				.form-row {
+					flex-direction: column;
+				}
+
+				.form-row .form-group {
+					min-width: auto;
+				}
+
+				.modal-content {
+					width: 95%;
+					margin: 1rem;
+				}
+			}
+
+			/* Dark mode support */
+			@media (prefers-color-scheme: dark) {
+				.card {
+					background: rgba(255, 255, 255, 0.95);
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<!-- Navigation -->
+		<nav class="navbar">
+			<div class="nav-container">
+				<a href="javascript:void(0)" class="nav-brand"
+					>⚡ CFlairCounter</a
+				>
+				<div class="nav-links">
+					<a
+						href="javascript:void(0)"
+						class="nav-link active"
+						onclick="showPage('home', event)"
+						>🏠 Home</a
+					>
+					<a
+						href="javascript:void(0)"
+						class="nav-link"
+						onclick="showPage('demo', event)"
+						>🚀 Demo</a
+					>
+					<a
+						href="javascript:void(0)"
+						class="nav-link"
+						onclick="showPage('docs', event)"
+						>📚 Docs</a
+					>
+					<a
+						href="javascript:void(0)"
+						class="nav-link"
+						onclick="showAdminModal()"
+						>🔒 Admin</a
+					>
+				</div>
+			</div>
+		</nav>
+
+		<div class="container">
+			<!-- HOME PAGE -->
+			<div id="home-page" class="page active">
+				<div class="hero">
+					<h1>Professional View Counter</h1>
+					<p>
+						Advanced serverless analytics with enterprise-grade
+						admin management
+					</p>
+					<div class="hero-badges">
+						<span class="badge">⚡ High Performance</span>
+						<span class="badge">🔒 Secure Admin</span>
+						<span class="badge">📊 Advanced Analytics</span>
+						<span class="badge">💰 Cost Optimized</span>
+					</div>
+				</div>
+
+				<!-- Live Global Stats -->
+				<div class="card">
+					<h2>📊 Global Statistics</h2>
+					<div class="stats-grid">
+						<div class="stat-item">
+							<div class="stat-number" id="global-total-views">
+								0
+							</div>
+							<div class="stat-label">Total Views</div>
+						</div>
+						<div class="stat-item">
+							<div class="stat-number" id="global-total-projects">
+								0
+							</div>
+							<div class="stat-label">Active Projects</div>
+						</div>
+						<div class="stat-item">
+							<div
+								class="stat-number"
+								id="global-unique-visitors"
+							>
+								0
+							</div>
+							<div class="stat-label">Unique Visitors</div>
+						</div>
+						<div class="stat-item">
+							<div class="stat-number" id="global-efficiency">
+								99.9%
+							</div>
+							<div class="stat-label">System Efficiency</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Key Features -->
+				<div class="card">
+					<h2>✨ Key Features</h2>
+					<div class="feature-grid">
+						<div class="feature-card">
+							<div class="feature-icon">⚡</div>
+							<h3>Ultra Fast</h3>
+							<p>
+								Optimized for minimal latency with intelligent
+								caching and efficient database queries.
+							</p>
+						</div>
+						<div class="feature-card">
+							<div class="feature-icon">🔒</div>
+							<h3>Secure Admin</h3>
+							<p>
+								Password-protected admin panel with
+								environment-based configuration and role
+								management.
+							</p>
+						</div>
+						<div class="feature-card">
+							<div class="feature-icon">📊</div>
+							<h3>Rich Analytics</h3>
+							<p>
+								Detailed view tracking, visitor analytics, and
+								comprehensive reporting dashboard.
+							</p>
+						</div>
+						<div class="feature-card">
+							<div class="feature-icon">💰</div>
+							<h3>Cost Effective</h3>
+							<p>
+								Designed to stay within Cloudflare's free tier
+								with optional premium features.
+							</p>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- DEMO PAGE -->
+			<div id="demo-page" class="page">
+				<div class="hero">
+					<h1>🚀 Live Demo</h1>
+					<p>Try out the view counter with real-time updates</p>
+				</div>
+
+				<!-- Quick Demo -->
+				<div class="card">
+					<h2>🎯 Quick Test</h2>
+					<div class="form-row">
+						<div class="form-group">
+							<label class="form-label" for="demo-project"
+								>Project Name:</label
+							>
+							<input
+								type="text"
+								id="demo-project"
+								class="form-input"
+								value="demo-project"
+								placeholder="Enter project name"
+							/>
+						</div>
+						<div class="form-group">
+							<button
+								onclick="incrementDemo()"
+								class="btn btn-primary"
+							>
+								📈 Increment Views
+							</button>
+						</div>
+						<div class="form-group">
+							<button
+								onclick="getDemoStats()"
+								class="btn btn-secondary"
+							>
+								📊 Get Stats
+							</button>
+						</div>
+					</div>
+
+					<div
+						id="demo-results"
+						style="display: none; margin-top: 1.5rem"
+					>
+						<h3>Results:</h3>
+						<div class="stats-grid">
+							<div class="stat-item">
+								<div class="stat-number" id="demo-views">0</div>
+								<div class="stat-label">Total Views</div>
+							</div>
+							<div class="stat-item">
+								<div class="stat-number" id="demo-unique">
+									0
+								</div>
+								<div class="stat-label">Unique Views</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Badge Generator -->
+				<div class="card">
+					<h2>🎨 Badge Generator</h2>
+					<div class="form-row">
+						<div class="form-group">
+							<label class="form-label" for="badge-project"
+								>Project:</label
+							>
+							<input
+								type="text"
+								id="badge-project"
+								class="form-input"
+								value="demo-project"
+							/>
+						</div>
+						<div class="form-group">
+							<label class="form-label" for="badge-color"
+								>Color:</label
+							>
+							<select id="badge-color" class="form-input">
+								<option value="blue">Blue</option>
+								<option value="green">Green</option>
+								<option value="red">Red</option>
+								<option value="orange">Orange</option>
+								<option value="purple">Purple</option>
+							</select>
+						</div>
+						<div class="form-group">
+							<button
+								onclick="updateBadgePreview()"
+								class="btn btn-primary"
+							>
+								🎨 Generate Badge
+							</button>
+						</div>
+					</div>
+
+					<div
+						id="badge-preview"
+						style="display: none; margin-top: 1.5rem"
+					>
+						<h3>Badge Preview:</h3>
+						<img
+							id="demo-badge"
+							style="margin: 1rem 0"
+							alt="Badge Preview"
+						/>
+						<div class="code-block">
+							<span class="comment">// Markdown</span><br />
+							![Views](https://your-domain.com/api/views/<span
+								id="badge-url-project"
+								>demo-project</span
+							>/badge?color=<span id="badge-url-color">blue</span
+							>)
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- DOCS PAGE -->
+			<div id="docs-page" class="page">
+				<div class="hero">
+					<h1>📚 Documentation</h1>
+					<p>Complete API reference and integration examples</p>
+				</div>
+
+				<!-- API Reference -->
+				<div class="card">
+					<h2>🔗 API Endpoints</h2>
+
+					<h3>Increment Views</h3>
+					<div class="code-block">
+						<span class="comment"
+							>// POST request to increment views</span
+						>
+						POST /api/views/{project-name}
+
+						<span class="comment">// Response</span>
+						{
+						<span class="string">"success"</span>: true,
+						<span class="string">"totalViews"</span>: 123,
+						<span class="string">"uniqueViews"</span>: 87,
+						<span class="string">"projectName"</span>:
+						<span class="string">"my-project"</span>
+						}
+					</div>
+
+					<h3>Get Statistics</h3>
+					<div class="code-block">
+						<span class="comment"
+							>// GET request to fetch stats</span
+						>
+						GET /api/views/{project-name}
+
+						<span class="comment">// Response</span>
+						{
+						<span class="string">"success"</span>: true,
+						<span class="string">"totalViews"</span>: 123,
+						<span class="string">"uniqueViews"</span>: 87,
+						<span class="string">"lastUpdated"</span>:
+						<span class="string">"2025-08-28T12:00:00Z"</span>
+						}
+					</div>
+
+					<h3>Badge Endpoint</h3>
+					<div class="code-block">
+						<span class="comment"
+							>// GET request for SVG badge</span
+						>
+						GET
+						/api/views/{project-name}/badge?color=blue&style=flat
+
+						<span class="comment">// Returns SVG badge image</span>
+					</div>
+				</div>
+
+				<!-- Integration Examples -->
+				<div class="card">
+					<h2>⚡ Integration Examples</h2>
+
+					<h3>JavaScript (Fetch API)</h3>
+					<div class="code-block">
+						<span class="comment">// Simple increment</span>
+						fetch(<span class="string">'/api/views/my-project'</span
+						>, { method: <span class="string">'POST'</span> })
+						.then(response => response.json()) .then(data =>
+						console.log(<span class="string">'Views:'</span>,
+						data.totalViews));
+
+						<span class="comment">// Get current stats</span>
+						fetch(<span class="string">'/api/views/my-project'</span
+						>) .then(response => response.json()) .then(data => {
+						document.getElementById(<span class="string"
+							>'view-count'</span
+						>).textContent = data.totalViews; });
+					</div>
+
+					<h3>Node.js (Server-side)</h3>
+					<div class="code-block">
+						<span class="comment">// Using axios</span>
+						const axios = require(<span class="string">'axios'</span
+						>); async function trackPageView(projectName) { try {
+						const response = await
+						axios.post(`https://your-domain.com/api/views/${projectName}`);
+						return response.data.totalViews; } catch (error) {
+						console.error(<span class="string"
+							>'Error tracking view:'</span
+						>, error); } }
+					</div>
+
+					<h3>HTML (Direct Integration)</h3>
+					<div class="code-block">
+						<span class="comment"
+							>&lt;!-- Badge in README --&gt;</span
+						>
+						&lt;img
+						src="https://your-domain.com/api/views/my-project/badge?color=blue"
+						alt="Views"&gt;
+
+						<span class="comment"
+							>&lt;!-- JavaScript counter --&gt;</span
+						>
+						&lt;script&gt; fetch(<span class="string"
+							>'/api/views/my-project'</span
+						>) .then(r => r.json()) .then(d =>
+						document.getElementById(<span class="string"
+							>'counter'</span
+						>).textContent = d.totalViews); &lt;/script&gt;
+					</div>
+				</div>
+
+				<!-- Configuration -->
+				<div class="card">
+					<h2>⚙️ Configuration</h2>
+					<p>Environment variables for customization:</p>
+					<div class="code-block">
+						<span class="comment"># Admin Configuration</span>
+						ADMIN_PASSWORD=your-secure-password ENABLE_ADMIN=true
+
+						<span class="comment"># Analytics Settings</span>
+						ENABLE_ANALYTICS=true MAX_PROJECTS=100
+
+						<span class="comment"># Performance Tuning</span>
+						CACHE_TTL=300 RATE_LIMIT=1000
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Admin Modal -->
+		<div id="admin-modal" class="modal">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h2 class="modal-title">🔒 Admin Panel</h2>
+					<button class="modal-close" onclick="hideAdminModal()">
+						✕
+					</button>
+				</div>
+
+				<div id="admin-login">
+					<div class="form-group">
+						<label class="form-label" for="admin-password"
+							>Admin Password:</label
+						>
+						<input
+							type="password"
+							id="admin-password"
+							class="form-input"
+							placeholder="Enter admin password"
+						/>
+					</div>
+					<button
+						onclick="adminLogin()"
+						class="btn btn-primary"
+						style="width: 100%"
+					>
+						🔑 Login
+					</button>
+				</div>
+
+				<div id="admin-dashboard" style="display: none">
+					<div class="stats-grid">
+						<div class="stat-item">
+							<div class="stat-number" id="admin-requests">0</div>
+							<div class="stat-label">Today's Requests</div>
+						</div>
+						<div class="stat-item">
+							<div class="stat-number" id="admin-db-ops">0</div>
+							<div class="stat-label">DB Operations</div>
+						</div>
+					</div>
+
+					<h3>📊 Project Management</h3>
+					<div id="admin-projects">
+						<p>Loading projects...</p>
+					</div>
+
+					<h3>⚙️ System Settings</h3>
+					<div class="form-row">
+						<div class="form-group">
+							<button
+								onclick="clearCache()"
+								class="btn btn-secondary"
+							>
+								🗑️ Clear Cache
+							</button>
+						</div>
+						<div class="form-group">
+							<button
+								onclick="exportData()"
+								class="btn btn-secondary"
+							>
+								📥 Export Data
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Notification -->
+		<div id="notification" class="notification"></div>
+
+		<script>
+			const API_BASE = window.location.origin;
+			let currentPage = "home";
+
+			// Initialize app
+			document.addEventListener("DOMContentLoaded", function () {
+				// Clean up URL hash if present
+				if (window.location.hash) {
+					history.replaceState(null, null, window.location.pathname);
+				}
+
+				loadGlobalStats();
+				setInterval(loadGlobalStats, 30000); // Update every 30 seconds
+			});
+
+			// Page Management
+			function showPage(pageId, event) {
+				// Prevent default link behavior
+				if (event) {
+					event.preventDefault();
+				}
+
+				// Hide all pages
+				document.querySelectorAll(".page").forEach((page) => {
+					page.classList.remove("active");
+				});
+
+				// Show selected page
+				document
+					.getElementById(pageId + "-page")
+					.classList.add("active");
+
+				// Update navigation
+				document.querySelectorAll(".nav-link").forEach((link) => {
+					link.classList.remove("active");
+				});
+				if (event && event.target) {
+					event.target.classList.add("active");
+				}
+
+				currentPage = pageId;
+
+				// Update URL without hash
+				if (history.replaceState) {
+					history.replaceState(null, null, window.location.pathname);
+				}
+			}
+
+			// Global Stats Loading
+			async function loadGlobalStats() {
+				try {
+					const response = await fetch(`${API_BASE}/api/stats`);
+					const data = await response.json();
+
+					if (data.success) {
+						document.getElementById(
+							"global-total-views"
+						).textContent =
+							data.totalViews?.toLocaleString() || "0";
+						document.getElementById(
+							"global-total-projects"
+						).textContent = data.totalProjects || "0";
+						document.getElementById(
+							"global-unique-visitors"
+						).textContent =
+							data.uniqueVisitors?.toLocaleString() || "0";
+					}
+				} catch (error) {
+					console.error("Error loading global stats:", error);
+				}
+			}
+
+			// Demo Functions
+			async function incrementDemo() {
+				const project = document
+					.getElementById("demo-project")
+					.value.trim();
+				if (!project) {
+					showNotification("❌ Please enter a project name", "error");
+					return;
+				}
+
+				setLoading(true);
+
+				try {
+					const response = await fetch(
+						`${API_BASE}/api/views/${encodeURIComponent(project)}`,
+						{
+							method: "POST",
+						}
+					);
+					const data = await response.json();
+
+					if (data.success) {
+						document.getElementById("demo-views").textContent =
+							data.totalViews;
+						document.getElementById("demo-unique").textContent =
+							data.uniqueViews || "0";
+						document.getElementById("demo-results").style.display =
+							"block";
+						showNotification(
+							`✅ View counted! Total: ${data.totalViews}`,
+							"success"
+						);
+					} else {
+						showNotification(
+							"❌ Error incrementing views",
+							"error"
+						);
+					}
+				} catch (error) {
+					showNotification("❌ Network error", "error");
+				} finally {
+					setLoading(false);
+				}
+			}
+
+			async function getDemoStats() {
+				const project = document
+					.getElementById("demo-project")
+					.value.trim();
+				if (!project) {
+					showNotification("❌ Please enter a project name", "error");
+					return;
+				}
+
+				setLoading(true);
+
+				try {
+					const response = await fetch(
+						`${API_BASE}/api/views/${encodeURIComponent(project)}`
+					);
+					const data = await response.json();
+
+					if (data.success) {
+						document.getElementById("demo-views").textContent =
+							data.totalViews;
+						document.getElementById("demo-unique").textContent =
+							data.uniqueViews || "0";
+						document.getElementById("demo-results").style.display =
+							"block";
+						showNotification(
+							`📊 Stats loaded for ${project}`,
+							"info"
+						);
+					} else {
+						showNotification("❌ Project not found", "error");
+					}
+				} catch (error) {
+					showNotification("❌ Network error", "error");
+				} finally {
+					setLoading(false);
+				}
+			}
+
+			function updateBadgePreview() {
+				const project = document
+					.getElementById("badge-project")
+					.value.trim();
+				const color = document.getElementById("badge-color").value;
+
+				if (!project) {
+					showNotification("❌ Please enter a project name", "error");
+					return;
+				}
+
+				const badgeUrl = `${API_BASE}/api/views/${encodeURIComponent(
+					project
+				)}/badge?color=${color}`;
+				const badge = document.getElementById("demo-badge");
+				badge.src = badgeUrl;
+
+				document.getElementById("badge-url-project").textContent =
+					project;
+				document.getElementById("badge-url-color").textContent = color;
+				document.getElementById("badge-preview").style.display =
+					"block";
+
+				showNotification("🎨 Badge updated!", "success");
+			}
+
+			// Admin Functions
+			function showAdminModal() {
+				document.getElementById("admin-modal").classList.add("active");
+			}
+
+			function hideAdminModal() {
+				document
+					.getElementById("admin-modal")
+					.classList.remove("active");
+				document.getElementById("admin-login").style.display = "block";
+				document.getElementById("admin-dashboard").style.display =
+					"none";
+				document.getElementById("admin-password").value = "";
+			}
+
+			async function adminLogin() {
+				const password =
+					document.getElementById("admin-password").value;
+				if (!password) {
+					showNotification("❌ Please enter password", "error");
+					return;
+				}
+
+				setLoading(true);
+
+				try {
+					const response = await fetch(
+						`${API_BASE}/api/admin/stats`,
+						{
+							method: "POST",
+							headers: {
+								"Content-Type": "application/json",
+							},
+							body: JSON.stringify({ password }),
+						}
+					);
+
+					const data = await response.json();
+
+					if (data.success) {
+						document.getElementById("admin-login").style.display =
+							"none";
+						document.getElementById(
+							"admin-dashboard"
+						).style.display = "block";
+						loadAdminData(data);
+						showNotification("✅ Admin access granted", "success");
+					} else {
+						showNotification("❌ Invalid password", "error");
+					}
+				} catch (error) {
+					showNotification("❌ Authentication failed", "error");
+				} finally {
+					setLoading(false);
+				}
+			}
+
+			function loadAdminData(data) {
+				document.getElementById("admin-requests").textContent =
+					data.todayRequests || "0";
+				document.getElementById("admin-db-ops").textContent =
+					data.dbOperations || "0";
+
+				// Load projects table
+				const projectsHtml = data.projects
+					? generateProjectsTable(data.projects)
+					: "<p>No projects found</p>";
+				document.getElementById("admin-projects").innerHTML =
+					projectsHtml;
+			}
+
+			function generateProjectsTable(projects) {
+				if (!projects.length) return "<p>No projects found</p>";
+
+				let html =
+					'<table class="table"><thead><tr><th>Project</th><th>Views</th><th>Unique</th><th>Last Updated</th></tr></thead><tbody>';
+
+				projects.forEach((project) => {
+					html += `<tr>
+                    <td>${project.name}</td>
+                    <td>${project.totalViews}</td>
+                    <td>${project.uniqueViews}</td>
+                    <td>${new Date(
+						project.lastUpdated
+					).toLocaleDateString()}</td>
+                </tr>`;
+				});
+
+				html += "</tbody></table>";
+				return html;
+			}
+
+			async function clearCache() {
+				if (!confirm("Are you sure you want to clear the cache?"))
+					return;
+
+				try {
+					const response = await fetch(
+						`${API_BASE}/api/admin/cache`,
+						{
+							method: "DELETE",
+							headers: {
+								Authorization: `Bearer ${
+									document.getElementById("admin-password")
+										.value
+								}`,
+							},
+						}
+					);
+
+					if (response.ok) {
+						showNotification(
+							"✅ Cache cleared successfully",
+							"success"
+						);
+					} else {
+						showNotification("❌ Failed to clear cache", "error");
+					}
+				} catch (error) {
+					showNotification("❌ Error clearing cache", "error");
+				}
+			}
+
+			async function exportData() {
+				try {
+					const response = await fetch(
+						`${API_BASE}/api/admin/export`,
+						{
+							headers: {
+								Authorization: `Bearer ${
+									document.getElementById("admin-password")
+										.value
+								}`,
+							},
+						}
+					);
+
+					if (response.ok) {
+						const blob = await response.blob();
+						const url = window.URL.createObjectURL(blob);
+						const a = document.createElement("a");
+						a.href = url;
+						a.download = `cflaircounter-export-${
+							new Date().toISOString().split("T")[0]
+						}.json`;
+						a.click();
+						window.URL.revokeObjectURL(url);
+						showNotification(
+							"✅ Data exported successfully",
+							"success"
+						);
+					} else {
+						showNotification("❌ Failed to export data", "error");
+					}
+				} catch (error) {
+					showNotification("❌ Error exporting data", "error");
+				}
+			}
+
+			// Utility Functions
+			function showNotification(message, type = "info") {
+				const notification = document.getElementById("notification");
+				notification.textContent = message;
+				notification.className = `notification ${type}`;
+				notification.style.display = "block";
+
+				setTimeout(() => {
+					notification.style.display = "none";
+				}, 4000);
+			}
+
+			function setLoading(isLoading) {
+				const buttons = document.querySelectorAll(".btn");
+				buttons.forEach((btn) => {
+					if (isLoading) {
+						btn.classList.add("loading");
+						if (!btn.innerHTML.includes("spinner")) {
+							btn.innerHTML =
+								'<span class="spinner"></span>' + btn.innerHTML;
+						}
+					} else {
+						btn.classList.remove("loading");
+						btn.innerHTML = btn.innerHTML.replace(
+							'<span class="spinner"></span>',
+							""
+						);
+					}
+				});
+			}
+
+			// Keyboard shortcuts
+			document.addEventListener("keydown", function (e) {
+				if (e.key === "Escape") {
+					hideAdminModal();
+				}
+			});
+
+			// Click outside modal to close
+			document
+				.getElementById("admin-modal")
+				.addEventListener("click", function (e) {
+					if (e.target === this) {
+						hideAdminModal();
+					}
+				});
+		</script>
+	</body>
+</html>
