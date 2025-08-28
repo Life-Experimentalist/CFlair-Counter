@@ -310,38 +310,6 @@ app.get("/api/views/:projectName/badge", async (c) => {
 	}
 });
 
-// Environment-based admin authentication with usage tracking
-const adminAuth = async (c: any, next: any) => {
-	const password =
-		c.req.header("X-Admin-Password") || c.req.query("password");
-	const adminPassword = c.env.ADMIN_PASSWORD || "admin123"; // Fallback for dev
-	const enableAdmin = c.env.ENABLE_ADMIN !== "false";
-
-	if (!enableAdmin) {
-		return c.json(
-			{
-				success: false,
-				error: "Admin functionality is disabled",
-			},
-			403
-		);
-	}
-
-	if (!password || password !== adminPassword) {
-		return c.json(
-			{
-				success: false,
-				error: "Unauthorized - Invalid admin password",
-			},
-			401
-		);
-	}
-
-	// Track admin usage
-	await trackUsage(c.env.DB);
-	await next();
-};
-
 // Lightweight usage tracking
 const trackUsage = async (db: D1Database) => {
 	const today = new Date().toISOString().split("T")[0];
