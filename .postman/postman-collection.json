@@ -1,0 +1,933 @@
+{
+	"info": {
+		"_postman_id": "cflaircounter-api-v1",
+		"name": "CFlair Counter API",
+		"description": "# CFlair Counter API Collection\n\nComplete API testing collection for CFlair Counter - A webhook-based view tracking service with badge generation.\n\n## 📋 Features\n- ✅ View tracking webhook endpoints\n- ✅ Statistics retrieval\n- ✅ Badge generation with multiple styles & colors\n- ✅ Admin dashboard access\n- ✅ Health monitoring\n- ✅ Rate limiting tests\n\n## 🔧 Setup\n\n### Collection Variables\nThis collection uses the following variables for easy domain switching:\n\n- `{{baseUrl}}` - Your API domain (default: https://counter.vkrishna04.me)\n- `{{projectName}}` - Project identifier for testing (default: test-project)\n- `{{adminPassword}}` - Admin password for protected endpoints (set this!)\n\n### Quick Start\n1. Import this collection into Postman\n2. Update the `baseUrl` variable if using a different domain\n3. Set your `adminPassword` variable\n4. Run requests in order or use the Collection Runner\n\n## 📁 Folder Structure\n\n### 1. Health & Monitoring\nSystem health checks and dashboard access\n\n### 2. View Tracking\nWebhook endpoints for tracking views\n- Rate limited: 60 requests/minute per IP\n- Optional description field\n\n### 3. Statistics\nRetrieve view counts and project data\n\n### 4. Badge Generation\nGenerate SVG badges with multiple styles:\n- `flat` - Default GitHub style\n- `flat-square` - Square edges\n- `for-the-badge` - Large bold style\n\nAvailable colors:\n- `brightgreen`, `green`, `yellowgreen`, `yellow`\n- `orange`, `red`, `blue`, `lightgrey`\n- `success`, `important`, `critical`\n- `informational`, `inactive`\n- Custom hex colors (e.g., `#FF5733`)\n\n### 5. Admin\nPassword-protected admin endpoints\n\n### 6. Rate Limiting\nTest rate limit behavior\n\n## 🧪 Testing\n\n### Automated Tests\nAll requests include automated tests that verify:\n- Status codes\n- Response structure\n- Required fields\n- Rate limit headers\n\n### Collection Runner\nRun the entire collection to verify all endpoints:\n1. Click \"Run\" on the collection\n2. Select all folders\n3. Set iterations to 1\n4. Click \"Run CFlair Counter API\"\n\n## 📚 API Documentation\n\nFor detailed API documentation, see:\n- `docs/api/README.md` - Complete API reference\n- `QUICK-START.md` - 5-minute setup guide\n- `DEPLOYMENT-SUCCESS.md` - Live deployment status",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Health & Monitoring",
+			"description": "System health and monitoring endpoints",
+			"item": [
+				{
+					"name": "Health Check",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response has success field', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.success).to.eql(true);",
+									"});",
+									"",
+									"pm.test('Response has status ok', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.status).to.eql('ok');",
+									"});",
+									"",
+									"pm.test('Response has version', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.version).to.exist;",
+									"    console.log('API Version:', jsonData.version);",
+									"});",
+									"",
+									"pm.test('Response has timestamp', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.timestamp).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/health",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"health"
+							]
+						},
+						"description": "Check if the API service is running and healthy.\n\n**Expected Response:**\n```json\n{\n  \"success\": true,\n  \"status\": \"ok\",\n  \"timestamp\": \"2025-11-09T16:10:38.682Z\",\n  \"worker\": \"cflaircounter-api\",\n  \"version\": \"2.1.0-rate-limited\"\n}\n```\n\n**Use Case:**\n- Monitor API availability\n- Check service version\n- Verify API is responding"
+					},
+					"response": []
+				},
+				{
+					"name": "Root Path (Admin Dashboard)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Content-Type is HTML', function () {",
+									"    pm.expect(pm.response.headers.get('Content-Type')).to.include('text/html');",
+									"});",
+									"",
+									"pm.test('Response contains HTML', function () {",
+									"    pm.expect(pm.response.text()).to.include('<!DOCTYPE html>');",
+									"    pm.expect(pm.response.text()).to.include('CFlair Counter');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								""
+							]
+						},
+						"description": "Access the admin dashboard HTML page. This returns the index.html file with the admin interface.\n\n**Use Case:**\n- Access admin dashboard\n- View all projects\n- Monitor statistics (requires password)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "View Tracking",
+			"description": "Webhook endpoints for tracking project views",
+			"item": [
+				{
+					"name": "Track View (POST)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response has success field', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.success).to.eql(true);",
+									"});",
+									"",
+									"pm.test('Response has projectName', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.projectName).to.exist;",
+									"    pm.expect(jsonData.projectName).to.be.a('string');",
+									"});",
+									"",
+									"pm.test('Response has totalViews', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.totalViews).to.be.a('number');",
+									"    pm.expect(jsonData.totalViews).to.be.at.least(1);",
+									"    console.log('Total Views:', jsonData.totalViews);",
+									"});",
+									"",
+									"pm.test('Rate limit headers present', function () {",
+									"    pm.expect(pm.response.headers.get('X-RateLimit-Limit')).to.exist;",
+									"    pm.expect(pm.response.headers.get('X-RateLimit-Remaining')).to.exist;",
+									"    pm.expect(pm.response.headers.get('X-RateLimit-Reset')).to.exist;",
+									"    ",
+									"    console.log('Rate Limit:', pm.response.headers.get('X-RateLimit-Limit'));",
+									"    console.log('Remaining:', pm.response.headers.get('X-RateLimit-Remaining'));",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/views/{{projectName}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"views",
+								"{{projectName}}"
+							]
+						},
+						"description": "Track a view for a project. This is the main webhook endpoint.\n\n**Rate Limited:** 60 requests per minute per IP\n\n**Expected Response:**\n```json\n{\n  \"success\": true,\n  \"projectName\": \"test-project\",\n  \"totalViews\": 1,\n  \"uniqueViews\": 0,\n  \"timestamp\": \"2025-11-09T16:10:44.156Z\"\n}\n```\n\n**Use Case:**\n- Track page views\n- Integrate as webhook in GitHub Actions\n- Monitor project traffic"
+					},
+					"response": []
+				},
+				{
+					"name": "Track View with Description",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response has success field', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.success).to.eql(true);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"description\": \"My Awesome Project - Testing view tracking with description\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/views/{{projectName}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"views",
+								"{{projectName}}"
+							]
+						},
+						"description": "Track a view with an optional project description. The description will be stored in the database and displayed in statistics.\n\n**Request Body:**\n```json\n{\n  \"description\": \"Your project description here\"\n}\n```\n\n**Use Case:**\n- Set project description on first view\n- Update project metadata\n- Add context to tracked projects"
+					},
+					"response": []
+				},
+				{
+					"name": "Track View - Different Project",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Project name matches', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.projectName).to.eql('my-github-project');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/views/my-github-project",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"views",
+								"my-github-project"
+							]
+						},
+						"description": "Example: Track views for a different project. You can have unlimited projects, each with its own counter.\n\n**Use Case:**\n- Track multiple projects\n- Separate counters per repository\n- Independent view tracking"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Statistics",
+			"description": "Retrieve view counts and project statistics",
+			"item": [
+				{
+					"name": "Get Project Statistics",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response has project data', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.success).to.eql(true);",
+									"    pm.expect(jsonData.projectName).to.exist;",
+									"    pm.expect(jsonData.totalViews).to.be.a('number');",
+									"    pm.expect(jsonData.uniqueViews).to.be.a('number');",
+									"});",
+									"",
+									"pm.test('View count is non-negative', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.totalViews).to.be.at.least(0);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/views/{{projectName}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"views",
+								"{{projectName}}"
+							]
+						},
+						"description": "Get view statistics for a specific project.\n\n**Expected Response:**\n```json\n{\n  \"success\": true,\n  \"projectName\": \"test-project\",\n  \"totalViews\": 5,\n  \"uniqueViews\": 0,\n  \"description\": \"My Awesome Project\",\n  \"timestamp\": \"2025-11-09T16:10:44.156Z\"\n}\n```\n\n**Use Case:**\n- Check current view count\n- Display statistics in dashboard\n- Monitor project popularity"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Non-existent Project",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response shows zero views', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.totalViews).to.eql(0);",
+									"    pm.expect(jsonData.uniqueViews).to.eql(0);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/views/non-existent-project-12345",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"views",
+								"non-existent-project-12345"
+							]
+						},
+						"description": "Test retrieving statistics for a project that doesn't exist. Should return 0 views instead of an error.\n\n**Use Case:**\n- Verify graceful handling of missing projects\n- Test initial state before first view"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Badge Generation",
+			"description": "Generate SVG badges with various styles and colors",
+			"item": [
+				{
+					"name": "Generate Badge (Default)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Content-Type is SVG', function () {",
+									"    pm.expect(pm.response.headers.get('Content-Type')).to.include('image/svg+xml');",
+									"});",
+									"",
+									"pm.test('Response is valid SVG', function () {",
+									"    var text = pm.response.text();",
+									"    pm.expect(text).to.include('<svg');",
+									"    pm.expect(text).to.include('</svg>');",
+									"    pm.expect(text).to.include('views');",
+									"});",
+									"",
+									"pm.test('Cache headers present', function () {",
+									"    pm.expect(pm.response.headers.get('Cache-Control')).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/views/{{projectName}}/badge",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"views",
+								"{{projectName}}",
+								"badge"
+							]
+						},
+						"description": "Generate a badge with default style (flat) and color (blue).\n\n**Returns:** SVG image with view count\n\n**Use in Markdown:**\n```markdown\n![Views]({{baseUrl}}/api/views/{{projectName}}/badge)\n```\n\n**Use Case:**\n- Display view count in README\n- Show statistics on website\n- Generate dynamic badges"
+					},
+					"response": []
+				},
+				{
+					"name": "Badge - Flat Style Blue",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Content-Type is SVG', function () {",
+									"    pm.expect(pm.response.headers.get('Content-Type')).to.include('image/svg+xml');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/views/{{projectName}}/badge?style=flat&color=blue",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"views",
+								"{{projectName}}",
+								"badge"
+							],
+							"query": [
+								{
+									"key": "style",
+									"value": "flat",
+									"description": "Badge style: flat, flat-square, for-the-badge"
+								},
+								{
+									"key": "color",
+									"value": "blue",
+									"description": "Badge color: blue, green, red, etc."
+								}
+							]
+						},
+						"description": "Generate a flat style badge with blue color (default GitHub style).\n\n**Parameters:**\n- `style=flat` - Rounded corners, subtle shadow\n- `color=blue` - Blue color (#007ec6)\n\n**Use in Markdown:**\n```markdown\n![Views]({{baseUrl}}/api/views/{{projectName}}/badge?style=flat&color=blue)\n```"
+					},
+					"response": []
+				},
+				{
+					"name": "Badge - Flat Square Green",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/views/{{projectName}}/badge?style=flat-square&color=brightgreen",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"views",
+								"{{projectName}}",
+								"badge"
+							],
+							"query": [
+								{
+									"key": "style",
+									"value": "flat-square"
+								},
+								{
+									"key": "color",
+									"value": "brightgreen"
+								}
+							]
+						},
+						"description": "Generate a flat-square style badge with bright green color.\n\n**Parameters:**\n- `style=flat-square` - Square edges, no shadow\n- `color=brightgreen` - Bright green (#44cc11)\n\n**Use in Markdown:**\n```markdown\n![Views]({{baseUrl}}/api/views/{{projectName}}/badge?style=flat-square&color=brightgreen)\n```"
+					},
+					"response": []
+				},
+				{
+					"name": "Badge - For The Badge Yellow",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/views/{{projectName}}/badge?style=for-the-badge&color=yellow",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"views",
+								"{{projectName}}",
+								"badge"
+							],
+							"query": [
+								{
+									"key": "style",
+									"value": "for-the-badge"
+								},
+								{
+									"key": "color",
+									"value": "yellow"
+								}
+							]
+						},
+						"description": "Generate a large 'for-the-badge' style badge with yellow color.\n\n**Parameters:**\n- `style=for-the-badge` - Large bold style, uppercase text\n- `color=yellow` - Yellow color (#dfb317)\n\n**Use in Markdown:**\n```markdown\n![Views]({{baseUrl}}/api/views/{{projectName}}/badge?style=for-the-badge&color=yellow)\n```"
+					},
+					"response": []
+				},
+				{
+					"name": "Badge - Red (High Views)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/views/{{projectName}}/badge?style=flat-square&color=red",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"views",
+								"{{projectName}}",
+								"badge"
+							],
+							"query": [
+								{
+									"key": "style",
+									"value": "flat-square"
+								},
+								{
+									"key": "color",
+									"value": "red",
+									"description": "Other colors: brightgreen, green, yellowgreen, yellow, orange, blue, lightgrey"
+								}
+							]
+						},
+						"description": "Generate a badge with red color.\n\n**Available Colors:**\n- `brightgreen` - #44cc11\n- `green` - #97ca00\n- `yellowgreen` - #a4a61d\n- `yellow` - #dfb317\n- `orange` - #fe7d37\n- `red` - #e05d44\n- `blue` - #007ec6\n- `lightgrey` - #9f9f9f\n- `success` - #44cc11\n- `important` - #fe7d37\n- `critical` - #e05d44\n- `informational` - #007ec6\n- `inactive` - #9f9f9f\n- Custom hex (e.g., `#FF5733`)"
+					},
+					"response": []
+				},
+				{
+					"name": "Badge - Custom Hex Color",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/views/{{projectName}}/badge?style=flat&color=%23FF5733",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"views",
+								"{{projectName}}",
+								"badge"
+							],
+							"query": [
+								{
+									"key": "style",
+									"value": "flat"
+								},
+								{
+									"key": "color",
+									"value": "%23FF5733",
+									"description": "Custom hex color (URL encoded: # = %23)"
+								}
+							]
+						},
+						"description": "Generate a badge with a custom hex color.\n\n**Note:** Hex colors must be URL encoded (# = %23)\n\n**Example:**\n- `#FF5733` → `%23FF5733`\n- `#00FF00` → `%2300FF00`\n\n**Use in Markdown:**\n```markdown\n![Views]({{baseUrl}}/api/views/{{projectName}}/badge?color=%23FF5733)\n```"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Admin",
+			"description": "Password-protected admin endpoints",
+			"item": [
+				{
+					"name": "Get All Projects Stats (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200 or 401', function () {",
+									"    pm.expect([200, 401]).to.include(pm.response.code);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    pm.test('Response has projects array', function () {",
+									"        var jsonData = pm.response.json();",
+									"        pm.expect(jsonData.success).to.eql(true);",
+									"        pm.expect(jsonData.projects).to.be.an('array');",
+									"        pm.expect(jsonData.totalProjects).to.be.a('number');",
+									"        pm.expect(jsonData.totalViews).to.be.a('number');",
+									"        ",
+									"        console.log('Total Projects:', jsonData.totalProjects);",
+									"        console.log('Total Views:', jsonData.totalViews);",
+									"    });",
+									"} else if (pm.response.code === 401) {",
+									"    pm.test('Unauthorized response', function () {",
+									"        var jsonData = pm.response.json();",
+									"        pm.expect(jsonData.error).to.exist;",
+									"        console.log('Error:', jsonData.error);",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"password\": \"{{adminPassword}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/stats",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"stats"
+							]
+						},
+						"description": "Get statistics for all projects. Requires admin password.\n\n**⚠️ Important:** Set the `{{adminPassword}}` collection variable to your actual admin password.\n\n**Setting Admin Password:**\n1. Go to Cloudflare Dashboard\n2. Navigate to Workers & Pages → cflaircounter\n3. Go to Settings → Environment variables\n4. Add `ADMIN_PASSWORD` for Production environment\n\n**Expected Response (Authenticated):**\n```json\n{\n  \"success\": true,\n  \"totalProjects\": 5,\n  \"totalViews\": 127,\n  \"projects\": [\n    {\n      \"project_name\": \"project-1\",\n      \"view_count\": 42,\n      \"unique_views\": 0,\n      \"description\": \"Project Description\",\n      \"created_at\": \"2025-11-09T16:00:00.000Z\"\n    }\n  ],\n  \"timestamp\": \"2025-11-09T16:10:44.156Z\"\n}\n```\n\n**Expected Response (Unauthorized):**\n```json\n{\n  \"error\": \"Unauthorized\",\n  \"message\": \"Invalid admin password\"\n}\n```"
+					},
+					"response": []
+				},
+				{
+					"name": "Admin Stats - Wrong Password",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 401', function () {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"",
+									"pm.test('Error message present', function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.error).to.exist;",
+									"    console.log('Error:', jsonData.error);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"password\": \"wrong-password-123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/admin/stats",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"stats"
+							]
+						},
+						"description": "Test admin endpoint with wrong password. Should return 401 Unauthorized.\n\n**Use Case:**\n- Verify authentication works\n- Test security of admin endpoints"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Project (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200, 401, or 404', function () {",
+									"    pm.expect([200, 401, 404]).to.include(pm.response.code);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    pm.test('Project deleted successfully', function () {",
+									"        var jsonData = pm.response.json();",
+									"        pm.expect(jsonData.success).to.eql(true);",
+									"        pm.expect(jsonData.message).to.exist;",
+									"        pm.expect(jsonData.projectName).to.exist;",
+									"        console.log('Deleted:', jsonData.projectName);",
+									"    });",
+									"} else if (pm.response.code === 401) {",
+									"    pm.test('Unauthorized response', function () {",
+									"        var jsonData = pm.response.json();",
+									"        pm.expect(jsonData.error).to.exist;",
+									"        console.log('Error:', jsonData.error);",
+									"    });",
+									"} else if (pm.response.code === 404) {",
+									"    pm.test('Project not found', function () {",
+									"        var jsonData = pm.response.json();",
+									"        pm.expect(jsonData.error).to.exist;",
+									"        console.log('Error:', jsonData.error);",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminPassword}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/views/{{projectName}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"views",
+								"{{projectName}}"
+							]
+						},
+						"description": "Delete a project and all its view data. Requires admin password.\n\n**⚠️ Important:** \n- Set the `{{adminPassword}}` collection variable\n- This action is permanent and cannot be undone\n- Deletes from both project_views and visitor_tracking tables\n\n**Expected Response (Success):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Project 'test-project' deleted successfully\",\n  \"projectName\": \"test-project\",\n  \"timestamp\": \"2025-11-09T16:30:00.000Z\"\n}\n```\n\n**Expected Response (Not Found):**\n```json\n{\n  \"success\": false,\n  \"error\": \"Project not found\"\n}\n```\n\n**Expected Response (Unauthorized):**\n```json\n{\n  \"success\": false,\n  \"error\": \"Unauthorized - Invalid admin password\"\n}\n```"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Rate Limiting",
+			"description": "Test rate limit behavior (60 requests/minute per IP)",
+			"item": [
+				{
+					"name": "Single Request (Check Headers)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Rate limit headers present', function () {",
+									"    pm.expect(pm.response.headers.get('X-RateLimit-Limit')).to.eql('60');",
+									"    pm.expect(pm.response.headers.get('X-RateLimit-Remaining')).to.exist;",
+									"    pm.expect(pm.response.headers.get('X-RateLimit-Reset')).to.exist;",
+									"});",
+									"",
+									"var limit = pm.response.headers.get('X-RateLimit-Limit');",
+									"var remaining = pm.response.headers.get('X-RateLimit-Remaining');",
+									"var reset = pm.response.headers.get('X-RateLimit-Reset');",
+									"",
+									"console.log('Rate Limit:', limit);",
+									"console.log('Remaining:', remaining);",
+									"console.log('Reset Time:', new Date(parseInt(reset)).toISOString());",
+									"",
+									"pm.test('Remaining is less than limit', function () {",
+									"    pm.expect(parseInt(remaining)).to.be.below(parseInt(limit));",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/views/rate-limit-test",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"views",
+								"rate-limit-test"
+							]
+						},
+						"description": "Make a single request and check rate limit headers.\n\n**Rate Limit Headers:**\n- `X-RateLimit-Limit`: 60 (requests per minute)\n- `X-RateLimit-Remaining`: 59 (or less)\n- `X-RateLimit-Reset`: Unix timestamp (when limit resets)\n\n**Use Case:**\n- Monitor rate limit usage\n- Check remaining requests\n- Verify rate limiting is working"
+					},
+					"response": []
+				},
+				{
+					"name": "Rapid Requests Test (Run with Runner)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200 or 429', function () {",
+									"    pm.expect([200, 429]).to.include(pm.response.code);",
+									"});",
+									"",
+									"if (pm.response.code === 429) {",
+									"    pm.test('Rate limit exceeded', function () {",
+									"        var jsonData = pm.response.json();",
+									"        pm.expect(jsonData.error).to.exist;",
+									"        console.log('Rate limit exceeded! Error:', jsonData.error);",
+									"    });",
+									"    ",
+									"    pm.test('Retry-After header present', function () {",
+									"        pm.expect(pm.response.headers.get('Retry-After')).to.exist;",
+									"        console.log('Retry After:', pm.response.headers.get('Retry-After'), 'seconds');",
+									"    });",
+									"} else {",
+									"    console.log('Request successful. Remaining:', pm.response.headers.get('X-RateLimit-Remaining'));",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/views/rate-limit-test",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"views",
+								"rate-limit-test"
+							]
+						},
+						"description": "Test rate limiting by making rapid requests.\n\n**To Test:**\n1. Open Collection Runner\n2. Select this request\n3. Set iterations to 70 (more than the 60 req/min limit)\n4. Set delay to 0ms\n5. Run\n\n**Expected Behavior:**\n- First 60 requests: 200 OK\n- Requests 61+: 429 Too Many Requests\n- Response includes `Retry-After` header\n\n**429 Response:**\n```json\n{\n  \"error\": \"Rate limit exceeded\",\n  \"message\": \"Too many requests. Please try again later.\"\n}\n```"
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "https://counter.vkrishna04.me",
+			"type": "string",
+			"description": "Base URL of the API. Change this to switch between domains:\n- https://counter.vkrishna04.me (custom domain)\n- https://cflaircounter.pages.dev (primary domain)\n- https://7918ecb1.cflaircounter.pages.dev (specific deployment)"
+		},
+		{
+			"key": "projectName",
+			"value": "test-project",
+			"type": "string",
+			"description": "Project name for testing. This can be any string identifier."
+		},
+		{
+			"key": "adminPassword",
+			"value": "",
+			"type": "string",
+			"description": "Admin password for protected endpoints. Set this to your actual admin password configured in Cloudflare Dashboard."
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Pre-request script runs before each request",
+					"console.log('Making request to:', pm.request.url.toString());",
+					"console.log('Using base URL:', pm.collectionVariables.get('baseUrl'));"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global test script runs after each request",
+					"console.log('Response time:', pm.response.responseTime, 'ms');",
+					"console.log('Status:', pm.response.code, pm.response.status);"
+				]
+			}
+		}
+	]
+}

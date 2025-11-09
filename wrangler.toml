@@ -1,5 +1,8 @@
+# This project uses Cloudflare Pages Advanced Mode with a bundled worker.
+# The entry point 'public/_worker.js' is auto-generated via 'npm run build:worker'.
+
 name = "cflaircounter"
-main = "functions/api/[[path]].ts"
+main = "_worker.js"
 compatibility_date = "2024-03-20"
 
 # Environment variables for production

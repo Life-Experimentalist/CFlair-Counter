@@ -1,17 +1,20 @@
 {
 	"name": "cflaircounter",
-	"version": "1.0.0",
+	"version": "2.3.0",
 	"description": "Ultra-lightweight serverless telemetry system for headless project tracking. Optimized for minimal Cloudflare costs.",
-	"main": "functions/api/[[path]].ts",
+	"main": "functions/index.ts",
 	"scripts": {
-		"dev": "wrangler pages dev public --compatibility-date=2024-03-20",
-		"deploy": "wrangler pages deploy public --project-name=cflaircounter",
-		"build": "tsc",
+		"dev": "npm run build:worker && wrangler pages dev public --compatibility-date=2024-03-20",
+		"deploy": "npm run build && wrangler pages deploy public --project-name=cflaircounter",
+		"build": "npm run build:worker && tsc",
+		"build:worker": "esbuild functions/index.ts --bundle --format=esm --outfile=public/_worker.js --platform=neutral --conditions=worker --minify",
 		"type-check": "tsc --noEmit",
 		"db:create": "wrangler d1 create cflaircounter-db",
 		"db:init": "wrangler d1 execute cflaircounter-db --file=./schema.sql",
 		"db:migrate": "wrangler d1 migrations apply cflaircounter-db",
-		"test": "echo \"Error: no test specified\" && exit 1"
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"lint": "tsc --noEmit",
+		"clean": "rm -rf dist node_modules/.cache"
 	},
 	"keywords": [
 		"view-counter",
@@ -31,17 +34,18 @@
 	"homepage": "https://vkrishna04.github.io",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/VKrishna04/CFlairCounter"
+		"url": "https://github.com/Life-Experimentalist/CFlair-Counter"
 	},
 	"bugs": {
-		"url": "https://github.com/VKrishna04/CFlairCounter/issues"
+		"url": "https://github.com/Life-Experimentalist/CFlair-Counter/issues"
 	},
 	"dependencies": {
 		"hono": "^4.9.4"
 	},
 	"devDependencies": {
 		"@cloudflare/workers-types": "^4.20250826.0",
+		"esbuild": "^0.27.0",
 		"typescript": "^5.9.2",
-		"wrangler": "^4.33.0"
+		"wrangler": "^4.46.0"
 	}
 }
