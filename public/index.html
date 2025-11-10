@@ -423,12 +423,35 @@
 				justify-content: center;
 			}
 
+			.modal-login {
+				background: var(--card-bg);
+				padding: 2rem;
+				border-radius: 16px;
+				width: 90%;
+				max-width: 60vw; /* narrow login */
+				max-height: 90vh;
+				overflow-y: auto;
+				animation: modalSlideIn 0.3s ease;
+			}
+
 			.modal-content {
 				background: var(--card-bg);
 				padding: 2rem;
 				border-radius: 16px;
 				width: 90%;
 				max-width: 90vw;
+				max-height: 90vh;
+				overflow-y: auto;
+				animation: modalSlideIn 0.3s ease;
+			}
+
+			/* Wider modal used for admin dashboard after login */
+			.modal-wide {
+				background: var(--card-bg);
+				padding: 2rem;
+				border-radius: 16px;
+				width: 95%;
+				max-width: 90vw; /* dashboard-friendly width */
 				max-height: 90vh;
 				overflow-y: auto;
 				animation: modalSlideIn 0.3s ease;
@@ -1714,7 +1737,7 @@
 
 		<!-- Admin Modal -->
 		<div id="admin-modal" class="modal">
-			<div class="modal-content">
+			<div class="modal-content modal-login">
 				<div class="modal-header">
 					<h2 class="modal-title">🔒 Admin Panel</h2>
 					<button class="modal-close" onclick="hideAdminModal()">
@@ -2177,6 +2200,12 @@
 				document.getElementById("admin-dashboard").style.display =
 					"none";
 				document.getElementById("admin-password").value = "";
+				// Revert modal sizing back to login mode for next open
+				const modalContent = document.querySelector('#admin-modal .modal-content');
+				if (modalContent) {
+					modalContent.classList.remove('modal-wide');
+					modalContent.classList.add('modal-login');
+				}
 			}
 
 			async function adminLogin(event) {
@@ -2207,11 +2236,14 @@
 
 					if (data.success) {
 						adminPassword = password; // Store for later use
-						document.getElementById("admin-login").style.display =
-							"none";
-						document.getElementById(
-							"admin-dashboard"
-						).style.display = "block";
+						// Expand modal from narrow login to dashboard width
+						const modalContent = document.querySelector('#admin-modal .modal-content');
+						if (modalContent) {
+							modalContent.classList.remove('modal-login');
+							modalContent.classList.add('modal-wide');
+						}
+						document.getElementById("admin-login").style.display = "none";
+						document.getElementById("admin-dashboard").style.display = "block";
 						loadAdminData(data);
 						showNotification("✅ Admin access granted", "success");
 					} else {

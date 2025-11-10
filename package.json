@@ -17,16 +17,10 @@
 		"clean": "rm -rf dist node_modules/.cache"
 	},
 	"keywords": [
-		"view-counter",
-		"cloudflare-workers",
-		"typescript",
-		"serverless",
+		"telemetry",
 		"analytics",
-		"d1-database",
-		"hono",
-		"project-tracking",
-		"visitor-counter",
-		"github-readme-stats"
+		"cloudflare",
+		"counter"
 	],
 	"author": "VKrishna04 <https://github.com/VKrishna04>",
 	"license": "Apache-2.0",
@@ -47,5 +41,14 @@
 		"esbuild": "^0.27.0",
 		"typescript": "^5.9.2",
 		"wrangler": "^4.46.0"
+	},
+	"documentation": {
+		"integration": "./INTEGRATION.md",
+		"readme": "./README.md",
+		"postman": "./postman/CFlairCounter.postman_collection.json",
+		"changelog": "./.github/CHANGELOG.md",
+		"license": "./LICENSE.md",
+		"contributing": "./.github/CONTRIBUTING.md",
+		"documentation": "./docs/README.md"
 	}
 }

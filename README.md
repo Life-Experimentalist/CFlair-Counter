@@ -2,6 +2,16 @@
 
 **Ultra-lightweight serverless view counter optimized for headless telemetry across multiple projects.**
 
+## 🤖 AI / Agent Integration
+
+If you're an automated agent or integrating programmatically, start with the machine-friendly integration guide at the project root:
+
+- `INTEGRATION.md` — agentic checklist, endpoints, CI examples, and step-by-step automation instructions.
+-- `docs/` — human-friendly guides and deeper reference material (see `docs/README.md`).
+-- `INTEGRATION.md` — root machine-friendly guide (preferred for agents).
+
+Agents should read `INTEGRATION.md` first; it contains a deterministic checklist the agent can follow to configure `wrangler.toml`, bind D1, run a build, deploy, and verify endpoints.
+
 [![Deploy to Cloudflare](https://img.shields.io/badge/Deploy%20to-Cloudflare%20Pages-orange?style=for-the-badge&logo=cloudflare)](https://pages.cloudflare.com)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=for-the-badge)](LICENSE.md)
@@ -66,7 +76,7 @@ Access admin panel at `/` when you need to:
 
 | Variable           | Purpose               | Default    |
 | ------------------ | --------------------- | ---------- |
-| `ADMIN_PASSWORD`   | Secure admin access   | `admin123` |
+| `ADMIN_PASSWORD`   | Secure admin access   | `dal-login"` |
 | `ENABLE_ANALYTICS` | Track unique visitors | `false`    |
 | `ENABLE_ADMIN`     | Enable admin panel    | `true`     |
 | `MAX_PROJECTS`     | Limit projects        | `100`      |
@@ -195,7 +205,7 @@ CFlairCounter now includes a password-protected admin panel for managing your pr
 ### Access
 
 1. Click the "Admin" button on the homepage
-2. Enter your admin password (default: `admin123`)
+2. Enter your admin password (default: `dal-login"`)
 3. Manage your projects with full control
 
 ### Admin API Endpoints
@@ -204,29 +214,29 @@ All admin endpoints require authentication via `X-Admin-Password` header or `pas
 
 ```bash
 # Get enhanced statistics
-curl -H "X-Admin-Password: admin123" https://your-domain.com/api/admin/stats
+curl -H "X-Admin-Password: dal-login"" https://your-domain.com/api/admin/stats
 
 # Get all projects with details
-curl -H "X-Admin-Password: admin123" https://your-domain.com/api/admin/projects
+curl -H "X-Admin-Password: dal-login"" https://your-domain.com/api/admin/projects
 
 # Create a new project
-curl -X POST -H "X-Admin-Password: admin123" \
+curl -X POST -H "X-Admin-Password: dal-login"" \
   -H "Content-Type: application/json" \
   -d '{"name": "my-project", "description": "My awesome project", "initialViews": 100}' \
   https://your-domain.com/api/admin/projects
 
 # Update project view count
-curl -X PUT -H "X-Admin-Password: admin123" \
+curl -X PUT -H "X-Admin-Password: dal-login"" \
   -H "Content-Type: application/json" \
   -d '{"viewCount": 500, "uniqueViews": 250}' \
   https://your-domain.com/api/admin/projects/my-project/views
 
 # Delete a project
-curl -X DELETE -H "X-Admin-Password: admin123" \
+curl -X DELETE -H "X-Admin-Password: dal-login"" \
   https://your-domain.com/api/admin/projects/my-project
 
 # Get project analytics
-curl -H "X-Admin-Password: admin123" \
+curl -H "X-Admin-Password: dal-login"" \
   https://your-domain.com/api/admin/projects/my-project/analytics
 ```
 

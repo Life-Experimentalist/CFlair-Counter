@@ -14,7 +14,7 @@ MAX_PROJECTS = "100"        # Limit projects to control usage
 
 # Environment variables for development
 [env.development.vars]
-ADMIN_PASSWORD = "admin123"
+ADMIN_PASSWORD = ""
 ENABLE_ADMIN = "true"
 ENABLE_ANALYTICS = "true"
 MAX_PROJECTS = "1000"

@@ -1,0 +1,160 @@
+{
+    "info": {
+        "name": "CFlairCounter API",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+        "description": "Postman collection to test CFlairCounter endpoints (views, badge, stats, admin)."
+    },
+    "item": [
+        {
+            "name": "Get Global Stats",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{base_url}}/api/stats",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "stats"
+                    ]
+                }
+            }
+        },
+        {
+            "name": "Track View (POST)",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/views/{{project}}",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "views",
+                        "{{project}}"
+                    ]
+                }
+            }
+        },
+        {
+            "name": "Get Project Stats",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{base_url}}/api/views/{{project}}",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "views",
+                        "{{project}}"
+                    ]
+                }
+            }
+        },
+        {
+            "name": "Get Badge",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{base_url}}/api/views/{{project}}/badge?color=blue",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "views",
+                        "{{project}}",
+                        "badge"
+                    ],
+                    "query": [
+                        {
+                            "key": "color",
+                            "value": "blue"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "name": "Admin: Login / Stats",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{ \"password\": \"{{admin_password}}\" }"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/admin/stats",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "admin",
+                        "stats"
+                    ]
+                }
+            }
+        },
+        {
+            "name": "Admin: List Projects",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "X-Admin-Password",
+                        "value": "{{admin_password}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{base_url}}/api/admin/projects",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "admin",
+                        "projects"
+                    ]
+                }
+            }
+        }
+    ],
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "https://6c7ce11c.cflaircounter.pages.dev"
+        },
+        {
+            "key": "project",
+            "value": "demo"
+        },
+        {
+            "key": "admin_password",
+            "value": "admin123"
+        }
+    ]
+}
