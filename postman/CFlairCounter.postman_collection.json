@@ -4,6 +4,17 @@
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
         "description": "Postman collection to test CFlairCounter endpoints (views, badge, stats, admin)."
     },
+	"event": [
+		{
+			"listen": "test",
+			"script": {
+				"exec": [
+					"// Collection-level test runner placeholder - newman will load external script file if provided"
+				],
+				"type": "text/javascript"
+			}
+		}
+	],
     "item": [
         {
             "name": "Get Global Stats",
@@ -11,14 +22,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                    "raw": "{{base_url}}/api/stats",
-                    "host": [
-                        "{{base_url}}"
-                    ],
-                    "path": [
-                        "api",
-                        "stats"
-                    ]
+					"raw": "{{base_url}}/api/stats"
                 }
             }
         },
@@ -37,15 +41,7 @@
                     "raw": "{}"
                 },
                 "url": {
-                    "raw": "{{base_url}}/api/views/{{project}}",
-                    "host": [
-                        "{{base_url}}"
-                    ],
-                    "path": [
-                        "api",
-                        "views",
-                        "{{project}}"
-                    ]
+					"raw": "{{base_url}}/api/views/{{project}}"
                 }
             }
         },
@@ -55,15 +51,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                    "raw": "{{base_url}}/api/views/{{project}}",
-                    "host": [
-                        "{{base_url}}"
-                    ],
-                    "path": [
-                        "api",
-                        "views",
-                        "{{project}}"
-                    ]
+					"raw": "{{base_url}}/api/views/{{project}}"
                 }
             }
         },
@@ -73,22 +61,26 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                    "raw": "{{base_url}}/api/views/{{project}}/badge?color=blue",
-                    "host": [
-                        "{{base_url}}"
-                    ],
-                    "path": [
-                        "api",
-                        "views",
-                        "{{project}}",
-                        "badge"
-                    ],
-                    "query": [
-                        {
-                            "key": "color",
-                            "value": "blue"
-                        }
-                    ]
+					"raw": "{{base_url}}/api/views/{{project}}/badge?color=blue"
+				}
+			}
+		},
+		{
+			"name": "Admin: Login (wrong) / Stats",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \"password\": \"wrong-password\" }"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/admin/stats"
                 }
             }
         },
@@ -107,15 +99,7 @@
                     "raw": "{ \"password\": \"{{admin_password}}\" }"
                 },
                 "url": {
-                    "raw": "{{base_url}}/api/admin/stats",
-                    "host": [
-                        "{{base_url}}"
-                    ],
-                    "path": [
-                        "api",
-                        "admin",
-                        "stats"
-                    ]
+					"raw": "{{base_url}}/api/admin/stats"
                 }
             }
         },
@@ -130,15 +114,7 @@
                     }
                 ],
                 "url": {
-                    "raw": "{{base_url}}/api/admin/projects",
-                    "host": [
-                        "{{base_url}}"
-                    ],
-                    "path": [
-                        "api",
-                        "admin",
-                        "projects"
-                    ]
+					"raw": "{{base_url}}/api/admin/projects"
                 }
             }
         }
@@ -154,7 +130,7 @@
         },
         {
             "key": "admin_password",
-            "value": "admin123"
+			"value": ""
         }
     ]
 }

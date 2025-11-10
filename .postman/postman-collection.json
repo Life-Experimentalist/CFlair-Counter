@@ -891,7 +891,7 @@
 			"key": "baseUrl",
 			"value": "https://counter.vkrishna04.me",
 			"type": "string",
-			"description": "Base URL of the API. Change this to switch between domains:\n- https://counter.vkrishna04.me (custom domain)\n- https://cflaircounter.pages.dev (primary domain)\n- https://7918ecb1.cflaircounter.pages.dev (specific deployment)"
+			"description": "Base URL of the API. Change this to switch between domains:\n- https://counter.vkrishna04.me (custom domain)\n- https://cflaircounter.pages.dev (primary domain)"
 		},
 		{
 			"key": "projectName",

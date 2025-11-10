@@ -1,0 +1,27 @@
+name: Run Newman tests
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
+
+jobs:
+    newman:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - name: Setup Node
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+            - name: Install dependencies
+              run: npm ci
+            - name: Run newman collection tests
+              env:
+                  BASE_URL: ${{ secrets.BASE_URL }}
+                  ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+              run: |
+                  # Replace environment variables in exported Postman env (simple in-place substitution)
+                  node -e "const fs=require('fs');let env=fs.readFileSync('./postman/CFlairCounter.postman_environment.json','utf8');env=env.replace(/\"base_url\"\s*:\s*\".*?\"/, '"base_url": "'+process.env.BASE_URL+'"');env=env.replace(/\"admin_password\"\s*:\s*\".*?\"/, '"admin_password": "'+process.env.ADMIN_PASSWORD+'"');fs.writeFileSync('./postman/CFlairCounter.postman_environment.json', env);"
+                  npm run test:newman:ci

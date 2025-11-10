@@ -13,6 +13,8 @@
 		"db:init": "wrangler d1 execute cflaircounter-db --file=./schema.sql",
 		"db:migrate": "wrangler d1 migrations apply cflaircounter-db",
 		"test": "echo \"Error: no test specified\" && exit 1",
+		"test:newman": "newman run ./postman/CFlairCounter.postman_collection.json -e ./postman/CFlairCounter.postman_environment.json --bail --reporters cli,json --reporter-json-export ./postman/newman-report.json",
+		"test:newman:ci": "newman run ./postman/CFlairCounter.postman_collection.json -e ./postman/CFlairCounter.postman_environment.json --reporters cli,junit --reporter-junit-export ./postman/newman-junit.xml",
 		"lint": "tsc --noEmit",
 		"clean": "rm -rf dist node_modules/.cache"
 	},
@@ -40,7 +42,8 @@
 		"@cloudflare/workers-types": "^4.20250826.0",
 		"esbuild": "^0.27.0",
 		"typescript": "^5.9.2",
-		"wrangler": "^4.46.0"
+		"wrangler": "^4.46.0",
+		"newman": "^5.0.0"
 	},
 	"documentation": {
 		"integration": "./INTEGRATION.md",
