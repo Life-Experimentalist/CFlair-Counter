@@ -1459,20 +1459,21 @@
 				<div class="card">
 					<h2>🧩 Multi-Instance Setup (No Interference)</h2>
 					<p>
-						You can replicate this project for your own domain and data,
-						without touching this instance.
+						You can replicate this project for your own domain and
+						data, without touching this instance.
 					</p>
 					<div class="code-block">
-						<span class="comment"
-							># 1) Fork this repository</span
-						>
-						git clone https://github.com/Life-Experimentalist/CFlair-Counter.git
+						<span class="comment"># 1) Fork this repository</span>
+						git clone
+						https://github.com/Life-Experimentalist/CFlair-Counter.git
 						cd CFlair-Counter
 
 						<span class="comment"
-							># 2) Create your own Cloudflare Pages project + D1 DB</span
+							># 2) Create your own Cloudflare Pages project + D1
+							DB</span
 						>
-						# Set your own project name and database IDs in wrangler.toml
+						# Set your own project name and database IDs in
+						wrangler.toml
 
 						<span class="comment"
 							># 3) Use your own custom domain (recommended)</span
@@ -1482,17 +1483,20 @@
 						<span class="comment"
 							># 4) Keep your secrets unique</span
 						>
-						# ADMIN_PASSWORD, DB binding, and project endpoints should be yours
+						# ADMIN_PASSWORD, DB binding, and project endpoints
+						should be yours
 
 						<span class="comment"
 							># 5) API calls auto-bind to current origin</span
 						>
-						# This UI uses window.location.origin, so your deployment uses your own API base
+						# This UI uses window.location.origin, so your
+						deployment uses your own API base
 					</div>
 					<div style="margin-top: 0.75rem">
 						<strong>Important:</strong> Do not hardcode
-						<code>counter.vkrishna04.me</code> in your fork. Use your
-						own domain and Cloudflare project to keep data isolated.
+						<code>counter.vkrishna04.me</code> in your fork. Use
+						your own domain and Cloudflare project to keep data
+						isolated.
 					</div>
 				</div>
 

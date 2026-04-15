@@ -1,6 +1,6 @@
 {
 	"name": "cflaircounter",
-	"version": "2.3.0",
+	"version": "2.4.0",
 	"description": "Ultra-lightweight serverless telemetry system for headless project tracking. Optimized for minimal Cloudflare costs.",
 	"main": "functions/index.ts",
 	"scripts": {
