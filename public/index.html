@@ -115,6 +115,15 @@
 				align-items: center;
 			}
 
+			.nav-links .nav-link.external {
+				display: inline-flex;
+				align-items: center;
+				gap: 0.35rem;
+				padding: 0.35rem 0.75rem;
+				border: 1px solid rgba(102, 126, 234, 0.35);
+				border-radius: 999px;
+			}
+
 			.nav-link {
 				color: var(--dark);
 				text-decoration: none;
@@ -173,6 +182,43 @@
 				gap: 1rem;
 				flex-wrap: wrap;
 				margin-bottom: 2rem;
+			}
+
+			.quick-actions {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+				gap: 0.75rem;
+				margin-top: 1rem;
+			}
+
+			.endpoint-card {
+				margin-top: 1.5rem;
+				padding: 1rem;
+				border-radius: 12px;
+				background: rgba(102, 126, 234, 0.08);
+				border: 1px solid rgba(102, 126, 234, 0.25);
+			}
+
+			.endpoint-status {
+				display: inline-flex;
+				align-items: center;
+				gap: 0.5rem;
+				font-weight: 600;
+			}
+
+			.endpoint-dot {
+				width: 10px;
+				height: 10px;
+				border-radius: 50%;
+				background: #6c757d;
+			}
+
+			.endpoint-dot.ok {
+				background: var(--success);
+			}
+
+			.endpoint-dot.fail {
+				background: var(--danger);
 			}
 
 			.badge {
@@ -855,6 +901,13 @@
 						onclick="showAdminModal()"
 						>🔒 Admin</a
 					>
+					<a
+						href="https://github.com/Life-Experimentalist/CFlair-Counter"
+						target="_blank"
+						rel="noopener noreferrer"
+						class="nav-link external"
+						>🐙 GitHub</a
+					>
 				</div>
 			</div>
 		</nav>
@@ -883,6 +936,49 @@
 						<span class="badge">🔒 Secure Admin</span>
 						<span class="badge">📊 Advanced Analytics</span>
 						<span class="badge">💰 Cost Optimized</span>
+					</div>
+
+					<div class="endpoint-card">
+						<div class="endpoint-status">
+							<span id="health-dot" class="endpoint-dot"></span>
+							<span id="health-text">API status: checking...</span>
+						</div>
+						<div
+							style="margin-top: 0.5rem; font-size: 0.95rem; opacity: 0.9"
+						>
+							Current endpoint:
+							<strong id="current-endpoint"></strong>
+						</div>
+						<div class="quick-actions">
+							<button
+								type="button"
+								onclick="copyToClipboard(API_BASE)"
+								class="btn btn-secondary btn-sm"
+							>
+								📋 Copy Base URL
+							</button>
+							<button
+								type="button"
+								onclick="window.open(API_BASE + '/api/stats', '_blank')"
+								class="btn btn-secondary btn-sm"
+							>
+								🔎 Open Stats API
+							</button>
+							<button
+								type="button"
+								onclick="window.open('https://counter.vkrishna04.me', '_blank')"
+								class="btn btn-secondary btn-sm"
+							>
+								🌐 Custom Domain
+							</button>
+							<button
+								type="button"
+								onclick="window.open('https://github.com/Life-Experimentalist/CFlair-Counter', '_blank')"
+								class="btn btn-secondary btn-sm"
+							>
+								🐙 Repo
+							</button>
+						</div>
 					</div>
 				</div>
 
@@ -1921,6 +2017,7 @@
 			let currentPage = "home";
 			let adminPassword = "";
 			let currentEditProject = null;
+			let activeTheme = "light";
 
 			// Initialize app
 			document.addEventListener("DOMContentLoaded", function () {
@@ -1931,45 +2028,54 @@
 
 				// Initialize theme
 				initializeTheme();
+				document.getElementById("current-endpoint").textContent =
+					API_BASE;
+				checkApiHealth();
 
 				loadGlobalStats();
 				setInterval(loadGlobalStats, 30000); // Update every 30 seconds
+				setInterval(checkApiHealth, 60000);
 			});
 
 			// Theme Management
 			function initializeTheme() {
 				const themeToggle = document.getElementById("themeToggle");
-				const savedTheme = localStorage.getItem("theme") || "light";
+				const savedTheme =
+					localStorage.getItem("theme") === "dark"
+						? "dark"
+						: "light";
 
-				// Apply saved theme
-				if (savedTheme === "dark") {
-					document.documentElement.setAttribute("data-theme", "dark");
-					themeToggle.checked = true;
-					updateLogos(true);
-				} else {
-					updateLogos(false);
+				if (!themeToggle) {
+					applyTheme(savedTheme);
+					return;
 				}
+
+				applyTheme(savedTheme);
+				themeToggle.checked = savedTheme === "dark";
 
 				// Listen for theme changes
 				themeToggle.addEventListener("change", function () {
-					if (this.checked) {
-						// Checked = Dark mode (moon)
-						document.documentElement.setAttribute(
-							"data-theme",
-							"dark",
-						);
-						localStorage.setItem("theme", "dark");
-						updateLogos(true);
-					} else {
-						// Unchecked = Light mode (sun)
-						document.documentElement.setAttribute(
-							"data-theme",
-							"light",
-						);
-						localStorage.setItem("theme", "light");
-						updateLogos(false);
-					}
+					applyTheme(this.checked ? "dark" : "light");
 				});
+			}
+
+			function applyTheme(theme) {
+				const normalizedTheme = theme === "dark" ? "dark" : "light";
+				activeTheme = normalizedTheme;
+
+				try {
+					document.documentElement.setAttribute(
+						"data-theme",
+						normalizedTheme,
+					);
+					localStorage.setItem("theme", normalizedTheme);
+					updateLogos(normalizedTheme === "dark");
+				} catch (error) {
+					console.warn("Theme apply fallback:", error);
+					document.documentElement.setAttribute("data-theme", "light");
+					localStorage.setItem("theme", "light");
+					updateLogos(false);
+				}
 			}
 
 			// Update logos based on theme
@@ -1977,9 +2083,48 @@
 				const navbarLogo = document.getElementById("navbar-logo");
 				const heroLogo = document.getElementById("hero-logo");
 				const logoSrc = isDark ? "/logo-dark.png" : "/logo.png";
+				const fallbackSrc = "/logo.png";
 
-				if (navbarLogo) navbarLogo.src = logoSrc;
-				if (heroLogo) heroLogo.src = logoSrc;
+				if (navbarLogo) {
+					navbarLogo.onerror = () => {
+						navbarLogo.onerror = null;
+						navbarLogo.src = fallbackSrc;
+					};
+					navbarLogo.src = logoSrc;
+				}
+				if (heroLogo) {
+					heroLogo.onerror = () => {
+						heroLogo.onerror = null;
+						heroLogo.src = fallbackSrc;
+					};
+					heroLogo.src = logoSrc;
+				}
+			}
+
+			async function checkApiHealth() {
+				const dot = document.getElementById("health-dot");
+				const text = document.getElementById("health-text");
+
+				if (!dot || !text) return;
+
+				try {
+					const response = await fetch(`${API_BASE}/health`, {
+						method: "GET",
+						headers: { Accept: "application/json" },
+					});
+
+					if (!response.ok) {
+						throw new Error(`Health check failed with ${response.status}`);
+					}
+
+					dot.classList.remove("fail");
+					dot.classList.add("ok");
+					text.textContent = "API status: online";
+				} catch (error) {
+					dot.classList.remove("ok");
+					dot.classList.add("fail");
+					text.textContent = "API status: unavailable";
+				}
 			}
 
 			// Page Management
