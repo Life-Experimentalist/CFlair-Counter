@@ -199,6 +199,29 @@
 				border: 1px solid rgba(102, 126, 234, 0.25);
 			}
 
+			.domain-banner {
+				margin-top: 1rem;
+				padding: 0.85rem 1rem;
+				border-radius: 10px;
+				font-size: 0.95rem;
+				border: 1px solid transparent;
+			}
+
+			.domain-banner.primary {
+				background: rgba(40, 167, 69, 0.12);
+				border-color: rgba(40, 167, 69, 0.35);
+			}
+
+			.domain-banner.fallback {
+				background: rgba(255, 193, 7, 0.15);
+				border-color: rgba(255, 193, 7, 0.4);
+			}
+
+			.domain-banner.selfhost {
+				background: rgba(23, 162, 184, 0.14);
+				border-color: rgba(23, 162, 184, 0.35);
+			}
+
 			.endpoint-status {
 				display: inline-flex;
 				align-items: center;
@@ -941,10 +964,16 @@
 					<div class="endpoint-card">
 						<div class="endpoint-status">
 							<span id="health-dot" class="endpoint-dot"></span>
-							<span id="health-text">API status: checking...</span>
+							<span id="health-text"
+								>API status: checking...</span
+							>
 						</div>
 						<div
-							style="margin-top: 0.5rem; font-size: 0.95rem; opacity: 0.9"
+							style="
+								margin-top: 0.5rem;
+								font-size: 0.95rem;
+								opacity: 0.9;
+							"
 						>
 							Current endpoint:
 							<strong id="current-endpoint"></strong>
@@ -959,25 +988,43 @@
 							</button>
 							<button
 								type="button"
-								onclick="window.open(API_BASE + '/api/stats', '_blank')"
+								onclick="
+									window.open(
+										API_BASE + '/api/stats',
+										'_blank',
+									)
+								"
 								class="btn btn-secondary btn-sm"
 							>
 								🔎 Open Stats API
 							</button>
 							<button
 								type="button"
-								onclick="window.open('https://counter.vkrishna04.me', '_blank')"
+								onclick="
+									window.open(
+										'https://counter.vkrishna04.me',
+										'_blank',
+									)
+								"
 								class="btn btn-secondary btn-sm"
 							>
 								🌐 Custom Domain
 							</button>
 							<button
 								type="button"
-								onclick="window.open('https://github.com/Life-Experimentalist/CFlair-Counter', '_blank')"
+								onclick="
+									window.open(
+										'https://github.com/Life-Experimentalist/CFlair-Counter',
+										'_blank',
+									)
+								"
 								class="btn btn-secondary btn-sm"
 							>
 								🐙 Repo
 							</button>
+						</div>
+						<div id="domain-banner" class="domain-banner">
+							Checking domain routing...
 						</div>
 					</div>
 				</div>
@@ -1405,6 +1452,47 @@
 						<span class="string">"version"</span>:
 						<span class="string">"2.0.0"</span>
 						}
+					</div>
+				</div>
+
+				<!-- Integration Examples -->
+				<div class="card">
+					<h2>🧩 Multi-Instance Setup (No Interference)</h2>
+					<p>
+						You can replicate this project for your own domain and data,
+						without touching this instance.
+					</p>
+					<div class="code-block">
+						<span class="comment"
+							># 1) Fork this repository</span
+						>
+						git clone https://github.com/Life-Experimentalist/CFlair-Counter.git
+						cd CFlair-Counter
+
+						<span class="comment"
+							># 2) Create your own Cloudflare Pages project + D1 DB</span
+						>
+						# Set your own project name and database IDs in wrangler.toml
+
+						<span class="comment"
+							># 3) Use your own custom domain (recommended)</span
+						>
+						# Example: counter.yourdomain.com
+
+						<span class="comment"
+							># 4) Keep your secrets unique</span
+						>
+						# ADMIN_PASSWORD, DB binding, and project endpoints should be yours
+
+						<span class="comment"
+							># 5) API calls auto-bind to current origin</span
+						>
+						# This UI uses window.location.origin, so your deployment uses your own API base
+					</div>
+					<div style="margin-top: 0.75rem">
+						<strong>Important:</strong> Do not hardcode
+						<code>counter.vkrishna04.me</code> in your fork. Use your
+						own domain and Cloudflare project to keep data isolated.
 					</div>
 				</div>
 
@@ -2014,6 +2102,8 @@
 
 		<script>
 			const API_BASE = window.location.origin;
+			const PRIMARY_DOMAIN = "counter.vkrishna04.me";
+			const FALLBACK_DOMAIN = "cflaircounter.pages.dev";
 			let currentPage = "home";
 			let adminPassword = "";
 			let currentEditProject = null;
@@ -2030,6 +2120,7 @@
 				initializeTheme();
 				document.getElementById("current-endpoint").textContent =
 					API_BASE;
+				renderDomainBanner();
 				checkApiHealth();
 
 				loadGlobalStats();
@@ -2041,9 +2132,7 @@
 			function initializeTheme() {
 				const themeToggle = document.getElementById("themeToggle");
 				const savedTheme =
-					localStorage.getItem("theme") === "dark"
-						? "dark"
-						: "light";
+					localStorage.getItem("theme") === "dark" ? "dark" : "light";
 
 				if (!themeToggle) {
 					applyTheme(savedTheme);
@@ -2072,7 +2161,10 @@
 					updateLogos(normalizedTheme === "dark");
 				} catch (error) {
 					console.warn("Theme apply fallback:", error);
-					document.documentElement.setAttribute("data-theme", "light");
+					document.documentElement.setAttribute(
+						"data-theme",
+						"light",
+					);
 					localStorage.setItem("theme", "light");
 					updateLogos(false);
 				}
@@ -2114,7 +2206,9 @@
 					});
 
 					if (!response.ok) {
-						throw new Error(`Health check failed with ${response.status}`);
+						throw new Error(
+							`Health check failed with ${response.status}`,
+						);
 					}
 
 					dot.classList.remove("fail");
@@ -2125,6 +2219,32 @@
 					dot.classList.add("fail");
 					text.textContent = "API status: unavailable";
 				}
+			}
+
+			function renderDomainBanner() {
+				const banner = document.getElementById("domain-banner");
+				if (!banner) return;
+
+				const currentHost = window.location.hostname.toLowerCase();
+				const primaryUrl = `https://${PRIMARY_DOMAIN}`;
+				const fallbackUrl = `https://${FALLBACK_DOMAIN}`;
+
+				banner.classList.remove("primary", "fallback", "selfhost");
+
+				if (currentHost === PRIMARY_DOMAIN) {
+					banner.classList.add("primary");
+					banner.innerHTML = `✅ You are on the primary custom domain <strong>${PRIMARY_DOMAIN}</strong>. Fallback remains available at <a href="${fallbackUrl}" target="_blank" rel="noopener noreferrer">${FALLBACK_DOMAIN}</a>.`;
+					return;
+				}
+
+				if (currentHost === FALLBACK_DOMAIN) {
+					banner.classList.add("fallback");
+					banner.innerHTML = `ℹ️ You are on the fallback Pages domain <strong>${FALLBACK_DOMAIN}</strong>. Preferred public domain is <a href="${primaryUrl}" target="_blank" rel="noopener noreferrer">${PRIMARY_DOMAIN}</a>.`;
+					return;
+				}
+
+				banner.classList.add("selfhost");
+				banner.innerHTML = `🧩 Self-hosted domain detected (<strong>${currentHost}</strong>). This instance is isolated to your own deployment and data bindings.`;
 			}
 
 			// Page Management
