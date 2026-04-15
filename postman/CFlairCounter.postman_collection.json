@@ -4,26 +4,102 @@
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
         "description": "Postman collection to test CFlairCounter endpoints (views, badge, stats, admin)."
     },
-	"event": [
-		{
-			"listen": "test",
-			"script": {
-				"exec": [
-					"// Collection-level test runner placeholder - newman will load external script file if provided"
-				],
-				"type": "text/javascript"
-			}
-		}
-	],
+    "event": [
+        {
+            "listen": "test",
+            "script": {
+                "exec": [
+                    "const requestName = pm.info.requestName;",
+                    "const adminPassword = (pm.environment.get('admin_password') || '').trim();",
+                    "",
+                    "pm.test('Response time is under 5000ms', function () {",
+                    "  pm.expect(pm.response.responseTime).to.be.below(5000);",
+                    "});",
+                    "",
+                    "if (requestName === 'Get Global Stats') {",
+                    "  pm.test('Global stats returns 200', function () { pm.response.to.have.status(200); });",
+                    "  pm.test('Global stats schema is valid', function () {",
+                    "    const body = pm.response.json();",
+                    "    pm.expect(body).to.have.property('success', true);",
+                    "    pm.expect(body).to.have.property('statistics');",
+                    "    pm.expect(body.statistics).to.have.property('totalViews');",
+                    "    pm.expect(body.statistics).to.have.property('totalProjects');",
+                    "  });",
+                    "}",
+                    "",
+                    "if (requestName === 'Track View (POST)') {",
+                    "  pm.test('Track view returns 200', function () { pm.response.to.have.status(200); });",
+                    "  pm.test('Track view marks success', function () {",
+                    "    const body = pm.response.json();",
+                    "    pm.expect(body).to.have.property('success', true);",
+                    "    pm.expect(body).to.have.property('totalViews');",
+                    "  });",
+                    "}",
+                    "",
+                    "if (requestName === 'Get Project Stats') {",
+                    "  pm.test('Project stats returns 200', function () { pm.response.to.have.status(200); });",
+                    "  pm.test('Project stats payload is valid', function () {",
+                    "    const body = pm.response.json();",
+                    "    pm.expect(body).to.have.property('success', true);",
+                    "    pm.expect(body).to.have.property('projectName');",
+                    "    pm.expect(body).to.have.property('totalViews');",
+                    "  });",
+                    "}",
+                    "",
+                    "if (requestName === 'Get Badge') {",
+                    "  pm.test('Badge returns 200', function () { pm.response.to.have.status(200); });",
+                    "  pm.test('Badge content type is SVG', function () {",
+                    "    const contentType = pm.response.headers.get('Content-Type') || '';",
+                    "    pm.expect(contentType).to.include('image/svg+xml');",
+                    "  });",
+                    "  pm.test('Badge body contains SVG markup', function () {",
+                    "    pm.expect(pm.response.text()).to.include('<svg');",
+                    "  });",
+                    "}",
+                    "",
+                    "if (requestName === 'Admin: Login (wrong) / Stats') {",
+                    "  pm.test('Wrong admin password returns 401', function () { pm.response.to.have.status(401); });",
+                    "}",
+                    "",
+                    "if (requestName === 'Admin: Login / Stats') {",
+                    "  if (adminPassword) {",
+                    "    pm.test('Admin stats returns 200 when password is configured', function () { pm.response.to.have.status(200); });",
+                    "  } else {",
+                    "    pm.test('Admin stats returns 401 when password is not configured', function () { pm.response.to.have.status(401); });",
+                    "  }",
+                    "}",
+                    "",
+                    "if (requestName === 'Admin: List Projects') {",
+                    "  if (adminPassword) {",
+                    "    pm.test('Admin projects returns 200 or 404 when password is configured', function () {",
+                    "      pm.expect([200, 404]).to.include(pm.response.code);",
+                    "    });",
+                    "    if (pm.response.code === 200) {",
+                    "      pm.test('Admin projects payload includes projects array', function () {",
+                    "        const body = pm.response.json();",
+                    "        pm.expect(body).to.have.property('success', true);",
+                    "        pm.expect(body).to.have.property('projects');",
+                    "        pm.expect(body.projects).to.be.an('array');",
+                    "      });",
+                    "    }",
+                    "  } else {",
+                    "    pm.test('Admin projects returns 401 or 404 when password is not configured', function () {",
+                    "      pm.expect([401, 404]).to.include(pm.response.code);",
+                    "    });",
+                    "  }",
+                    "}"
+                ],
+                "type": "text/javascript"
+            }
+        }
+    ],
     "item": [
         {
             "name": "Get Global Stats",
             "request": {
                 "method": "GET",
                 "header": [],
-                "url": {
-					"raw": "{{base_url}}/api/stats"
-                }
+                "url": "{{base_url}}/api/stats"
             }
         },
         {
@@ -40,9 +116,7 @@
                     "mode": "raw",
                     "raw": "{}"
                 },
-                "url": {
-					"raw": "{{base_url}}/api/views/{{project}}"
-                }
+                "url": "{{base_url}}/api/views/{{project}}"
             }
         },
         {
@@ -50,9 +124,7 @@
             "request": {
                 "method": "GET",
                 "header": [],
-                "url": {
-					"raw": "{{base_url}}/api/views/{{project}}"
-                }
+                "url": "{{base_url}}/api/views/{{project}}"
             }
         },
         {
@@ -60,28 +132,24 @@
             "request": {
                 "method": "GET",
                 "header": [],
-                "url": {
-					"raw": "{{base_url}}/api/views/{{project}}/badge?color=blue"
-				}
-			}
-		},
-		{
-			"name": "Admin: Login (wrong) / Stats",
-			"request": {
-				"method": "POST",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "{ \"password\": \"wrong-password\" }"
-				},
-				"url": {
-					"raw": "{{base_url}}/api/admin/stats"
-                }
+                "url": "{{base_url}}/api/views/{{project}}/badge?color=blue"
+            }
+        },
+        {
+            "name": "Admin: Login (wrong) / Stats",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{ \"password\": \"wrong-password\" }"
+                },
+                "url": "{{base_url}}/api/admin/stats"
             }
         },
         {
@@ -98,9 +166,7 @@
                     "mode": "raw",
                     "raw": "{ \"password\": \"{{admin_password}}\" }"
                 },
-                "url": {
-					"raw": "{{base_url}}/api/admin/stats"
-                }
+                "url": "{{base_url}}/api/admin/stats"
             }
         },
         {
@@ -113,9 +179,7 @@
                         "value": "{{admin_password}}"
                     }
                 ],
-                "url": {
-					"raw": "{{base_url}}/api/admin/projects"
-                }
+                "url": "{{base_url}}/api/admin/projects"
             }
         }
     ],
@@ -130,7 +194,7 @@
         },
         {
             "key": "admin_password",
-			"value": ""
+            "value": ""
         }
     ]
 }

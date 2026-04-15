@@ -5,23 +5,29 @@ on:
         branches: [main]
     pull_request:
         branches: [main]
+    workflow_dispatch:
 
 jobs:
     newman:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
+
             - name: Setup Node
               uses: actions/setup-node@v4
               with:
                   node-version: 20
+                  cache: npm
+
             - name: Install dependencies
               run: npm ci
+
             - name: Run newman collection tests
               env:
-                  BASE_URL: ${{ secrets.BASE_URL }}
-                  ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+                  BASE_URL: "${{ secrets.BASE_URL }}"
+                  ADMIN_PASSWORD: "${{ secrets.ADMIN_PASSWORD }}"
               run: |
-                  # Replace environment variables in exported Postman env (simple in-place substitution)
-                  node -e "const fs=require('fs');let env=fs.readFileSync('./postman/CFlairCounter.postman_environment.json','utf8');env=env.replace(/\"base_url\"\s*:\s*\".*?\"/, '"base_url": "'+process.env.BASE_URL+'"');env=env.replace(/\"admin_password\"\s*:\s*\".*?\"/, '"admin_password": "'+process.env.ADMIN_PASSWORD+'"');fs.writeFileSync('./postman/CFlairCounter.postman_environment.json', env);"
-                  npm run test:newman:ci
+                  if [ -z "$BASE_URL" ]; then
+                    BASE_URL="https://cflaircounter.pages.dev"
+                  fi
+                  npm run test:newman:ci -- --env-var "base_url=$BASE_URL" --env-var "admin_password=$ADMIN_PASSWORD"

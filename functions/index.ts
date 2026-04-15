@@ -21,6 +21,22 @@ type Variables = {
 	projectName?: string;
 };
 
+const escapeXml = (value: string): string =>
+	value
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/\"/g, "&quot;")
+		.replace(/'/g, "&#39;");
+
+const normalizeBadgeColor = (rawColor: string): string | null => {
+	if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(rawColor)) {
+		return rawColor;
+	}
+
+	return null;
+};
+
 // In-memory rate limiting store (Workers KV would be better for production)
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 
@@ -72,7 +88,7 @@ const customRateLimiter = async (c: any, next: any) => {
 				retryAfter: retryAfter,
 				message: `Too many requests. Please wait ${retryAfter} seconds.`,
 			},
-			429
+			429,
 		);
 	}
 
@@ -80,7 +96,7 @@ const customRateLimiter = async (c: any, next: any) => {
 	c.header("X-RateLimit-Limit", maxRequests.toString());
 	c.header(
 		"X-RateLimit-Remaining",
-		(maxRequests - rateLimitData.count).toString()
+		(maxRequests - rateLimitData.count).toString(),
 	);
 	c.header("X-RateLimit-Reset", rateLimitData.resetAt.toString());
 
@@ -131,10 +147,15 @@ app.use(
 				: "*";
 		},
 		allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
-		allowHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+		allowHeaders: [
+			"Content-Type",
+			"Authorization",
+			"X-Requested-With",
+			"X-Admin-Password",
+		],
 		maxAge: 86400, // Cache preflight for 24 hours
 		credentials: false, // Set to false for public API
-	})
+	}),
 );
 
 // Database initialization with optimized schema
@@ -153,14 +174,14 @@ const initDatabase = async (db: D1Database) => {
 				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 			)
-		`
+		`,
 			)
 			.run();
 
 		// Only essential indexes to minimize write costs
 		await db
 			.prepare(
-				"CREATE UNIQUE INDEX IF NOT EXISTS idx_project_name ON project_views(project_name)"
+				"CREATE UNIQUE INDEX IF NOT EXISTS idx_project_name ON project_views(project_name)",
 			)
 			.run();
 
@@ -175,7 +196,7 @@ const initDatabase = async (db: D1Database) => {
 				visit_count INTEGER DEFAULT 1,
 				PRIMARY KEY(project_name, visitor_hash)
 			)
-		`
+		`,
 			)
 			.run();
 
@@ -190,7 +211,7 @@ const initDatabase = async (db: D1Database) => {
 				rows_written INTEGER DEFAULT 0,
 				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 			)
-		`
+		`,
 			)
 			.run();
 	} catch (error) {
@@ -207,7 +228,7 @@ app.get("/health", (c) => {
 		console.log("  - Admin Enabled:", enableAdmin);
 		console.log(
 			"  - Analytics Enabled:",
-			c.env.ENABLE_ANALYTICS !== "false"
+			c.env.ENABLE_ANALYTICS !== "false",
 		);
 	}
 
@@ -231,7 +252,7 @@ app.get("/api/views/:projectName", async (c) => {
 
 	try {
 		const result = await c.env.DB.prepare(
-			"SELECT view_count, unique_views, description, created_at FROM project_views WHERE project_name = ?"
+			"SELECT view_count, unique_views, description, created_at FROM project_views WHERE project_name = ?",
 		)
 			.bind(projectName)
 			.first();
@@ -286,7 +307,7 @@ app.post("/api/views/:projectName", customRateLimiter, async (c) => {
 			ON CONFLICT(project_name) DO UPDATE SET
 				view_count = view_count + 1,
 				updated_at = CURRENT_TIMESTAMP
-		`
+		`,
 		)
 			.bind(projectName)
 			.run();
@@ -304,14 +325,14 @@ app.post("/api/views/:projectName", customRateLimiter, async (c) => {
 				ON CONFLICT(project_name, visitor_hash) DO UPDATE SET
 					last_visit = CURRENT_TIMESTAMP,
 					visit_count = visit_count + 1
-			`
+			`,
 			)
 				.bind(projectName, visitorHash)
 				.run();
 
 			// Get unique count efficiently
 			const uniqueResult = await c.env.DB.prepare(
-				"SELECT COUNT(*) as count FROM visitor_tracking WHERE project_name = ?"
+				"SELECT COUNT(*) as count FROM visitor_tracking WHERE project_name = ?",
 			)
 				.bind(projectName)
 				.first();
@@ -320,7 +341,7 @@ app.post("/api/views/:projectName", customRateLimiter, async (c) => {
 
 			// Update unique views count
 			await c.env.DB.prepare(
-				"UPDATE project_views SET unique_views = ? WHERE project_name = ?"
+				"UPDATE project_views SET unique_views = ? WHERE project_name = ?",
 			)
 				.bind(uniqueViews, projectName)
 				.run();
@@ -328,7 +349,7 @@ app.post("/api/views/:projectName", customRateLimiter, async (c) => {
 
 		// Get final count with minimal query
 		const result = await c.env.DB.prepare(
-			"SELECT view_count FROM project_views WHERE project_name = ?"
+			"SELECT view_count FROM project_views WHERE project_name = ?",
 		)
 			.bind(projectName)
 			.first();
@@ -350,9 +371,12 @@ app.post("/api/views/:projectName", customRateLimiter, async (c) => {
 // Shields.io style with better aesthetics
 app.get("/api/views/:projectName/badge", async (c) => {
 	const projectName = c.req.param("projectName");
-	const style = c.req.query("style") || "flat"; // flat, flat-square, for-the-badge
-	const color = c.req.query("color") || "blue";
-	const label = c.req.query("label") || "views";
+	const styleParam = (c.req.query("style") || "flat").toLowerCase(); // flat, flat-square, for-the-badge
+	const style = ["flat", "flat-square", "for-the-badge"].includes(styleParam)
+		? styleParam
+		: "flat";
+	const color = (c.req.query("color") || "blue").toLowerCase();
+	const rawLabel = (c.req.query("label") || "views").slice(0, 24);
 
 	if (!projectName || projectName.length > 100) {
 		return c.text("Invalid project name", 400);
@@ -362,12 +386,18 @@ app.get("/api/views/:projectName/badge", async (c) => {
 
 	try {
 		const result = await c.env.DB.prepare(
-			"SELECT view_count FROM project_views WHERE project_name = ?"
+			"SELECT view_count FROM project_views WHERE project_name = ?",
 		)
 			.bind(projectName)
 			.first();
 
 		const viewCount = Number(result?.view_count) || 0;
+		const safeLabel = escapeXml(rawLabel);
+		const valueTextRaw =
+			viewCount >= 1000
+				? `${(viewCount / 1000).toFixed(1)}k`
+				: viewCount.toString();
+		const safeValueText = escapeXml(valueTextRaw);
 
 		// Color mapping for better aesthetics
 		const colorMap: Record<string, string> = {
@@ -386,23 +416,20 @@ app.get("/api/views/:projectName/badge", async (c) => {
 			inactive: "#9f9f9f",
 		};
 
-		const badgeColor = colorMap[color] || color;
+		const badgeColor =
+			colorMap[color] || normalizeBadgeColor(color) || colorMap.blue;
 
 		// Calculate widths dynamically
-		const labelWidth = Math.max(label.length * 6.5 + 10, 40);
-		const valueText =
-			viewCount >= 1000
-				? `${(viewCount / 1000).toFixed(1)}k`
-				: viewCount.toString();
-		const valueWidth = Math.max(valueText.length * 7 + 10, 30);
+		const labelWidth = Math.max(rawLabel.length * 6.5 + 10, 40);
+		const valueWidth = Math.max(valueTextRaw.length * 7 + 10, 30);
 		const totalWidth = labelWidth + valueWidth;
 
 		let svg = "";
 
 		if (style === "flat") {
 			// Modern flat style (shields.io default)
-			svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${totalWidth}" height="20" role="img" aria-label="${label}: ${viewCount}">
-	<title>${label}: ${viewCount}</title>
+			svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${totalWidth}" height="20" role="img" aria-label="${safeLabel}: ${safeValueText}">
+	<title>${safeLabel}: ${safeValueText}</title>
 	<linearGradient id="s" x2="0" y2="100%">
 		<stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
 		<stop offset="1" stop-opacity=".1"/>
@@ -419,29 +446,29 @@ app.get("/api/views/:projectName/badge", async (c) => {
 		<text aria-hidden="true" x="${
 			(labelWidth / 2) * 10
 		}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="${
-				(labelWidth - 10) * 10
-			}">${label}</text>
+			(labelWidth - 10) * 10
+		}">${safeLabel}</text>
 		<text x="${
 			(labelWidth / 2) * 10
 		}" y="140" transform="scale(.1)" fill="#fff" textLength="${
-				(labelWidth - 10) * 10
-			}">${label}</text>
+			(labelWidth - 10) * 10
+		}">${safeLabel}</text>
 		<text aria-hidden="true" x="${
 			(labelWidth + valueWidth / 2) * 10
 		}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="${
-				(valueWidth - 10) * 10
-			}">${valueText}</text>
+			(valueWidth - 10) * 10
+		}">${safeValueText}</text>
 		<text x="${
 			(labelWidth + valueWidth / 2) * 10
 		}" y="140" transform="scale(.1)" fill="#fff" textLength="${
-				(valueWidth - 10) * 10
-			}">${valueText}</text>
+			(valueWidth - 10) * 10
+		}">${safeValueText}</text>
 	</g>
 </svg>`;
 		} else if (style === "flat-square") {
 			// Flat square style (no rounded corners)
-			svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${totalWidth}" height="20" role="img" aria-label="${label}: ${viewCount}">
-	<title>${label}: ${viewCount}</title>
+			svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${totalWidth}" height="20" role="img" aria-label="${safeLabel}: ${safeValueText}">
+	<title>${safeLabel}: ${safeValueText}</title>
 	<g shape-rendering="crispEdges">
 		<rect width="${labelWidth}" height="20" fill="#555"/>
 		<rect x="${labelWidth}" width="${valueWidth}" height="20" fill="${badgeColor}"/>
@@ -450,20 +477,20 @@ app.get("/api/views/:projectName/badge", async (c) => {
 		<text x="${
 			(labelWidth / 2) * 10
 		}" y="140" transform="scale(.1)" fill="#fff" textLength="${
-				(labelWidth - 10) * 10
-			}">${label}</text>
+			(labelWidth - 10) * 10
+		}">${safeLabel}</text>
 		<text x="${
 			(labelWidth + valueWidth / 2) * 10
 		}" y="140" transform="scale(.1)" fill="#fff" textLength="${
-				(valueWidth - 10) * 10
-			}">${valueText}</text>
+			(valueWidth - 10) * 10
+		}">${safeValueText}</text>
 	</g>
 </svg>`;
 		} else if (style === "for-the-badge") {
 			// Bold style with larger text
 			const boldHeight = 28;
-			svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${totalWidth}" height="${boldHeight}" role="img" aria-label="${label}: ${viewCount}">
-	<title>${label}: ${viewCount}</title>
+			svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${totalWidth}" height="${boldHeight}" role="img" aria-label="${safeLabel}: ${safeValueText}">
+	<title>${safeLabel}: ${safeValueText}</title>
 	<g shape-rendering="crispEdges">
 		<rect width="${labelWidth}" height="${boldHeight}" fill="#555"/>
 		<rect x="${labelWidth}" width="${valueWidth}" height="${boldHeight}" fill="${badgeColor}"/>
@@ -472,13 +499,13 @@ app.get("/api/views/:projectName/badge", async (c) => {
 		<text x="${
 			(labelWidth / 2) * 10
 		}" y="175" transform="scale(.1)" fill="#fff" textLength="${
-				(labelWidth - 10) * 10
-			}">${label.toUpperCase()}</text>
+			(labelWidth - 10) * 10
+		}">${safeLabel.toUpperCase()}</text>
 		<text x="${
 			(labelWidth + valueWidth / 2) * 10
 		}" y="175" transform="scale(.1)" fill="#fff" textLength="${
-				(valueWidth - 10) * 10
-			}">${valueText}</text>
+			(valueWidth - 10) * 10
+		}">${safeValueText}</text>
 	</g>
 </svg>`;
 		} else {
@@ -486,12 +513,10 @@ app.get("/api/views/:projectName/badge", async (c) => {
 			svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="20">
 	<rect width="${labelWidth}" height="20" fill="#555"/>
 	<rect x="${labelWidth}" width="${valueWidth}" height="20" fill="${badgeColor}"/>
-	<text x="${
-		labelWidth / 2
-	}" y="14" fill="#fff" font-family="Verdana,sans-serif" font-size="11" text-anchor="middle">${label}</text>
+	<text x="${labelWidth / 2}" y="14" fill="#fff" font-family="Verdana,sans-serif" font-size="11" text-anchor="middle">${safeLabel}</text>
 	<text x="${
 		labelWidth + valueWidth / 2
-	}" y="14" fill="#fff" font-family="Verdana,sans-serif" font-size="11" text-anchor="middle">${valueText}</text>
+	}" y="14" fill="#fff" font-family="Verdana,sans-serif" font-size="11" text-anchor="middle">${safeValueText}</text>
 </svg>`;
 		}
 
@@ -505,7 +530,7 @@ app.get("/api/views/:projectName/badge", async (c) => {
 	}
 });
 
-// Generate SVG badge for project views
+// Usage tracking helper
 const trackUsage = async (db: D1Database) => {
 	const today = new Date().toISOString().split("T")[0];
 	try {
@@ -519,7 +544,7 @@ const trackUsage = async (db: D1Database) => {
 				rows_read = rows_read + 1,
 				rows_written = rows_written + 1,
 				updated_at = CURRENT_TIMESTAMP
-		`
+		`,
 			)
 			.bind(today)
 			.run();
@@ -542,7 +567,7 @@ app.get("/api/stats", async (c) => {
 				COALESCE(SUM(unique_views), 0) as unique_views,
 				COUNT(*) as total_projects
 			FROM project_views
-		`
+		`,
 		).first();
 
 		const enableAnalytics = c.env.ENABLE_ANALYTICS !== "false";
@@ -561,7 +586,7 @@ app.get("/api/stats", async (c) => {
 		console.error("Stats error:", error);
 		return c.json(
 			{ success: false, error: "Failed to fetch statistics" },
-			500
+			500,
 		);
 	}
 });
@@ -589,7 +614,7 @@ app.post("/api/admin/stats", async (c) => {
 					success: false,
 					error: "Admin functionality is disabled",
 				},
-				403
+				403,
 			);
 		}
 
@@ -599,7 +624,7 @@ app.post("/api/admin/stats", async (c) => {
 					success: false,
 					error: "Unauthorized - Invalid admin password",
 				},
-				401
+				401,
 			);
 		}
 
@@ -614,7 +639,7 @@ app.post("/api/admin/stats", async (c) => {
 				COALESCE(SUM(unique_views), 0) as unique_views,
 				COUNT(*) as total_projects
 			FROM project_views
-		`
+		`,
 		).first();
 
 		// Get top projects
@@ -624,7 +649,7 @@ app.post("/api/admin/stats", async (c) => {
 			FROM project_views
 			ORDER BY view_count DESC
 			LIMIT 10
-		`
+		`,
 		).all();
 
 		return c.json({
@@ -644,6 +669,74 @@ app.post("/api/admin/stats", async (c) => {
 	} catch (error) {
 		console.error("Admin stats error:", error);
 		return c.json({ success: false, error: "Invalid request" }, 400);
+	}
+});
+
+// Admin: List projects (requires admin password)
+app.get("/api/admin/projects", async (c) => {
+	try {
+		const authHeader = c.req.header("Authorization");
+		const headerPassword = c.req.header("X-Admin-Password");
+		const queryPassword = c.req.query("password");
+
+		let password = headerPassword || queryPassword || "";
+		if (!password && authHeader && authHeader.startsWith("Bearer ")) {
+			password = authHeader.substring(7);
+		}
+
+		const adminPassword = c.env.ADMIN_PASSWORD;
+		const enableAdmin = c.env.ENABLE_ADMIN !== "false";
+
+		if (!enableAdmin) {
+			return c.json(
+				{
+					success: false,
+					error: "Admin functionality is disabled",
+				},
+				403,
+			);
+		}
+
+		if (!password || password !== adminPassword) {
+			return c.json(
+				{
+					success: false,
+					error: "Unauthorized - Invalid admin password",
+				},
+				401,
+			);
+		}
+
+		await initDatabase(c.env.DB);
+		await trackUsage(c.env.DB);
+
+		const projects = await c.env.DB.prepare(
+			`SELECT
+				project_name,
+				view_count,
+				unique_views,
+				description,
+				created_at,
+				updated_at
+			FROM project_views
+			ORDER BY updated_at DESC`,
+		).all();
+
+		return c.json({
+			success: true,
+			projects: projects.results || [],
+			totalProjects: projects.results?.length || 0,
+			timestamp: new Date().toISOString(),
+		});
+	} catch (error) {
+		console.error("Admin projects error:", error);
+		return c.json(
+			{
+				success: false,
+				error: "Failed to fetch projects",
+			},
+			500,
+		);
 	}
 });
 
@@ -687,7 +780,7 @@ app.delete("/api/views/:projectName", async (c) => {
 					success: false,
 					error: "Admin functionality is disabled",
 				},
-				403
+				403,
 			);
 		}
 
@@ -697,7 +790,7 @@ app.delete("/api/views/:projectName", async (c) => {
 					success: false,
 					error: "Unauthorized - Invalid admin password",
 				},
-				401
+				401,
 			);
 		}
 
@@ -705,7 +798,7 @@ app.delete("/api/views/:projectName", async (c) => {
 
 		// Check if project exists
 		const existingProject = await c.env.DB.prepare(
-			"SELECT project_name FROM project_views WHERE project_name = ?"
+			"SELECT project_name FROM project_views WHERE project_name = ?",
 		)
 			.bind(projectName)
 			.first();
@@ -716,19 +809,19 @@ app.delete("/api/views/:projectName", async (c) => {
 					success: false,
 					error: "Project not found",
 				},
-				404
+				404,
 			);
 		}
 
 		// Delete from both tables
 		await c.env.DB.prepare(
-			"DELETE FROM project_views WHERE project_name = ?"
+			"DELETE FROM project_views WHERE project_name = ?",
 		)
 			.bind(projectName)
 			.run();
 
 		await c.env.DB.prepare(
-			"DELETE FROM visitor_tracking WHERE project_name = ?"
+			"DELETE FROM visitor_tracking WHERE project_name = ?",
 		)
 			.bind(projectName)
 			.run();
@@ -748,7 +841,7 @@ app.delete("/api/views/:projectName", async (c) => {
 				success: false,
 				error: "Failed to delete project",
 			},
-			500
+			500,
 		);
 	}
 });
@@ -763,7 +856,7 @@ export default {
 			url.pathname === "/" ||
 			url.pathname === "/index.html" ||
 			url.pathname.match(
-				/\.(html|css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|json|webp)$/i
+				/\.(html|css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|json|webp)$/i,
 			)
 		) {
 			return env.ASSETS.fetch(request);

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
@@ -66,8 +66,9 @@
 			}
 
 			body {
-				font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
-					Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+				font-family:
+					-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+					Oxygen, Ubuntu, Cantarell, sans-serif;
 				line-height: 1.6;
 				color: var(--text-color);
 				background: linear-gradient(
@@ -76,7 +77,9 @@
 					var(--bg-gradient-end) 100%
 				);
 				min-height: 100vh;
-				transition: background 0.3s ease, color 0.3s ease;
+				transition:
+					background 0.3s ease,
+					color 0.3s ease;
 			}
 
 			/* Navigation */
@@ -861,7 +864,7 @@
 			<div id="home-page" class="page active">
 				<div class="hero">
 					<img
-						src="/logo.png"
+						src="./logo.png"
 						alt="CFlairCounter"
 						id="hero-logo"
 						style="
@@ -1746,7 +1749,12 @@
 				</div>
 
 				<div id="admin-login">
-					<form onsubmit="adminLogin(event); return false;">
+					<form
+						onsubmit="
+							adminLogin(event);
+							return false;
+						"
+					>
 						<div class="form-group">
 							<label class="form-label" for="admin-password"
 								>Admin Password:</label
@@ -1948,7 +1956,7 @@
 						// Checked = Dark mode (moon)
 						document.documentElement.setAttribute(
 							"data-theme",
-							"dark"
+							"dark",
 						);
 						localStorage.setItem("theme", "dark");
 						updateLogos(true);
@@ -1956,7 +1964,7 @@
 						// Unchecked = Light mode (sun)
 						document.documentElement.setAttribute(
 							"data-theme",
-							"light"
+							"light",
 						);
 						localStorage.setItem("theme", "light");
 						updateLogos(false);
@@ -2014,29 +2022,37 @@
 
 					if (!response.ok) {
 						// Try to get error message from response
-						const contentType = response.headers.get("content-type");
-						if (contentType && contentType.includes("application/json")) {
+						const contentType =
+							response.headers.get("content-type");
+						if (
+							contentType &&
+							contentType.includes("application/json")
+						) {
 							const errorData = await response.json();
 							throw new Error(
-								`HTTP ${response.status}: ${errorData.error || response.statusText}`
+								`HTTP ${response.status}: ${errorData.error || response.statusText}`,
 							);
 						} else if (response.status === 404) {
 							// Response is HTML (404 page), not JSON
 							throw new Error(
-								`API endpoint not found (HTTP ${response.status}). The /api/stats endpoint may not be deployed.`
+								`API endpoint not found (HTTP ${response.status}). The /api/stats endpoint may not be deployed.`,
 							);
 						} else {
 							// Attempt to extract text error message, fallback to status text
 							let errorText = await response.text();
 							// Sanitize/truncate errorText to avoid exposing raw HTML
 							if (typeof errorText === "string") {
-								errorText = errorText.replace(/<[^>]*>?/gm, "").substring(0, 200);
+								errorText = errorText
+									.replace(/<[^>]*>?/gm, "")
+									.substring(0, 200);
 							}
 							const fallbackMsg =
 								errorText && errorText.trim().length > 0
 									? errorText
 									: response.statusText || "Unknown error";
-							throw new Error(`HTTP ${response.status}: ${fallbackMsg}`);
+							throw new Error(
+								`HTTP ${response.status}: ${fallbackMsg}`,
+							);
 						}
 					}
 
@@ -2044,16 +2060,20 @@
 
 					if (data.success) {
 						// Update total views
-						document.getElementById("global-total-views").textContent =
+						document.getElementById(
+							"global-total-views",
+						).textContent =
 							data.statistics.totalViews.toLocaleString();
 
 						// Update total projects
-						document.getElementById("global-total-projects").textContent =
+						document.getElementById(
+							"global-total-projects",
+						).textContent =
 							data.statistics.totalProjects.toLocaleString();
 
 						// Update unique visitors (hide if analytics disabled)
 						const uniqueVisitorsElement = document.getElementById(
-							"global-unique-visitors"
+							"global-unique-visitors",
 						);
 						const uniqueVisitorsContainer =
 							uniqueVisitorsElement.closest(".stat-item");
@@ -2072,9 +2092,14 @@
 				} catch (error) {
 					console.error("Error loading global stats:", error);
 					// Set fallback values on error
-					document.getElementById("global-total-views").textContent = "—";
-					document.getElementById("global-total-projects").textContent = "—";
-					document.getElementById("global-unique-visitors").textContent = "—";
+					document.getElementById("global-total-views").textContent =
+						"—";
+					document.getElementById(
+						"global-total-projects",
+					).textContent = "—";
+					document.getElementById(
+						"global-unique-visitors",
+					).textContent = "—";
 				}
 			}
 
@@ -2095,7 +2120,7 @@
 						`${API_BASE}/api/views/${encodeURIComponent(project)}`,
 						{
 							method: "POST",
-						}
+						},
 					);
 					const data = await response.json();
 
@@ -2108,12 +2133,12 @@
 							"block";
 						showNotification(
 							`✅ View counted! Total: ${data.totalViews}`,
-							"success"
+							"success",
 						);
 					} else {
 						showNotification(
 							"❌ Error incrementing views",
-							"error"
+							"error",
 						);
 					}
 				} catch (error) {
@@ -2136,7 +2161,7 @@
 
 				try {
 					const response = await fetch(
-						`${API_BASE}/api/views/${encodeURIComponent(project)}`
+						`${API_BASE}/api/views/${encodeURIComponent(project)}`,
 					);
 					const data = await response.json();
 
@@ -2149,7 +2174,7 @@
 							"block";
 						showNotification(
 							`📊 Stats loaded for ${project}`,
-							"info"
+							"info",
 						);
 					} else {
 						showNotification("❌ Project not found", "error");
@@ -2173,7 +2198,7 @@
 				}
 
 				const badgeUrl = `${API_BASE}/api/views/${encodeURIComponent(
-					project
+					project,
 				)}/badge?color=${color}`;
 				const badge = document.getElementById("demo-badge");
 				badge.src = badgeUrl;
@@ -2201,10 +2226,12 @@
 					"none";
 				document.getElementById("admin-password").value = "";
 				// Revert modal sizing back to login mode for next open
-				const modalContent = document.querySelector('#admin-modal .modal-content');
+				const modalContent = document.querySelector(
+					"#admin-modal .modal-content",
+				);
 				if (modalContent) {
-					modalContent.classList.remove('modal-wide');
-					modalContent.classList.add('modal-login');
+					modalContent.classList.remove("modal-wide");
+					modalContent.classList.add("modal-login");
 				}
 			}
 
@@ -2229,7 +2256,7 @@
 								"Content-Type": "application/json",
 							},
 							body: JSON.stringify({ password }),
-						}
+						},
 					);
 
 					const data = await response.json();
@@ -2237,13 +2264,18 @@
 					if (data.success) {
 						adminPassword = password; // Store for later use
 						// Expand modal from narrow login to dashboard width
-						const modalContent = document.querySelector('#admin-modal .modal-content');
+						const modalContent = document.querySelector(
+							"#admin-modal .modal-content",
+						);
 						if (modalContent) {
-							modalContent.classList.remove('modal-login');
-							modalContent.classList.add('modal-wide');
+							modalContent.classList.remove("modal-login");
+							modalContent.classList.add("modal-wide");
 						}
-						document.getElementById("admin-login").style.display = "none";
-						document.getElementById("admin-dashboard").style.display = "block";
+						document.getElementById("admin-login").style.display =
+							"none";
+						document.getElementById(
+							"admin-dashboard",
+						).style.display = "block";
 						loadAdminData(data);
 						showNotification("✅ Admin access granted", "success");
 					} else {
@@ -2434,7 +2466,7 @@
 						const currentViews =
 							parseInt(
 								document.getElementById("project-views").dataset
-									.original
+									.original,
 							) || 0;
 						const viewDiff = views - currentViews;
 
@@ -2442,7 +2474,7 @@
 							// Note: API doesn't support direct count updates yet
 							showNotification(
 								"⚠️ Direct count updates not yet supported. You can increment counts using the + button.",
-								"warning"
+								"warning",
 							);
 						}
 
@@ -2454,7 +2486,7 @@
 							`${API_BASE}/api/views/${encodeURIComponent(name)}`,
 							{
 								method: "POST",
-							}
+							},
 						);
 
 						const data = await response.json();
@@ -2462,14 +2494,14 @@
 						if (data.success) {
 							showNotification(
 								`✅ Project "${name}" created successfully!`,
-								"success"
+								"success",
 							);
 							hideProjectModal();
 							refreshAdminData();
 						} else {
 							showNotification(
 								"❌ Failed to create project",
-								"error"
+								"error",
 							);
 						}
 					}
@@ -2487,11 +2519,11 @@
 				try {
 					const response = await fetch(
 						`${API_BASE}/api/views/${encodeURIComponent(
-							projectName
+							projectName,
 						)}`,
 						{
 							method: "POST",
-						}
+						},
 					);
 
 					const data = await response.json();
@@ -2499,13 +2531,13 @@
 					if (data.success) {
 						showNotification(
 							`✅ View added! Total: ${data.totalViews}`,
-							"success"
+							"success",
 						);
 						refreshAdminData();
 					} else {
 						showNotification(
 							"❌ Failed to increment views",
-							"error"
+							"error",
 						);
 					}
 				} catch (error) {
@@ -2518,7 +2550,7 @@
 			async function deleteProject(projectName) {
 				if (
 					!confirm(
-						`⚠️ Are you sure you want to delete "${projectName}"?\n\nThis will permanently remove all view data for this project.`
+						`⚠️ Are you sure you want to delete "${projectName}"?\n\nThis will permanently remove all view data for this project.`,
 					)
 				) {
 					return;
@@ -2528,7 +2560,7 @@
 				try {
 					const response = await fetch(
 						`${API_BASE}/api/views/${encodeURIComponent(
-							projectName
+							projectName,
 						)}`,
 						{
 							method: "DELETE",
@@ -2536,7 +2568,7 @@
 								"Content-Type": "application/json",
 								Authorization: `Bearer ${adminPassword}`,
 							},
-						}
+						},
 					);
 
 					const data = await response.json();
@@ -2544,7 +2576,7 @@
 					if (data.success) {
 						showNotification(
 							`✅ Project "${projectName}" deleted successfully`,
-							"success"
+							"success",
 						);
 						// Refresh the admin data to reflect changes
 						await refreshAdminData();
@@ -2553,7 +2585,7 @@
 							`❌ Failed to delete project: ${
 								data.error || "Unknown error"
 							}`,
-							"error"
+							"error",
 						);
 					}
 				} catch (error) {
@@ -2575,7 +2607,7 @@
 								"Content-Type": "application/json",
 							},
 							body: JSON.stringify({ password: adminPassword }),
-						}
+						},
 					);
 
 					const data = await response.json();
@@ -2696,7 +2728,7 @@
 				// Note: /api/admin/cache endpoint not implemented
 				showNotification(
 					"⚠️ Cache clearing not yet implemented",
-					"warning"
+					"warning",
 				);
 				return;
 
@@ -2736,7 +2768,7 @@
 				// Note: /api/admin/export endpoint not implemented
 				showNotification(
 					"⚠️ Data export not yet implemented",
-					"warning"
+					"warning",
 				);
 				return;
 
@@ -2802,7 +2834,7 @@
 						btn.classList.remove("loading");
 						btn.innerHTML = btn.innerHTML.replace(
 							'<span class="spinner"></span>',
-							""
+							"",
 						);
 					}
 				});

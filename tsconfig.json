@@ -7,6 +7,7 @@
 		],
 		"module": "ESNext",
 		"moduleResolution": "bundler",
+		"ignoreDeprecations": "5.0",
 		/* Bundler mode */
 		"allowImportingTsExtensions": true,
 		"verbatimModuleSyntax": true,
@@ -31,7 +32,6 @@
 		"sourceMap": true,
 		"inlineSources": true,
 		/* Path mapping for cleaner imports */
-		"baseUrl": ".",
 		"paths": {
 			"@/*": [
 				"./functions/*"
