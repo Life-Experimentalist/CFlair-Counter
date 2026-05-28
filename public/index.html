@@ -851,6 +851,32 @@
 				}
 			}
 
+			/* Setup Wizard */
+			.setup-step {
+				margin-bottom: 1.5rem;
+			}
+			.setup-step-header {
+				display: flex;
+				align-items: center;
+				gap: 1rem;
+				margin-bottom: 1rem;
+			}
+			.setup-step-header h3 {
+				margin: 0;
+			}
+			.step-number {
+				width: 2rem;
+				height: 2rem;
+				border-radius: 50%;
+				background: var(--primary);
+				color: white;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-weight: bold;
+				flex-shrink: 0;
+			}
+
 			/* Responsive Design */
 			@media (max-width: 768px) {
 				.nav-container {
@@ -957,6 +983,12 @@
 						class="nav-link"
 						onclick="showAdminModal()"
 						>🔒 Admin</a
+					>
+					<a
+						href="javascript:void(0)"
+						class="nav-link"
+						onclick="showPage('setup', event)"
+						>⚙️ Setup</a
 					>
 					<a
 						href="https://github.com/Life-Experimentalist/CFlair-Counter"
@@ -1958,6 +1990,110 @@
 					</div>
 				</div>
 			</div>
+
+			<!-- SETUP PAGE -->
+			<div id="setup-page" class="page" style="display:none;">
+				<h1>Self-Hosting Setup</h1>
+				<p class="subtitle">Deploy your own CFlair Counter in minutes. Each fork gets its own isolated D1 database — completely separate from any other instance.</p>
+
+				<!-- Step 1 -->
+				<div class="card setup-step">
+					<div class="setup-step-header">
+						<span class="step-number">1</span>
+						<h3>Fork &amp; Clone</h3>
+					</div>
+					<div class="setup-step-body">
+						<p>Fork the repo on GitHub, then:</p>
+						<div class="code-block">git clone https://github.com/YOUR_USERNAME/cflair-counter.git
+cd cflair-counter</div>
+					</div>
+				</div>
+
+				<!-- Step 2 -->
+				<div class="card setup-step">
+					<div class="setup-step-header">
+						<span class="step-number">2</span>
+						<h3>Install Dependencies</h3>
+					</div>
+					<div class="setup-step-body">
+						<div class="code-block">npm install</div>
+					</div>
+				</div>
+
+				<!-- Step 3 -->
+				<div class="card setup-step">
+					<div class="setup-step-header">
+						<span class="step-number">3</span>
+						<h3>Create D1 Database</h3>
+					</div>
+					<div class="setup-step-body">
+						<div class="code-block">wrangler d1 create cflaircounter-db</div>
+						<p>Copy the output <code>database_id</code> and paste it into <code>wrangler.toml</code>.</p>
+					</div>
+				</div>
+
+				<!-- Step 4 -->
+				<div class="card setup-step">
+					<div class="setup-step-header">
+						<span class="step-number">4</span>
+						<h3>Configure wrangler.toml</h3>
+					</div>
+					<div class="setup-step-body">
+						<div class="code-block">[[d1_databases]]
+binding = "DB"
+database_name = "cflaircounter-db"
+database_id = "YOUR_DATABASE_ID_HERE"
+
+[vars]
+ADMIN_PASSWORD = "your-secure-password-here"
+
+# Your deployment will be at: YOUR_ORIGIN</div>
+					</div>
+				</div>
+
+				<!-- Step 5 -->
+				<div class="card setup-step">
+					<div class="setup-step-header">
+						<span class="step-number">5</span>
+						<h3>Initialize Schema</h3>
+					</div>
+					<div class="setup-step-body">
+						<div class="code-block">npm run db:init</div>
+					</div>
+				</div>
+
+				<!-- Step 6 -->
+				<div class="card setup-step">
+					<div class="setup-step-header">
+						<span class="step-number">6</span>
+						<h3>Deploy</h3>
+					</div>
+					<div class="setup-step-body">
+						<div class="code-block">npm run deploy</div>
+						<p>After deploy, Cloudflare will show your Pages URL.</p>
+					</div>
+				</div>
+
+				<!-- Step 7 -->
+				<div class="card setup-step">
+					<div class="setup-step-header">
+						<span class="step-number">7</span>
+						<h3>Custom Domain (Optional)</h3>
+					</div>
+					<div class="setup-step-body">
+						<p>In your Cloudflare dashboard: Pages → your project → Custom domains → Add domain.</p>
+						<p>For external DNS, add a CNAME record pointing to your Pages subdomain (e.g. yourproject.pages.dev).</p>
+					</div>
+				</div>
+
+				<!-- Health Test Card -->
+				<div class="card" id="setup-health-card">
+					<h3>🧪 Test Your Deployment</h3>
+					<p>After deploying, verify your instance is working:</p>
+					<button class="btn btn-primary" onclick="testSetupHealth()">Run Health Check</button>
+					<div id="setup-health-result" style="margin-top:1rem;"></div>
+				</div>
+			</div>
 		</div>
 
 		<!-- Admin Modal -->
@@ -2371,9 +2507,38 @@
 
 				currentPage = pageId;
 
+				if (pageId === "setup") {
+					initSetupPage();
+				}
+
 				// Update URL without hash
 				if (history.replaceState) {
 					history.replaceState(null, null, window.location.pathname);
+				}
+			}
+
+			// Setup Page
+			function initSetupPage() {
+				const origin = window.location.origin;
+				document.querySelectorAll("#setup-page .setup-step-body .code-block").forEach((block) => {
+					block.innerHTML = block.innerHTML.replace(/YOUR_ORIGIN/g, origin);
+				});
+			}
+
+			async function testSetupHealth() {
+				const resultDiv = document.getElementById("setup-health-result");
+				resultDiv.innerHTML = '<span style="opacity:0.7">Checking...</span>';
+				const start = Date.now();
+				try {
+					const res = await fetch(`${API_BASE}/health`);
+					const ms = Date.now() - start;
+					if (res.ok) {
+						resultDiv.innerHTML = `<span style="color:var(--success)">✅ Healthy — ${ms}ms</span>`;
+					} else {
+						resultDiv.innerHTML = `<span style="color:var(--danger)">❌ Unhealthy (HTTP ${res.status})</span>`;
+					}
+				} catch (e) {
+					resultDiv.innerHTML = `<span style="color:var(--danger)">❌ Unreachable: ${e.message}</span>`;
 				}
 			}
 
