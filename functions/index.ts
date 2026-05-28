@@ -367,6 +367,28 @@ app.post("/api/views/:projectName", customRateLimiter, async (c) => {
 	}
 });
 
+// Approximate Verdana character widths at 11px (px values)
+const VERDANA_11: Record<string, number> = {
+  ' ': 3, '!': 4, '"': 5, '#': 7, '$': 6, '%': 8, '&': 8, "'": 3,
+  '(': 4, ')': 4, '*': 6, '+': 7, ',': 4, '-': 4, '.': 4, '/': 5,
+  '0': 6, '1': 6, '2': 6, '3': 6, '4': 6, '5': 6, '6': 6, '7': 6,
+  '8': 6, '9': 6, ':': 4, ';': 4, '<': 7, '=': 7, '>': 7, '?': 5,
+  '@': 9, 'A': 7, 'B': 7, 'C': 7, 'D': 7, 'E': 6, 'F': 6, 'G': 7,
+  'H': 7, 'I': 3, 'J': 4, 'K': 7, 'L': 6, 'M': 8, 'N': 7, 'O': 8,
+  'P': 6, 'Q': 8, 'R': 7, 'S': 6, 'T': 6, 'U': 7, 'V': 7, 'W': 9,
+  'X': 7, 'Y': 6, 'Z': 7, '[': 4, '\\': 5, ']': 4, '^': 7, '_': 5,
+  '`': 5, 'a': 6, 'b': 6, 'c': 5, 'd': 6, 'e': 6, 'f': 4, 'g': 6,
+  'h': 6, 'i': 3, 'j': 3, 'k': 6, 'l': 3, 'm': 9, 'n': 6, 'o': 6,
+  'p': 6, 'q': 6, 'r': 4, 's': 5, 't': 5, 'u': 6, 'v': 6, 'w': 8,
+  'x': 6, 'y': 6, 'z': 5,
+};
+
+const verdanaWidth = (s: string): number => {
+  let w = 0;
+  for (const c of s) w += VERDANA_11[c] ?? 7;
+  return w;
+};
+
 // Generate SVG badge for project views
 // Shields.io style with better aesthetics
 app.get("/api/views/:projectName/badge", async (c) => {
@@ -420,8 +442,8 @@ app.get("/api/views/:projectName/badge", async (c) => {
 			colorMap[color] || normalizeBadgeColor(color) || colorMap.blue;
 
 		// Calculate widths dynamically
-		const labelWidth = Math.max(rawLabel.length * 6.5 + 10, 40);
-		const valueWidth = Math.max(valueTextRaw.length * 7 + 10, 30);
+		const labelWidth = Math.max(verdanaWidth(rawLabel) + 12, 40);
+		const valueWidth = Math.max(verdanaWidth(valueTextRaw) + 12, 30);
 		const totalWidth = labelWidth + valueWidth;
 
 		let svg = "";
