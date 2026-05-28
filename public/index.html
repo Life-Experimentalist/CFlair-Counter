@@ -262,7 +262,12 @@
 				margin: 2rem 0;
 				box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
 				border: 1px solid rgba(255, 255, 255, 0.2);
-				transition: background 0.3s ease;
+				border-top: 3px solid transparent;
+				transition: background 0.3s ease, border-top-color 0.3s ease;
+			}
+
+			.card:hover {
+				border-top-color: var(--primary);
 			}
 
 			.card h2 {
@@ -450,6 +455,35 @@
 
 			.code-block .string {
 				color: #f1fa8c;
+			}
+
+			.code-block-wrapper {
+				position: relative;
+				margin: 1rem 0;
+			}
+
+			.code-block-wrapper .code-block {
+				margin: 0;
+				padding-right: 4rem;
+			}
+
+			.copy-code-btn {
+				position: absolute;
+				top: 0.5rem;
+				right: 0.5rem;
+				background: rgba(255, 255, 255, 0.15);
+				border: 1px solid rgba(255, 255, 255, 0.3);
+				color: #50fa7b;
+				padding: 0.25rem 0.6rem;
+				border-radius: 4px;
+				font-size: 0.78rem;
+				cursor: pointer;
+				font-family: inherit;
+				transition: background 0.2s ease;
+			}
+
+			.copy-code-btn:hover {
+				background: rgba(255, 255, 255, 0.25);
 			}
 
 			/* Tables */
@@ -2141,6 +2175,7 @@
 				setInterval(loadGlobalStats, 30000); // Update every 30 seconds
 				setInterval(checkApiHealth, 60000);
 				setupAdminTableListener();
+				setupCodeBlockCopyButtons();
 			});
 
 			function setupAdminTableListener() {
@@ -2163,6 +2198,27 @@
 					} else if (action === "delete") {
 						deleteProject(project);
 					}
+				});
+			}
+
+			function setupCodeBlockCopyButtons() {
+				document.querySelectorAll(".code-block").forEach((block) => {
+					if (block.parentElement.classList.contains("code-block-wrapper")) return;
+
+					const wrapper = document.createElement("div");
+					wrapper.className = "code-block-wrapper";
+					block.parentNode.insertBefore(wrapper, block);
+					wrapper.appendChild(block);
+
+					const btn = document.createElement("button");
+					btn.className = "copy-code-btn";
+					btn.textContent = "📋 Copy";
+					btn.onclick = () => {
+						copyToClipboard(block.innerText.replace(/📋 Copy/g, "").trim());
+						btn.textContent = "✅ Copied";
+						setTimeout(() => (btn.textContent = "📋 Copy"), 2000);
+					};
+					wrapper.appendChild(btn);
 				});
 			}
 
