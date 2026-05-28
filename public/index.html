@@ -1992,7 +1992,7 @@
 			</div>
 
 			<!-- SETUP PAGE -->
-			<div id="setup-page" class="page" style="display:none;">
+			<div id="setup-page" class="page">
 				<h1>Self-Hosting Setup</h1>
 				<p class="subtitle">Deploy your own CFlair Counter in minutes. Each fork gets its own isolated D1 database — completely separate from any other instance.</p>
 
@@ -2521,7 +2521,9 @@ ADMIN_PASSWORD = "your-secure-password-here"
 			function initSetupPage() {
 				const origin = window.location.origin;
 				document.querySelectorAll("#setup-page .setup-step-body .code-block").forEach((block) => {
-					block.innerHTML = block.innerHTML.replace(/YOUR_ORIGIN/g, origin);
+					if (block.innerHTML.includes('YOUR_ORIGIN')) {
+						block.innerHTML = block.innerHTML.replace(/YOUR_ORIGIN/g, origin);
+					}
 				});
 			}
 
