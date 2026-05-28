@@ -854,6 +854,96 @@ app.delete("/api/views/:projectName", async (c) => {
 	}
 });
 
+// Admin: Update a project — rename, change description, set view/unique counts
+app.put("/api/admin/projects/:projectName", async (c) => {
+	const originalName = c.req.param("projectName");
+	if (!originalName || originalName.length > 100) {
+		return c.json({ error: "Invalid project name" }, 400);
+	}
+
+	try {
+		const body = await c.req.json();
+		const { password, newName, description, viewCount, uniqueViews } = body;
+
+		const adminPassword = c.env.ADMIN_PASSWORD;
+		const enableAdmin = c.env.ENABLE_ADMIN !== "false";
+
+		if (!enableAdmin) {
+			return c.json({ success: false, error: "Admin functionality is disabled" }, 403);
+		}
+		if (!password || password !== adminPassword) {
+			return c.json({ success: false, error: "Unauthorized - Invalid admin password" }, 401);
+		}
+
+		const targetName: string = (newName || originalName).trim();
+		if (!/^[a-zA-Z0-9-_]+$/.test(targetName) || targetName.length > 100) {
+			return c.json({ error: "Invalid project name format" }, 400);
+		}
+		if (viewCount !== undefined && (!Number.isInteger(viewCount) || viewCount < 0)) {
+			return c.json({ error: "viewCount must be a non-negative integer" }, 400);
+		}
+		if (uniqueViews !== undefined && (!Number.isInteger(uniqueViews) || uniqueViews < 0)) {
+			return c.json({ error: "uniqueViews must be a non-negative integer" }, 400);
+		}
+
+		await initDatabase(c.env.DB);
+
+		// Verify project exists
+		const current = await c.env.DB.prepare(
+			"SELECT project_name, view_count, unique_views, description, created_at FROM project_views WHERE project_name = ?"
+		).bind(originalName).first();
+
+		if (!current) {
+			return c.json({ success: false, error: "Project not found" }, 404);
+		}
+
+		const finalViews = viewCount !== undefined ? viewCount : Number(current.view_count);
+		const finalUnique = uniqueViews !== undefined ? uniqueViews : Number(current.unique_views);
+		const finalDesc = description !== undefined ? description : (current.description as string | null);
+
+		if (targetName !== originalName) {
+			// Rename: insert new row, migrate visitor_tracking, delete old
+			await c.env.DB.prepare(
+				`INSERT INTO project_views (project_name, view_count, unique_views, description, created_at, updated_at)
+				 VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
+			).bind(targetName, finalViews, finalUnique, finalDesc, current.created_at).run();
+
+			await c.env.DB.prepare(
+				"UPDATE visitor_tracking SET project_name = ? WHERE project_name = ?"
+			).bind(targetName, originalName).run();
+
+			await c.env.DB.prepare(
+				"DELETE FROM project_views WHERE project_name = ?"
+			).bind(originalName).run();
+		} else {
+			// Update in place
+			await c.env.DB.prepare(
+				`UPDATE project_views
+				 SET view_count = ?, unique_views = ?, description = ?, updated_at = CURRENT_TIMESTAMP
+				 WHERE project_name = ?`
+			).bind(finalViews, finalUnique, finalDesc, originalName).run();
+		}
+
+		await trackUsage(c.env.DB);
+
+		const updated = await c.env.DB.prepare(
+			"SELECT project_name, view_count, unique_views, description, created_at, updated_at FROM project_views WHERE project_name = ?"
+		).bind(targetName).first();
+
+		return c.json({
+			success: true,
+			projectName: updated?.project_name,
+			totalViews: updated?.view_count,
+			uniqueViews: updated?.unique_views,
+			description: updated?.description,
+			timestamp: new Date().toISOString(),
+		});
+	} catch (error) {
+		console.error("Update project error:", error);
+		return c.json({ success: false, error: "Failed to update project" }, 500);
+	}
+});
+
 // Cloudflare Pages export format with static file handling
 export default {
 	async fetch(request: Request, env: any, ctx: any) {
