@@ -1993,8 +1993,10 @@
 
 			<!-- SETUP PAGE -->
 			<div id="setup-page" class="page">
-				<h1>Self-Hosting Setup</h1>
-				<p class="subtitle">Deploy your own CFlair Counter in minutes. Each fork gets its own isolated D1 database — completely separate from any other instance.</p>
+				<div class="hero">
+					<h1>Self-Hosting Setup</h1>
+					<p>Deploy your own CFlair Counter in minutes. Each fork gets its own isolated D1 database — completely separate from any other instance.</p>
+				</div>
 
 				<!-- Step 1 -->
 				<div class="card setup-step">
@@ -2521,8 +2523,8 @@ ADMIN_PASSWORD = "your-secure-password-here"
 			function initSetupPage() {
 				const origin = window.location.origin;
 				document.querySelectorAll("#setup-page .setup-step-body .code-block").forEach((block) => {
-					if (block.innerHTML.includes('YOUR_ORIGIN')) {
-						block.innerHTML = block.innerHTML.replace(/YOUR_ORIGIN/g, origin);
+					if (block.textContent.includes('YOUR_ORIGIN')) {
+						block.textContent = block.textContent.replace(/YOUR_ORIGIN/g, origin);
 					}
 				});
 			}
@@ -2540,7 +2542,7 @@ ADMIN_PASSWORD = "your-secure-password-here"
 						resultDiv.innerHTML = `<span style="color:var(--danger)">❌ Unhealthy (HTTP ${res.status})</span>`;
 					}
 				} catch (e) {
-					resultDiv.innerHTML = `<span style="color:var(--danger)">❌ Unreachable: ${e.message}</span>`;
+					resultDiv.innerHTML = `<span style="color:var(--danger)">❌ Unreachable: ${escapeHtml(e.message)}</span>`;
 				}
 			}
 
