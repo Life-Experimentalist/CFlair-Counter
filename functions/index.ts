@@ -863,7 +863,19 @@ app.put("/api/admin/projects/:projectName", async (c) => {
 
 	try {
 		const body = await c.req.json();
-		const { password, newName, description, viewCount, uniqueViews } = body;
+		const { newName, description, viewCount, uniqueViews } = body;
+
+		// Extract password from body, or Authorization: Bearer / X-Admin-Password header
+		let password = body.password;
+		if (!password) {
+			const authHeader = c.req.header("Authorization");
+			const headerPassword = c.req.header("X-Admin-Password");
+			if (authHeader && authHeader.startsWith("Bearer ")) {
+				password = authHeader.substring(7);
+			} else if (headerPassword) {
+				password = headerPassword;
+			}
+		}
 
 		const adminPassword = c.env.ADMIN_PASSWORD;
 		const enableAdmin = c.env.ENABLE_ADMIN !== "false";
@@ -901,20 +913,30 @@ app.put("/api/admin/projects/:projectName", async (c) => {
 		const finalUnique = uniqueViews !== undefined ? uniqueViews : Number(current.unique_views);
 		const finalDesc = description !== undefined ? description : (current.description as string | null);
 
+		// Check for rename conflict before attempting
 		if (targetName !== originalName) {
-			// Rename: insert new row, migrate visitor_tracking, delete old
-			await c.env.DB.prepare(
-				`INSERT INTO project_views (project_name, view_count, unique_views, description, created_at, updated_at)
-				 VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
-			).bind(targetName, finalViews, finalUnique, finalDesc, current.created_at).run();
+			const conflict = await c.env.DB.prepare(
+				"SELECT 1 FROM project_views WHERE project_name = ?"
+			).bind(targetName).first();
+			if (conflict) {
+				return c.json({ success: false, error: "A project with that name already exists" }, 409);
+			}
+		}
 
-			await c.env.DB.prepare(
-				"UPDATE visitor_tracking SET project_name = ? WHERE project_name = ?"
-			).bind(targetName, originalName).run();
-
-			await c.env.DB.prepare(
-				"DELETE FROM project_views WHERE project_name = ?"
-			).bind(originalName).run();
+		if (targetName !== originalName) {
+			// Atomic rename: insert new, migrate visitor_tracking, delete old
+			await c.env.DB.batch([
+				c.env.DB.prepare(
+					`INSERT INTO project_views (project_name, view_count, unique_views, description, created_at, updated_at)
+					 VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
+				).bind(targetName, finalViews, finalUnique, finalDesc, current.created_at),
+				c.env.DB.prepare(
+					"UPDATE visitor_tracking SET project_name = ? WHERE project_name = ?"
+				).bind(targetName, originalName),
+				c.env.DB.prepare(
+					"DELETE FROM project_views WHERE project_name = ?"
+				).bind(originalName),
+			]);
 		} else {
 			// Update in place
 			await c.env.DB.prepare(
