@@ -2146,6 +2146,9 @@
 			let adminPassword = "";
 			let currentEditProject = null;
 			let activeTheme = "light";
+			let adminProjectsData = [];
+			let sortColumn = "view_count";
+			let sortAscending = false;
 
 			function escapeHtml(str) {
 				if (str == null) return "";
@@ -2546,9 +2549,7 @@
 			}
 
 			function updateBadgePreview() {
-				const project = document
-					.getElementById("badge-project")
-					.value.trim();
+				const project = document.getElementById("badge-project").value.trim();
 				const color = document.getElementById("badge-color").value;
 
 				if (!project) {
@@ -2556,18 +2557,31 @@
 					return;
 				}
 
-				const badgeUrl = `${API_BASE}/api/views/${encodeURIComponent(
-					project,
-				)}/badge?color=${color}`;
-				const badge = document.getElementById("demo-badge");
-				badge.src = badgeUrl;
+				const styles = ["flat", "flat-square", "for-the-badge"];
+				const previewContainer = document.getElementById("badge-preview");
 
-				document.getElementById("badge-url-project").textContent =
-					project;
+				const rows = styles.map((style) => {
+					const url = `${API_BASE}/api/views/${encodeURIComponent(project)}/badge?color=${color}&style=${style}`;
+					const safeUrl = escapeHtml(url);
+					return `
+						<div style="display:flex;align-items:center;gap:1rem;padding:0.75rem 0;border-bottom:1px solid var(--light);">
+							<img src="${safeUrl}" alt="${escapeHtml(style)} badge" style="min-width:80px;" />
+							<span style="flex:1;font-size:0.85rem;font-family:monospace;word-break:break-all;opacity:0.8;">${safeUrl}</span>
+							<button data-copy-url="${safeUrl}" class="btn btn-secondary btn-sm">📋</button>
+						</div>
+					`;
+				}).join("");
+
+				previewContainer.innerHTML = `<h3>Badge Preview (all styles):</h3>${rows}`;
+				previewContainer.style.display = "block";
+
+				// Wire up copy buttons in the preview
+				previewContainer.querySelectorAll("[data-copy-url]").forEach((btn) => {
+					btn.addEventListener("click", () => copyToClipboard(btn.dataset.copyUrl));
+				});
+
+				document.getElementById("badge-url-project").textContent = project;
 				document.getElementById("badge-url-color").textContent = color;
-				document.getElementById("badge-preview").style.display =
-					"block";
-
 				showNotification("🎨 Badge updated!", "success");
 			}
 
@@ -2648,20 +2662,43 @@
 			}
 
 			function loadAdminData(data) {
-				// Map API response to UI elements
 				const stats = data.statistics || {};
 				document.getElementById("admin-requests").textContent =
 					stats.totalViews?.toLocaleString() || "0";
 				document.getElementById("admin-db-ops").textContent =
 					stats.totalProjects || "0";
 
-				// Load projects table
-				const projectsHtml =
-					data.projects && data.projects.length
-						? generateProjectsTable(data.projects)
-						: "<p>No projects found</p>";
-				document.getElementById("admin-projects").innerHTML =
-					projectsHtml;
+				adminProjectsData = data.projects || [];
+				renderProjectsTable();
+			}
+
+			function renderProjectsTable() {
+				const sorted = [...adminProjectsData].sort((a, b) => {
+					const aVal = a[sortColumn] ?? "";
+					const bVal = b[sortColumn] ?? "";
+					if (typeof aVal === "number" && typeof bVal === "number") {
+						return sortAscending ? aVal - bVal : bVal - aVal;
+					}
+					return sortAscending
+						? String(aVal).localeCompare(String(bVal))
+						: String(bVal).localeCompare(String(aVal));
+				});
+
+				const projectsHtml = sorted.length
+					? generateProjectsTable(sorted)
+					: "<p>No projects found. Click 'Add New Project' to get started!</p>";
+				document.getElementById("admin-projects").innerHTML = projectsHtml;
+				setupAdminTableListener();
+			}
+
+			function sortBy(column) {
+				if (sortColumn === column) {
+					sortAscending = !sortAscending;
+				} else {
+					sortColumn = column;
+					sortAscending = false;
+				}
+				renderProjectsTable();
 			}
 
 			function generateProjectsTable(projects) {
@@ -2678,11 +2715,19 @@
 						<table class="table">
 							<thead>
 								<tr>
-									<th>Project Name</th>
-									<th>Views</th>
-									<th>Unique</th>
+									<th onclick="sortBy('project_name')" style="cursor:pointer;">
+										Project Name ${sortColumn === 'project_name' ? (sortAscending ? '↑' : '↓') : '↕'}
+									</th>
+									<th onclick="sortBy('view_count')" style="cursor:pointer;">
+										Views ${sortColumn === 'view_count' ? (sortAscending ? '↑' : '↓') : '↕'}
+									</th>
+									<th onclick="sortBy('unique_views')" style="cursor:pointer;">
+										Unique ${sortColumn === 'unique_views' ? (sortAscending ? '↑' : '↓') : '↕'}
+									</th>
 									<th>Description</th>
-									<th>Updated</th>
+									<th onclick="sortBy('updated_at')" style="cursor:pointer;">
+										Updated ${sortColumn === 'updated_at' ? (sortAscending ? '↑' : '↓') : '↕'}
+									</th>
 									<th style="text-align: center;">Actions</th>
 								</tr>
 							</thead>
