@@ -2113,6 +2113,16 @@
 			let currentEditProject = null;
 			let activeTheme = "light";
 
+			function escapeHtml(str) {
+				if (str == null) return "";
+				return String(str)
+					.replace(/&/g, "&amp;")
+					.replace(/</g, "&lt;")
+					.replace(/>/g, "&gt;")
+					.replace(/"/g, "&quot;")
+					.replace(/'/g, "&#39;");
+			}
+
 			// Initialize app
 			document.addEventListener("DOMContentLoaded", function () {
 				// Clean up URL hash if present
@@ -2610,33 +2620,37 @@
 						? new Date(project.updated_at).toLocaleDateString()
 						: "—";
 
+					const safeProjectName = escapeHtml(projectName);
+					const safeDescription = escapeHtml(description);
+					const safeUpdated = escapeHtml(updated);
+
 					html += `
 						<tr>
-							<td><strong>${projectName}</strong></td>
+							<td><strong>${safeProjectName}</strong></td>
 							<td>${views.toLocaleString()}</td>
 							<td>${unique.toLocaleString()}</td>
-							<td>${description}</td>
-							<td>${updated}</td>
+							<td>${safeDescription}</td>
+							<td>${safeUpdated}</td>
 							<td style="text-align: center; white-space: nowrap;">
-								<button onclick="showBadgeLinks('${projectName}')"
+								<button onclick="showBadgeLinks('${safeProjectName}')"
 									class="btn btn-secondary"
 									style="padding: 0.25rem 0.5rem; font-size: 0.85rem; margin: 0 0.25rem;"
 									title="Get Badge & Links">
 									🎨
 								</button>
-								<button onclick="editProject('${projectName}', ${views}, ${unique}, '${description}')"
+								<button onclick="editProject('${safeProjectName}', ${views}, ${unique}, '${safeDescription}')"
 									class="btn btn-secondary"
 									style="padding: 0.25rem 0.5rem; font-size: 0.85rem; margin: 0 0.25rem;"
 									title="Edit Project">
 									✏️
 								</button>
-								<button onclick="incrementProjectViews('${projectName}')"
+								<button onclick="incrementProjectViews('${safeProjectName}')"
 									class="btn btn-secondary"
 									style="padding: 0.25rem 0.5rem; font-size: 0.85rem; margin: 0 0.25rem;"
 									title="Add View Count">
 									➕
 								</button>
-								<button onclick="deleteProject('${projectName}')"
+								<button onclick="deleteProject('${safeProjectName}')"
 									class="btn btn-secondary"
 									style="padding: 0.25rem 0.5rem; font-size: 0.85rem; margin: 0 0.25rem; background: #dc3545;"
 									title="Delete Project">
@@ -2661,13 +2675,15 @@
 				currentEditProject = null;
 				document.getElementById("project-modal-title").textContent =
 					"➕ Add New Project";
-				document.getElementById("project-name").value = "";
-				document.getElementById("project-name").disabled = false;
+				const nameInput = document.getElementById("project-name");
+				nameInput.value = "";
+				nameInput.disabled = false;
+				nameInput.dataset.originalName = "";
 				document.getElementById("project-description").value = "";
 				document.getElementById("project-views").value = "0";
-				document.getElementById("project-views").disabled = false; // Enable editing view count
+				document.getElementById("project-views").disabled = false;
 				document.getElementById("project-unique").value = "0";
-				document.getElementById("project-unique").disabled = false; // Enable editing unique views
+				document.getElementById("project-unique").disabled = false;
 				document.getElementById("save-project-btn").textContent =
 					"💾 Save Project";
 				document
@@ -2686,14 +2702,16 @@
 				currentEditProject = name;
 				document.getElementById("project-modal-title").textContent =
 					"✏️ Edit Project";
-				document.getElementById("project-name").value = name;
-				document.getElementById("project-name").disabled = true; // Can't change project name
+				const nameInput = document.getElementById("project-name");
+				nameInput.value = name;
+				nameInput.disabled = false;
+				nameInput.dataset.originalName = name;
 				document.getElementById("project-description").value =
 					description === "—" ? "" : description;
 				document.getElementById("project-views").value = views;
-				document.getElementById("project-views").disabled = true; // Disable editing view count
+				document.getElementById("project-views").disabled = false;
 				document.getElementById("project-unique").value = unique;
-				document.getElementById("project-unique").disabled = true; // Disable editing unique views
+				document.getElementById("project-unique").disabled = false;
 				document.getElementById("save-project-btn").textContent =
 					"💾 Update Project";
 				document
@@ -2702,9 +2720,8 @@
 			}
 
 			async function saveProject() {
-				const name = document
-					.getElementById("project-name")
-					.value.trim();
+				const nameInput = document.getElementById("project-name");
+				const name = nameInput.value.trim();
 				const description = document
 					.getElementById("project-description")
 					.value.trim();
@@ -2720,7 +2737,6 @@
 					return;
 				}
 
-				// Validate project name format
 				if (!/^[a-zA-Z0-9-_]+$/.test(name)) {
 					showNotification("❌ Invalid project name format", "error");
 					return;
@@ -2729,49 +2745,47 @@
 				setLoading(true);
 
 				try {
-					// For editing, we need to update the counts
 					if (currentEditProject) {
-						// Update view count by posting the difference
-						const currentViews =
-							parseInt(
-								document.getElementById("project-views").dataset
-									.original,
-							) || 0;
-						const viewDiff = views - currentViews;
+						const originalName = nameInput.dataset.originalName || currentEditProject;
+						const body = {
+							password: adminPassword,
+							description: description || null,
+							viewCount: views,
+							uniqueViews: unique,
+						};
+						if (name !== originalName) body.newName = name;
 
-						if (viewDiff !== 0) {
-							// Note: API doesn't support direct count updates yet
-							showNotification(
-								"⚠️ Direct count updates not yet supported. You can increment counts using the + button.",
-								"warning",
-							);
+						const response = await fetch(
+							`${API_BASE}/api/admin/projects/${encodeURIComponent(originalName)}`,
+							{
+								method: "PUT",
+								headers: { "Content-Type": "application/json" },
+								body: JSON.stringify(body),
+							},
+						);
+						const data = await response.json();
+
+						if (data.success) {
+							showNotification(`✅ Project "${name}" updated!`, "success");
+							hideProjectModal();
+							refreshAdminData();
+						} else {
+							showNotification(`❌ ${data.error || "Failed to update project"}`, "error");
 						}
-
-						hideProjectModal();
-						refreshAdminData();
 					} else {
-						// Create new project by tracking a view
 						const response = await fetch(
 							`${API_BASE}/api/views/${encodeURIComponent(name)}`,
-							{
-								method: "POST",
-							},
+							{ method: "POST" },
 						);
 
 						const data = await response.json();
 
 						if (data.success) {
-							showNotification(
-								`✅ Project "${name}" created successfully!`,
-								"success",
-							);
+							showNotification(`✅ Project "${name}" created!`, "success");
 							hideProjectModal();
 							refreshAdminData();
 						} else {
-							showNotification(
-								"❌ Failed to create project",
-								"error",
-							);
+							showNotification("❌ Failed to create project", "error");
 						}
 					}
 				} catch (error) {
