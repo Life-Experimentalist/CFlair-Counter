@@ -2123,6 +2123,10 @@
 					.replace(/'/g, "&#39;");
 			}
 
+			function jsStringEscape(str) {
+				return String(str ?? "").replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+			}
+
 			// Initialize app
 			document.addEventListener("DOMContentLoaded", function () {
 				// Clean up URL hash if present
@@ -2623,6 +2627,8 @@
 					const safeProjectName = escapeHtml(projectName);
 					const safeDescription = escapeHtml(description);
 					const safeUpdated = escapeHtml(updated);
+					const jsProjectName = jsStringEscape(projectName);
+					const jsDescription = jsStringEscape(description);
 
 					html += `
 						<tr>
@@ -2632,25 +2638,25 @@
 							<td>${safeDescription}</td>
 							<td>${safeUpdated}</td>
 							<td style="text-align: center; white-space: nowrap;">
-								<button onclick="showBadgeLinks('${safeProjectName}')"
+								<button onclick="showBadgeLinks('${jsProjectName}')"
 									class="btn btn-secondary"
 									style="padding: 0.25rem 0.5rem; font-size: 0.85rem; margin: 0 0.25rem;"
 									title="Get Badge & Links">
 									🎨
 								</button>
-								<button onclick="editProject('${safeProjectName}', ${views}, ${unique}, '${safeDescription}')"
+								<button onclick="editProject('${jsProjectName}', ${views}, ${unique}, '${jsDescription}')"
 									class="btn btn-secondary"
 									style="padding: 0.25rem 0.5rem; font-size: 0.85rem; margin: 0 0.25rem;"
 									title="Edit Project">
 									✏️
 								</button>
-								<button onclick="incrementProjectViews('${safeProjectName}')"
+								<button onclick="incrementProjectViews('${jsProjectName}')"
 									class="btn btn-secondary"
 									style="padding: 0.25rem 0.5rem; font-size: 0.85rem; margin: 0 0.25rem;"
 									title="Add View Count">
 									➕
 								</button>
-								<button onclick="deleteProject('${safeProjectName}')"
+								<button onclick="deleteProject('${jsProjectName}')"
 									class="btn btn-secondary"
 									style="padding: 0.25rem 0.5rem; font-size: 0.85rem; margin: 0 0.25rem; background: #dc3545;"
 									title="Delete Project">
