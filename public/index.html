@@ -2201,8 +2201,8 @@
 				});
 			}
 
-			function setupCodeBlockCopyButtons() {
-				document.querySelectorAll(".code-block").forEach((block) => {
+			function setupCodeBlockCopyButtons(root = document) {
+				root.querySelectorAll(".code-block").forEach((block) => {
 					if (block.parentElement.classList.contains("code-block-wrapper")) return;
 
 					const wrapper = document.createElement("div");
@@ -2214,7 +2214,7 @@
 					btn.className = "copy-code-btn";
 					btn.textContent = "📋 Copy";
 					btn.onclick = () => {
-						copyToClipboard(block.innerText.replace(/📋 Copy/g, "").trim());
+						copyToClipboard(block.textContent.trim());
 						btn.textContent = "✅ Copied";
 						setTimeout(() => (btn.textContent = "📋 Copy"), 2000);
 					};
@@ -3048,6 +3048,7 @@
 
 				document.getElementById("badge-links-content").innerHTML =
 					content;
+				setupCodeBlockCopyButtons(document.getElementById("badge-links-content"));
 				document.getElementById("badge-modal").classList.add("active");
 			}
 
