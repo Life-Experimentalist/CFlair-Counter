@@ -127,34 +127,20 @@ const generateVisitorHash = (request: Request): string => {
 	return Math.abs(hash).toString(36);
 };
 
-// CORS middleware with optimized settings for multiple domains
+// CORS middleware
 app.use(
 	"*",
 	cors({
-		origin: (origin) => {
-			// Allow requests from both domains and any origin (for embedded usage)
-			const allowedOrigins = [
-				"https://cflaircounter.pages.dev",
-				"https://counter.vkrishna04.me",
-				"http://localhost:8788",
-				"http://127.0.0.1:8788",
-			];
-
-			// Allow if origin is in the list or allow all for flexibility
-			return origin &&
-				allowedOrigins.some((allowed) => origin.startsWith(allowed))
-				? origin
-				: "*";
-		},
-		allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
+		origin: "*",
+		allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 		allowHeaders: [
 			"Content-Type",
 			"Authorization",
 			"X-Requested-With",
 			"X-Admin-Password",
 		],
-		maxAge: 86400, // Cache preflight for 24 hours
-		credentials: false, // Set to false for public API
+		maxAge: 86400,
+		credentials: false,
 	}),
 );
 
