@@ -2123,10 +2123,6 @@
 					.replace(/'/g, "&#39;");
 			}
 
-			function jsStringEscape(str) {
-				return String(str ?? "").replace(/\\/g, "\\\\").replace(/'/g, "\\'");
-			}
-
 			// Initialize app
 			document.addEventListener("DOMContentLoaded", function () {
 				// Clean up URL hash if present
@@ -2144,7 +2140,31 @@
 				loadGlobalStats();
 				setInterval(loadGlobalStats, 30000); // Update every 30 seconds
 				setInterval(checkApiHealth, 60000);
+				setupAdminTableListener();
 			});
+
+			function setupAdminTableListener() {
+				document.getElementById("admin-projects").addEventListener("click", function (e) {
+					const btn = e.target.closest("[data-action]");
+					if (!btn) return;
+
+					const action = btn.dataset.action;
+					const project = btn.dataset.project;
+
+					if (action === "badge") {
+						showBadgeLinks(project);
+					} else if (action === "edit") {
+						const views = Number(btn.dataset.views);
+						const unique = Number(btn.dataset.unique);
+						const description = btn.dataset.description || "";
+						editProject(project, views, unique, description);
+					} else if (action === "increment") {
+						incrementProjectViews(project);
+					} else if (action === "delete") {
+						deleteProject(project);
+					}
+				});
+			}
 
 			// Theme Management
 			function initializeTheme() {
@@ -2627,8 +2647,6 @@
 					const safeProjectName = escapeHtml(projectName);
 					const safeDescription = escapeHtml(description);
 					const safeUpdated = escapeHtml(updated);
-					const jsProjectName = jsStringEscape(projectName);
-					const jsDescription = jsStringEscape(description);
 
 					html += `
 						<tr>
@@ -2638,30 +2656,33 @@
 							<td>${safeDescription}</td>
 							<td>${safeUpdated}</td>
 							<td style="text-align: center; white-space: nowrap;">
-								<button onclick="showBadgeLinks('${jsProjectName}')"
+								<button
+									data-action="badge"
+									data-project="${safeProjectName}"
 									class="btn btn-secondary"
 									style="padding: 0.25rem 0.5rem; font-size: 0.85rem; margin: 0 0.25rem;"
-									title="Get Badge & Links">
-									🎨
-								</button>
-								<button onclick="editProject('${jsProjectName}', ${views}, ${unique}, '${jsDescription}')"
+									title="Get Badge &amp; Links">🎨</button>
+								<button
+									data-action="edit"
+									data-project="${safeProjectName}"
+									data-views="${Number(views)}"
+									data-unique="${Number(unique)}"
+									data-description="${safeDescription}"
 									class="btn btn-secondary"
 									style="padding: 0.25rem 0.5rem; font-size: 0.85rem; margin: 0 0.25rem;"
-									title="Edit Project">
-									✏️
-								</button>
-								<button onclick="incrementProjectViews('${jsProjectName}')"
+									title="Edit Project">✏️</button>
+								<button
+									data-action="increment"
+									data-project="${safeProjectName}"
 									class="btn btn-secondary"
 									style="padding: 0.25rem 0.5rem; font-size: 0.85rem; margin: 0 0.25rem;"
-									title="Add View Count">
-									➕
-								</button>
-								<button onclick="deleteProject('${jsProjectName}')"
-									class="btn btn-secondary"
-									style="padding: 0.25rem 0.5rem; font-size: 0.85rem; margin: 0 0.25rem; background: #dc3545;"
-									title="Delete Project">
-									🗑️
-								</button>
+									title="Add View Count">➕</button>
+								<button
+									data-action="delete"
+									data-project="${safeProjectName}"
+									class="btn btn-danger btn-secondary"
+									style="padding: 0.25rem 0.5rem; font-size: 0.85rem; margin: 0 0.25rem;"
+									title="Delete Project">🗑️</button>
 							</td>
 						</tr>
 					`;
