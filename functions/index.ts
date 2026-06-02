@@ -200,6 +200,21 @@ const initDatabase = async (db: D1Database) => {
 		`,
 			)
 			.run();
+
+		await db.prepare(`
+			CREATE TABLE IF NOT EXISTS event_logs (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				event_category TEXT NOT NULL,
+				event_name TEXT NOT NULL,
+				session_id TEXT,
+				metadata_json TEXT,
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			)
+		`).run()
+
+		await db.prepare(
+			"CREATE INDEX IF NOT EXISTS idx_event_cat ON event_logs(event_category, created_at)"
+		).run()
 	} catch (error) {
 		console.error("Database initialization error:", error);
 	}
@@ -352,6 +367,94 @@ app.post("/api/views/:projectName", customRateLimiter, async (c) => {
 		return c.json({ success: false, error: "Database error" }, 500);
 	}
 });
+
+app.post("/api/events", customRateLimiter, async (c) => {
+	let body: { category?: string; event?: string; metadata?: unknown }
+	try {
+		body = await c.req.json()
+	} catch {
+		return c.json({ success: false, error: "Invalid JSON body" }, 400)
+	}
+
+	const { category, event: eventName, metadata } = body
+	if (
+		!category ||
+		!eventName ||
+		typeof category !== "string" ||
+		typeof eventName !== "string" ||
+		category.length > 64 ||
+		eventName.length > 64
+	) {
+		return c.json(
+			{ success: false, error: "Invalid category or event name" },
+			400
+		)
+	}
+
+	await initDatabase(c.env.DB)
+	const visitorHash = generateVisitorHash(c.req.raw)
+
+	try {
+		await c.env.DB.prepare(`
+			INSERT INTO event_logs (event_category, event_name, session_id, metadata_json)
+			VALUES (?, ?, ?, ?)
+		`)
+			.bind(
+				category,
+				eventName,
+				visitorHash,
+				metadata != null ? JSON.stringify(metadata) : null
+			)
+			.run()
+
+		await trackUsage(c.env.DB)
+
+		return c.json({
+			success: true,
+			category,
+			event: eventName,
+			timestamp: new Date().toISOString(),
+		})
+	} catch (error) {
+		console.error("Event log error:", error)
+		return c.json({ success: false, error: "Database error" }, 500)
+	}
+})
+
+app.get("/api/metrics", async (c) => {
+	try {
+		await initDatabase(c.env.DB)
+
+		const rows = await c.env.DB.prepare(`
+			SELECT event_category, event_name, COUNT(*) as count
+			FROM event_logs
+			GROUP BY event_category, event_name
+			ORDER BY count DESC
+			LIMIT 100
+		`).all()
+
+		const byCategory: Record<string, Record<string, number>> = {}
+		for (const row of rows.results as {
+			event_category: string
+			event_name: string
+			count: number
+		}[]) {
+			if (!byCategory[row.event_category]) {
+				byCategory[row.event_category] = {}
+			}
+			byCategory[row.event_category][row.event_name] = row.count
+		}
+
+		return c.json({
+			success: true,
+			metrics: byCategory,
+			timestamp: new Date().toISOString(),
+		})
+	} catch (error) {
+		console.error("Metrics error:", error)
+		return c.json({ success: false, error: "Database error" }, 500)
+	}
+})
 
 // Approximate Verdana character widths at 11px (px values)
 const VERDANA_11: Record<string, number> = {
@@ -537,6 +640,37 @@ app.get("/api/views/:projectName/badge", async (c) => {
 		return c.text("Error generating badge", 500);
 	}
 });
+
+app.get("/api/views/:projectName/history", async (c) => {
+	const projectName = c.req.param("projectName")
+	if (!projectName || projectName.length > 100) {
+		return c.json({ error: "Invalid project name" }, 400)
+	}
+
+	await initDatabase(c.env.DB)
+
+	try {
+		const rows = await c.env.DB.prepare(`
+			SELECT DATE(last_visit) as date, COUNT(*) as visits
+			FROM visitor_tracking
+			WHERE project_name = ?
+				AND last_visit >= datetime('now', '-30 days')
+			GROUP BY DATE(last_visit)
+			ORDER BY date ASC
+		`)
+			.bind(projectName)
+			.all()
+
+		return c.json({
+			success: true,
+			projectName,
+			history: rows.results,
+		})
+	} catch (error) {
+		console.error("History error:", error)
+		return c.json({ success: false, error: "Database error" }, 500)
+	}
+})
 
 // Usage tracking helper
 const trackUsage = async (db: D1Database) => {
