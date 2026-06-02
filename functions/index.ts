@@ -421,7 +421,7 @@ app.post("/api/events", customRateLimiter, async (c) => {
 	}
 })
 
-app.get("/api/metrics", async (c) => {
+app.get("/api/metrics", customRateLimiter, async (c) => {
 	try {
 		await initDatabase(c.env.DB)
 
