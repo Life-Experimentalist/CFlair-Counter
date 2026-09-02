@@ -1,0 +1,34 @@
+{
+	"$schema": "https://vkrishna04.me/schemas/project-manifest.schema.json",
+	"manifestVersion": 2,
+	"name": "ViewFlare",
+	"tagline": "Serverless view counter and SVG badges on Cloudflare.",
+	"summary": "A serverless telemetry counter for projects and documentation, built on Cloudflare Workers and D1 with a Hono API. One POST increments a project's views and one image URL renders a live SVG badge, so a repository gets usage counts without anyone running a backend. Formerly published as CFlair-Counter.",
+	"status": "active",
+	"icon": "SiCloudflare",
+	"technologies": [
+		"Cloudflare Workers",
+		"D1",
+		"Hono",
+		"TypeScript"
+	],
+	"tags": [
+		"serverless",
+		"cloudflare",
+		"analytics",
+		"badges",
+		"api"
+	],
+	"highlights": [
+		"Integrates in one request: a single POST increments a counter, and a single image URL renders the badge.",
+		"Generates SVG badges with configurable style and colour, so it drops into an existing README badge row.",
+		"Persists to Cloudflare D1 with optional unique-visitor analytics, and admin endpoints for project-level operations.",
+		"Endpoint behaviour is checked continuously in CI rather than only at deploy time.",
+		"Serves the live view counters on several of the other projects listed here."
+	],
+	"links": {
+		"repo": "https://github.com/Life-Experimentalist/CFlair-Counter",
+		"live": "https://counter.vkrishna04.me"
+	},
+	"readme": true
+}

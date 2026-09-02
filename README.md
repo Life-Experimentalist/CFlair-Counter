@@ -1,8 +1,8 @@
-# CFlair-Counter
+# ViewFlare
 
 Serverless, low-cost telemetry counter for projects, docs, and deploy workflows. Built for Cloudflare Pages + D1 with a lightweight Hono API and SVG badge support.
 
-[![Newman CI](https://github.com/Life-Experimentalist/CFlair-Counter/actions/workflows/newman.yml/badge.svg)](https://github.com/Life-Experimentalist/CFlair-Counter/actions/workflows/newman.yml)
+[![Newman CI](https://github.com/Life-Experimentalist/ViewFlare/actions/workflows/newman.yml/badge.svg)](https://github.com/Life-Experimentalist/ViewFlare/actions/workflows/newman.yml)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Cloudflare Pages](https://img.shields.io/badge/Cloudflare-Pages-F38020?logo=cloudflare&logoColor=white)](https://pages.cloudflare.com/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE.md)

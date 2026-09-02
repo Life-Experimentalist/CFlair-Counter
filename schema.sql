@@ -1,4 +1,4 @@
--- Optimized CFlairCounter Database Schema
+-- Optimized ViewFlare Database Schema
 -- Minimal indexes and efficient structure for cost optimization
 -- Main projects table - simplified for webhook efficiency
 CREATE TABLE IF NOT EXISTS project_views (

@@ -1,32 +1,19 @@
-# Documentation Index
+# ViewFlare Documentation Index
 
-Use this index to navigate CFlair-Counter docs quickly.
+Welcome to the documentation for **ViewFlare**—a professional, cost-optimized, and AI-friendly serverless view counter.
 
-## Start Here
+---
 
-- `../README.md` - project overview and fast setup.
-- `../INTEGRATION.md` - integration checklist for humans and automation.
-- `AI-AGENT-QUICKSTART.md` - comprehensive handoff guide for coding agents.
+## 🚀 Get Started
 
-## Core Guides
+- [README.md](../README.md) - Project overview, design patterns, and deployment commands.
+- [INTEGRATION.md](../INTEGRATION.md) - How to integrate the counter badges into your websites, blogs, or GitHub READMEs.
+- [AI-AGENT-QUICKSTART.md](AI-AGENT-QUICKSTART.md) - Guided handoff documentation for AI agents to understand the project architecture and deploy/integrate automatically.
 
-- `DEVELOPMENT-GUIDE.md` - local development workflow and conventions.
-- `DEPLOYMENT.md` - deployment guide for Cloudflare Pages + D1.
-- `ARCHITECTURE.md` - high-level design and system components.
-- `postman-guide.md` - API validation via Postman/Newman.
+---
 
-## Operations and Status
+## 🛠️ Operations & Development
 
-- `PRODUCTION-STATUS.md` - current production notes.
-- `WRANGLER-VERIFICATION.md` - Wrangler and environment verification.
-- `EFFICIENCY.md` - performance/cost optimization notes.
-
-## Admin and Theming
-
-- `guides/ADMIN-GUIDE.md` - admin features and workflows.
-- `theme-and-stats-update.md` - UI/theme and stats changes.
-- `admin-enhancement.md` - admin enhancement details.
-
-## Archive
-
-Historical references and old deployment logs are in `archive/`.
+- [DEVELOPMENT-GUIDE.md](DEVELOPMENT-GUIDE.md) - Common commands, testing endpoints,Newman API testing suite, cost/efficiency analysis, and local developer setup.
+- [CLOUDFLARE-SETUP.md](CLOUDFLARE-SETUP.md) - Cloudflare bindings, Pages dashboard setup, D1 databases, custom domain configurations, and admin password settings.
+- [postman-guide.md](postman-guide.md) - Step-by-step instructions to test and run API collection queries in Postman.

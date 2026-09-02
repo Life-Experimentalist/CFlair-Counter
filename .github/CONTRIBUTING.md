@@ -1,6 +1,6 @@
-# Contributing to CFlairCounter
+# Contributing to ViewFlare
 
-First off, thank you for considering contributing to CFlairCounter! It's people like you that make CFlairCounter such a great tool.
+First off, thank you for considering contributing to ViewFlare! It's people like you that make ViewFlare such a great tool.
 
 ## Table of Contents
 
@@ -67,8 +67,8 @@ Enhancement suggestions are tracked as GitHub issues. Create an issue and provid
 
 ```bash
 # Clone your fork
-git clone https://github.com/YOUR-USERNAME/CFlair-Counter.git
-cd CFlair-Counter
+git clone https://github.com/{YOUR-USERNAME}/ViewFlare.git
+cd ViewFlare
 
 # Install dependencies
 npm install
@@ -316,7 +316,7 @@ Contributors will be:
 - Mentioned in release notes
 - Given credit in relevant documentation
 
-Thank you for contributing to CFlairCounter! 🎉
+Thank you for contributing to ViewFlare! 🎉
 
 ---
 

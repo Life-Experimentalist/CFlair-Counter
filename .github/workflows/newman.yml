@@ -28,6 +28,6 @@ jobs:
                   ADMIN_PASSWORD: "${{ secrets.ADMIN_PASSWORD }}"
               run: |
                   if [ -z "$BASE_URL" ]; then
-                    BASE_URL="https://cflaircounter.pages.dev"
+                    BASE_URL="https://counter.vkrishna04.me"
                   fi
                   npm run test:newman:ci -- --env-var "base_url=$BASE_URL" --env-var "admin_password=$ADMIN_PASSWORD"

@@ -1,6 +1,6 @@
 # 📮 Postman Collection Guide
 
-Complete guide for testing the CFlair Counter API using Postman.
+Complete guide for testing the ViewFlare API using Postman.
 
 ---
 
@@ -17,14 +17,14 @@ Complete guide for testing the CFlair Counter API using Postman.
 
 **Option B: Import from URL** (if hosted on GitHub)
 ```
-https://raw.githubusercontent.com/Life-Experimentalists/CFlair-Counter/main/postman-collection.json
+https://raw.githubusercontent.com/Life-Experimentalists/ViewFlare/main/postman-collection.json
 ```
 
 ### 2. Configure Variables
 
 After importing, configure the collection variables:
 
-1. Click on the **CFlair Counter API** collection
+1. Click on the **ViewFlare API** collection
 2. Go to the **Variables** tab
 3. Update the following variables:
 
@@ -39,8 +39,8 @@ After importing, configure the collection variables:
 You can use any of these domains for `baseUrl`:
 
 - **Custom Domain**: `https://counter.vkrishna04.me`
-- **Primary Domain**: `https://cflaircounter.pages.dev`
-- **Specific Deployment**: `https://7918ecb1.cflaircounter.pages.dev`
+- **Primary Domain**: `https://viewflare.pages.dev`
+- **Specific Deployment**: `https://7918ecb1.viewflare.pages.dev`
 
 Simply change the `baseUrl` variable to switch between domains!
 
@@ -50,7 +50,7 @@ Simply change the `baseUrl` variable to switch between domains!
 
 1. **Set the password in Cloudflare Dashboard:**
    - Go to [Cloudflare Dashboard](https://dash.cloudflare.com/)
-   - Navigate to **Workers & Pages** → **cflaircounter**
+   - Navigate to **Workers & Pages** → **viewflare**
    - Go to **Settings** → **Environment variables**
    - Add `ADMIN_PASSWORD` for Production environment
 
@@ -109,7 +109,7 @@ The collection is organized into 6 folders:
 2. Select **Run collection**
 3. Choose which folders to run
 4. Set iterations (usually 1)
-5. Click **Run CFlair Counter API**
+5. Click **Run ViewFlare API**
 
 ### Automated Tests
 
@@ -403,7 +403,7 @@ adminPassword: your-secure-password
 
 **Pages.dev Environment:**
 ```
-baseUrl: https://cflaircounter.pages.dev
+baseUrl: https://viewflare.pages.dev
 projectName: pages-test
 adminPassword: your-secure-password
 ```
@@ -431,7 +431,7 @@ adminPassword: test-password
 - **Example Badge**: https://counter.vkrishna04.me/api/views/test-project/badge
 
 ### Support
-- GitHub Issues: [Report a bug](https://github.com/Life-Experimentalists/CFlair-Counter/issues)
+- GitHub Issues: [Report a bug](https://github.com/Life-Experimentalists/ViewFlare/issues)
 - Documentation: Check the `docs/` directory
 - Testing Guide: See [TESTING.md](TESTING.md)
 

@@ -1,5 +1,5 @@
 // Cloudflare Pages Function - Root handler
-// This handles all API routes for CFlairCounter
+// This handles all API routes for ViewFlare
 
 import { Hono } from "hono";
 import { cors } from "hono/cors";
@@ -237,7 +237,7 @@ app.get("/health", (c) => {
 		success: true,
 		status: "ok",
 		timestamp: new Date().toISOString(),
-		worker: "cflaircounter-api",
+		worker: "viewflare-api",
 		version: "2.0.0",
 	});
 });
@@ -442,7 +442,10 @@ app.get("/api/metrics", customRateLimiter, async (c) => {
 			if (!byCategory[row.event_category]) {
 				byCategory[row.event_category] = {}
 			}
-			byCategory[row.event_category][row.event_name] = row.count
+			const cat = byCategory[row.event_category];
+			if (cat) {
+				cat[row.event_name] = row.count;
+			}
 		}
 
 		return c.json({
@@ -496,6 +499,56 @@ app.get("/api/views/:projectName/badge", async (c) => {
 	await initDatabase(c.env.DB);
 
 	try {
+		// Increment the view count only when inc=true query param is explicitly passed
+		const shouldIncrement = c.req.query("inc") === "true";
+		if (shouldIncrement) {
+			await c.env.DB.prepare(
+				`
+				INSERT INTO project_views (project_name, view_count, updated_at)
+				VALUES (?, 1, CURRENT_TIMESTAMP)
+				ON CONFLICT(project_name) DO UPDATE SET
+					view_count = view_count + 1,
+					updated_at = CURRENT_TIMESTAMP
+				`,
+			)
+				.bind(projectName)
+				.run();
+
+			// Track usage for monitoring
+			await trackUsage(c.env.DB);
+
+			// Track unique visitor if analytics enabled
+			const enableAnalytics = c.env.ENABLE_ANALYTICS !== "false";
+			if (enableAnalytics) {
+				const visitorHash = generateVisitorHash(c.req.raw);
+				await c.env.DB.prepare(
+					`
+					INSERT INTO visitor_tracking (project_name, visitor_hash, last_visit, visit_count)
+					VALUES (?, ?, CURRENT_TIMESTAMP, 1)
+					ON CONFLICT(project_name, visitor_hash) DO UPDATE SET
+						last_visit = CURRENT_TIMESTAMP,
+						visit_count = visit_count + 1
+					`,
+				)
+					.bind(projectName, visitorHash)
+					.run();
+
+				const uniqueResult = await c.env.DB.prepare(
+					"SELECT COUNT(*) as count FROM visitor_tracking WHERE project_name = ?",
+				)
+					.bind(projectName)
+					.first();
+
+				const uniqueViews = Number(uniqueResult?.count) || 0;
+
+				await c.env.DB.prepare(
+					"UPDATE project_views SET unique_views = ? WHERE project_name = ?",
+				)
+					.bind(uniqueViews, projectName)
+					.run();
+			}
+		}
+
 		const result = await c.env.DB.prepare(
 			"SELECT view_count FROM project_views WHERE project_name = ?",
 		)
@@ -632,7 +685,9 @@ app.get("/api/views/:projectName/badge", async (c) => {
 		}
 
 		c.header("Content-Type", "image/svg+xml");
-		c.header("Cache-Control", "public, max-age=300, s-maxage=600"); // 5min browser, 10min CDN
+		c.header("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0");
+		c.header("Pragma", "no-cache");
+		c.header("Expires", "0");
 		c.header("Access-Control-Allow-Origin", "*");
 		return c.body(svg.trim());
 	} catch (error) {

@@ -1,8 +1,8 @@
-// CFlairCounter Service Worker v2.0
+// ViewFlare Service Worker v2.0
 // Enhanced caching and performance optimization
 
-const CACHE_NAME = 'cflaircounter-v2.0';
-const API_CACHE_NAME = 'cflaircounter-api-v2.0';
+const CACHE_NAME = 'viewflare-v2.0';
+const API_CACHE_NAME = 'viewflare-api-v2.0';
 
 // Static resources to cache
 const STATIC_RESOURCES = [

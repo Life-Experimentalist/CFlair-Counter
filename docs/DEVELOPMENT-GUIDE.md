@@ -1,190 +1,104 @@
-# Quick Reference - CFlairCounter Development
+# Developer & Contributor Guide - ViewFlare
 
-## 🚀 Common Commands
+This guide covers everything you need to know to run, test, develop, and optimize **ViewFlare** locally and in production.
 
-### Deploy to Production
+---
+
+## 🚀 Development Commands
+
+### Production Deployment
 ```bash
 npm run deploy
 ```
-This automatically:
-1. Bundles `functions/index.ts` → `public/_worker.js`
-2. Deploys to Cloudflare Pages
-3. Makes live at https://counter.vkrishna04.me
+This script automatically:
+1. Bundles the worker backend: `functions/index.ts` → `public/_worker.js` (using `esbuild`)
+2. Deploys static assets and functions to Cloudflare Pages.
+3. Automatically maps to your custom domain (e.g., `https://counter.vkrishna04.me`).
 
-### Local Development (D1 Binding Issue Known)
+### Local Development
 ```bash
 npm run dev
 ```
-**Note**: There's a known issue where D1 is bound but admin panel doesn't show projects locally. Use preview deployments for testing instead.
+Runs Wrangler Pages local dev server pointing to the `public/` folder.
+*Note: Ensure you have initialized your local D1 database schema to test full D1 bindings locally.*
 
 ### Build Worker Only
 ```bash
 npm run build:worker
 ```
 
-## 📁 Key Files
-
-### Backend
-- `functions/index.ts` - Complete Hono API app with all routes
-- `public/_worker.js` - Auto-generated bundle (in .gitignore)
-
-### Frontend
-- `public/index.html` - Main app with dark mode and stats display
-- `public/logo.png` - Light mode logo
-- `public/logo-dark.png` - Dark mode logo (user needs to add)
-
-### Configuration
-- `wrangler.toml` - Cloudflare configuration
-- `package.json` - Build scripts and dependencies
-- `.gitignore` - Excludes `public/_worker.js`
-
-## 🔧 Making Changes
-
-### Adding New API Routes
-1. Edit `functions/index.ts`
-2. Add route: `app.get("/api/your-route", async (c) => { ... })`
-3. Run `npm run deploy`
-
-### Updating Frontend
-1. Edit `public/index.html`
-2. Run `npm run deploy`
-
-### Database Changes
+### RunNewman API Tests
 ```bash
-# Edit schema.sql first, then:
-npm run db:migrate
+npm run test:newman
 ```
-
-## 🐛 Debugging
-
-### Check API Endpoints
-```powershell
-# Health check
-Invoke-WebRequest "https://counter.vkrishna04.me/health" -UseBasicParsing
-
-# Stats
-Invoke-WebRequest "https://counter.vkrishna04.me/api/stats" -UseBasicParsing
-```
-
-### View Worker Logs
-Check Cloudflare Dashboard → Pages → cflaircounter → Functions → Logs
-
-### Test Changes Before Production
-Every deployment creates a preview URL:
-```
-https://[hash].cflaircounter.pages.dev
-```
-Test there first!
-
-## 📊 API Endpoints
-
-### GET /health
-Health check endpoint
-```json
-{"success": true, "status": "ok", "timestamp": "..."}
-```
-
-### GET /api/stats
-Global statistics
-```json
-{
-  "success": true,
-  "statistics": {
-    "totalViews": 9,
-    "uniqueViews": 0,
-    "totalProjects": 6,
-    "analyticsEnabled": false
-  }
-}
-```
-
-### GET /api/views/:project
-Get project stats
-```json
-{"success": true, "projectName": "...", "totalViews": 5, ...}
-```
-
-### POST /api/views/:project
-Increment view count (returns same as GET)
-
-### GET /api/views/:project/badge
-SVG badge (shield.io style)
-```
-?color=blue&label=views&style=flat
-```
-
-### POST /api/admin/stats
-Admin panel data (requires password)
-```json
-{"password": "your-admin-password"}
-```
-
-## 🎨 UI Customization
-
-### Changing Colors
-Edit `public/index.html`:
-- Light mode gradient: `--bg-gradient-start`, `--bg-gradient-end`
-- Dark mode: `--dark-bg`, `--dark-card-bg`
-- Primary color: `--primary`
-
-### Adding Features
-Look for the "Key Features" section in `index.html` around line 200-400
-
-### Modifying Toggle Size
-Search for `.switch__label` in `<style>` section (currently 75px × 38px)
-
-## ⚠️ Known Issues
-
-### Local Dev D1 Binding
-**Symptom**: Admin panel shows no projects in `npm run dev`
-**Status**: Deferred (production works fine)
-**Workaround**: Use preview deployments for testing
-
-## 🏗️ Architecture
-
-```
-Browser Request → Cloudflare Pages
-                      ↓
-                  _worker.js (Hono App)
-                      ↓
-              Route Matching (Hono)
-                      ↓
-              D1 Database Query
-                      ↓
-              JSON Response
-```
-
-## 📈 Monitoring
-
-- Cloudflare Dashboard: Real-time analytics
-- Logs: Functions → View Logs
-- Errors: Check browser console on production site
-
-## 🔐 Environment Variables
-
-Set in Cloudflare Dashboard → Pages → Settings → Environment variables:
-
-- `ADMIN_PASSWORD` - Admin panel password
-- `ENABLE_ADMIN` - "true" or "false"
-- `ENABLE_ANALYTICS` - "true" or "false" (detailed tracking)
-- `MAX_PROJECTS` - Maximum projects (default: 100)
-
-## 📚 Documentation
-
-- `PRODUCTION-STATUS.md` - Current production status
-- `docs/TROUBLESHOOTING.md` - Comprehensive troubleshooting
-- `docs/DEPLOYMENT.md` - Deployment guide
-- `docs/ARCHITECTURE.md` - System architecture
-- `README.md` - Main documentation
-
-## 💡 Tips
-
-1. **Always test with preview URLs** before promoting to production domain
-2. **The _worker.js is auto-generated** - never edit it directly
-3. **D1 queries are optimized** - minimal reads/writes to stay in free tier
-4. **Admin password** set via Cloudflare Dashboard (not in code)
-5. **Dark mode logo** needs to be added by user (logo-dark.png)
+Runs Newman automated Postman tests to verify view counters, badge configurations, rate limits, and admin endpoints.
 
 ---
 
-**Need Help?** Check `docs/TROUBLESHOOTING.md` or `PRODUCTION-STATUS.md`
+## 📁 Key File Structure
+
+- [functions/index.ts](file:///V:/Code/ProjectCode/CFlair-Counter/functions/index.ts) - Complete worker backend using the Hono framework.
+- [public/index.html](file:///V:/Code/ProjectCode/CFlair-Counter/public/index.html) - Premium landing page and admin panel.
+- [schema.sql](file:///V:/Code/ProjectCode/CFlair-Counter/schema.sql) - D1 Database table structure.
+- [wrangler.toml](file:///V:/Code/ProjectCode/CFlair-Counter/wrangler.toml) - Cloudflare configuration file.
+
+---
+
+## 🧪 Testing Your Deployment
+
+Use these common `curl` commands (or equivalent PowerShell `Invoke-WebRequest`) to test system features:
+
+### 1. Health Check
+```bash
+curl https://counter.vkrishna04.me/health
+```
+
+### 2. Track a View (Opt-in Auto-Increment)
+```bash
+curl -X POST https://counter.vkrishna04.me/api/views/test-project
+```
+*Note: To increment counts via badge loading, explicitly pass the `&inc=true` query parameter: `https://counter.vkrishna04.me/api/views/test-project/badge?inc=true`.*
+
+### 3. Retrieve Stats
+```bash
+curl https://counter.vkrishna04.me/api/views/test-project
+```
+
+### 4. Test Rate Limiting (Sends 65 fast requests in PowerShell)
+```powershell
+for ($i=1; $i -le 65; $i++) {
+    $response = curl -X POST https://counter.vkrishna04.me/api/views/rate-limit-test -s -w "\nStatus: %{http_code}\n"
+    Write-Host "Request $i - $response"
+    if ($i -gt 60) { Start-Sleep -Milliseconds 100 }
+}
+```
+
+---
+
+## 💰 Cloudflare Cost & Resource Efficiency
+
+ViewFlare is hyper-optimized to operate completely inside Cloudflare's free tier quotas.
+
+### Cost Analysis (Per 1 Million Webhook Hits):
+- **Workers Requests**: Free (well within the 10M monthly free quota)
+- **D1 Database Writes**: ~$1.00 - $3.00 (depending on analytics settings)
+- **D1 Database Reads**: ~$0.00 - $0.10 (badge rendering utilizes intelligent, lightweight queries)
+
+### Optimization Strategies Implemented:
+- **Index Optimization:** Database indexes have been pruned to reduce write costs and D1 transaction logs.
+- **Single-Query Increments:** The tracking endpoint uses a single query to track views (1 read + 1 write vs. multiple reads/writes).
+- **Environment Toggles:** Turn off granular analytics entirely by setting `ENABLE_ANALYTICS=false` in your env variables, saving 50%+ on D1 write operations.
+
+---
+
+## 📈 Database Auditing & Sizes
+
+Verify database sizes and query counts directly:
+
+```bash
+# Get D1 DB size (Free tier limit is 500MB)
+npx wrangler d1 execute cflaircounter-db --command "SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size();" --remote
+
+# List top 10 projects by view count
+npx wrangler d1 execute cflaircounter-db --command "SELECT project_name, view_count FROM project_views ORDER BY view_count DESC LIMIT 10" --remote
+```

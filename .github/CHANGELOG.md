@@ -57,7 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - ✏️ Edit project details button
   - ➕ Add view count button
   - 🗑️ Delete project button (UI ready, API pending)
-- **CFlairCounter Logo** integration across all pages
+- **ViewFlare Logo** integration across all pages
   - Logo in navbar
   - Logo in hero section
   - Favicon support
@@ -182,4 +182,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-For detailed information about each release, see the [GitHub Releases](https://github.com/Life-Experimentalists/CFlair-Counter/releases) page.
+For detailed information about each release, see the [GitHub Releases](https://github.com/Life-Experimentalists/ViewFlare/releases) page.

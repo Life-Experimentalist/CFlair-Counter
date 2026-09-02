@@ -1,8 +1,8 @@
 {
 	"info": {
-		"_postman_id": "cflaircounter-api-v1",
-		"name": "CFlair Counter API",
-		"description": "# CFlair Counter API Collection\n\nComplete API testing collection for CFlair Counter - A webhook-based view tracking service with badge generation.\n\n## 📋 Features\n- ✅ View tracking webhook endpoints\n- ✅ Statistics retrieval\n- ✅ Badge generation with multiple styles & colors\n- ✅ Admin dashboard access\n- ✅ Health monitoring\n- ✅ Rate limiting tests\n\n## 🔧 Setup\n\n### Collection Variables\nThis collection uses the following variables for easy domain switching:\n\n- `{{baseUrl}}` - Your API domain (default: https://counter.vkrishna04.me)\n- `{{projectName}}` - Project identifier for testing (default: test-project)\n- `{{adminPassword}}` - Admin password for protected endpoints (set this!)\n\n### Quick Start\n1. Import this collection into Postman\n2. Update the `baseUrl` variable if using a different domain\n3. Set your `adminPassword` variable\n4. Run requests in order or use the Collection Runner\n\n## 📁 Folder Structure\n\n### 1. Health & Monitoring\nSystem health checks and dashboard access\n\n### 2. View Tracking\nWebhook endpoints for tracking views\n- Rate limited: 60 requests/minute per IP\n- Optional description field\n\n### 3. Statistics\nRetrieve view counts and project data\n\n### 4. Badge Generation\nGenerate SVG badges with multiple styles:\n- `flat` - Default GitHub style\n- `flat-square` - Square edges\n- `for-the-badge` - Large bold style\n\nAvailable colors:\n- `brightgreen`, `green`, `yellowgreen`, `yellow`\n- `orange`, `red`, `blue`, `lightgrey`\n- `success`, `important`, `critical`\n- `informational`, `inactive`\n- Custom hex colors (e.g., `#FF5733`)\n\n### 5. Admin\nPassword-protected admin endpoints\n\n### 6. Rate Limiting\nTest rate limit behavior\n\n## 🧪 Testing\n\n### Automated Tests\nAll requests include automated tests that verify:\n- Status codes\n- Response structure\n- Required fields\n- Rate limit headers\n\n### Collection Runner\nRun the entire collection to verify all endpoints:\n1. Click \"Run\" on the collection\n2. Select all folders\n3. Set iterations to 1\n4. Click \"Run CFlair Counter API\"\n\n## 📚 API Documentation\n\nFor detailed API documentation, see:\n- `docs/api/README.md` - Complete API reference\n- `QUICK-START.md` - 5-minute setup guide\n- `DEPLOYMENT-SUCCESS.md` - Live deployment status",
+		"_postman_id": "viewflare-api-v1",
+		"name": "ViewFlare API",
+		"description": "# ViewFlare API Collection\n\nComplete API testing collection for ViewFlare - A webhook-based view tracking service with badge generation.\n\n## 📋 Features\n- ✅ View tracking webhook endpoints\n- ✅ Statistics retrieval\n- ✅ Badge generation with multiple styles & colors\n- ✅ Admin dashboard access\n- ✅ Health monitoring\n- ✅ Rate limiting tests\n\n## 🔧 Setup\n\n### Collection Variables\nThis collection uses the following variables for easy domain switching:\n\n- `{{baseUrl}}` - Your API domain (default: https://counter.vkrishna04.me)\n- `{{projectName}}` - Project identifier for testing (default: test-project)\n- `{{adminPassword}}` - Admin password for protected endpoints (set this!)\n\n### Quick Start\n1. Import this collection into Postman\n2. Update the `baseUrl` variable if using a different domain\n3. Set your `adminPassword` variable\n4. Run requests in order or use the Collection Runner\n\n## 📁 Folder Structure\n\n### 1. Health & Monitoring\nSystem health checks and dashboard access\n\n### 2. View Tracking\nWebhook endpoints for tracking views\n- Rate limited: 60 requests/minute per IP\n- Optional description field\n\n### 3. Statistics\nRetrieve view counts and project data\n\n### 4. Badge Generation\nGenerate SVG badges with multiple styles:\n- `flat` - Default GitHub style\n- `flat-square` - Square edges\n- `for-the-badge` - Large bold style\n\nAvailable colors:\n- `brightgreen`, `green`, `yellowgreen`, `yellow`\n- `orange`, `red`, `blue`, `lightgrey`\n- `success`, `important`, `critical`\n- `informational`, `inactive`\n- Custom hex colors (e.g., `#FF5733`)\n\n### 5. Admin\nPassword-protected admin endpoints\n\n### 6. Rate Limiting\nTest rate limit behavior\n\n## 🧪 Testing\n\n### Automated Tests\nAll requests include automated tests that verify:\n- Status codes\n- Response structure\n- Required fields\n- Rate limit headers\n\n### Collection Runner\nRun the entire collection to verify all endpoints:\n1. Click \"Run\" on the collection\n2. Select all folders\n3. Set iterations to 1\n4. Click \"Run ViewFlare API\"\n\n## 📚 API Documentation\n\nFor detailed API documentation, see:\n- `docs/api/README.md` - Complete API reference\n- `QUICK-START.md` - 5-minute setup guide\n- `DEPLOYMENT-SUCCESS.md` - Live deployment status",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -58,7 +58,7 @@
 								"health"
 							]
 						},
-						"description": "Check if the API service is running and healthy.\n\n**Expected Response:**\n```json\n{\n  \"success\": true,\n  \"status\": \"ok\",\n  \"timestamp\": \"2025-11-09T16:10:38.682Z\",\n  \"worker\": \"cflaircounter-api\",\n  \"version\": \"2.1.0-rate-limited\"\n}\n```\n\n**Use Case:**\n- Monitor API availability\n- Check service version\n- Verify API is responding"
+						"description": "Check if the API service is running and healthy.\n\n**Expected Response:**\n```json\n{\n  \"success\": true,\n  \"status\": \"ok\",\n  \"timestamp\": \"2025-11-09T16:10:38.682Z\",\n  \"worker\": \"viewflare-api\",\n  \"version\": \"2.1.0-rate-limited\"\n}\n```\n\n**Use Case:**\n- Monitor API availability\n- Check service version\n- Verify API is responding"
 					},
 					"response": []
 				},
@@ -79,7 +79,7 @@
 									"",
 									"pm.test('Response contains HTML', function () {",
 									"    pm.expect(pm.response.text()).to.include('<!DOCTYPE html>');",
-									"    pm.expect(pm.response.text()).to.include('CFlair Counter');",
+									"    pm.expect(pm.response.text()).to.include('ViewFlare');",
 									"});"
 								],
 								"type": "text/javascript"
@@ -657,7 +657,7 @@
 								"stats"
 							]
 						},
-						"description": "Get statistics for all projects. Requires admin password.\n\n**⚠️ Important:** Set the `{{adminPassword}}` collection variable to your actual admin password.\n\n**Setting Admin Password:**\n1. Go to Cloudflare Dashboard\n2. Navigate to Workers & Pages → cflaircounter\n3. Go to Settings → Environment variables\n4. Add `ADMIN_PASSWORD` for Production environment\n\n**Expected Response (Authenticated):**\n```json\n{\n  \"success\": true,\n  \"totalProjects\": 5,\n  \"totalViews\": 127,\n  \"projects\": [\n    {\n      \"project_name\": \"project-1\",\n      \"view_count\": 42,\n      \"unique_views\": 0,\n      \"description\": \"Project Description\",\n      \"created_at\": \"2025-11-09T16:00:00.000Z\"\n    }\n  ],\n  \"timestamp\": \"2025-11-09T16:10:44.156Z\"\n}\n```\n\n**Expected Response (Unauthorized):**\n```json\n{\n  \"error\": \"Unauthorized\",\n  \"message\": \"Invalid admin password\"\n}\n```"
+						"description": "Get statistics for all projects. Requires admin password.\n\n**⚠️ Important:** Set the `{{adminPassword}}` collection variable to your actual admin password.\n\n**Setting Admin Password:**\n1. Go to Cloudflare Dashboard\n2. Navigate to Workers & Pages → viewflare\n3. Go to Settings → Environment variables\n4. Add `ADMIN_PASSWORD` for Production environment\n\n**Expected Response (Authenticated):**\n```json\n{\n  \"success\": true,\n  \"totalProjects\": 5,\n  \"totalViews\": 127,\n  \"projects\": [\n    {\n      \"project_name\": \"project-1\",\n      \"view_count\": 42,\n      \"unique_views\": 0,\n      \"description\": \"Project Description\",\n      \"created_at\": \"2025-11-09T16:00:00.000Z\"\n    }\n  ],\n  \"timestamp\": \"2025-11-09T16:10:44.156Z\"\n}\n```\n\n**Expected Response (Unauthorized):**\n```json\n{\n  \"error\": \"Unauthorized\",\n  \"message\": \"Invalid admin password\"\n}\n```"
 					},
 					"response": []
 				},
@@ -891,7 +891,7 @@
 			"key": "baseUrl",
 			"value": "https://counter.vkrishna04.me",
 			"type": "string",
-			"description": "Base URL of the API. Change this to switch between domains:\n- https://counter.vkrishna04.me (custom domain)\n- https://cflaircounter.pages.dev (primary domain)"
+			"description": "Base URL of the API. Change this to switch between domains:\n- https://counter.vkrishna04.me (custom domain)\n- https://viewflare.pages.dev (primary domain)"
 		},
 		{
 			"key": "projectName",

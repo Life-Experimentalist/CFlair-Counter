@@ -1,10 +1,10 @@
 # AI Agent Quickstart (Comprehensive)
 
-This file is the single handoff document for any coding/automation agent that needs to use or integrate CFlair-Counter.
+This file is the single handoff document for any coding/automation agent that needs to use or integrate ViewFlare.
 
 ## Objective
 
-Integrate and validate CFlair-Counter as a telemetry microservice that can:
+Integrate and validate ViewFlare as a telemetry microservice that can:
 - Increment views via HTTP.
 - Serve project and global metrics.
 - Generate SVG badges.
@@ -70,7 +70,7 @@ Response shape:
   "success": true,
   "status": "ok",
   "timestamp": "...",
-  "worker": "cflaircounter-api",
+  "worker": "viewflare-api",
   "version": "2.0.0"
 }
 ```
@@ -190,7 +190,7 @@ Workflow file: `.github/workflows/newman.yml`
 Behavior:
 - Uses `npm ci` for lockfile-safe install.
 - Runs Newman collection with runtime env vars.
-- Defaults `BASE_URL` to `https://cflaircounter.pages.dev` when secret is missing.
+- Defaults `BASE_URL` to `https://viewflare.pages.dev` when secret is missing.
 
 Required repository secrets:
 - `BASE_URL` (optional but recommended)
