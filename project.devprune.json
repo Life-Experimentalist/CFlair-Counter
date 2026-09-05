@@ -1,0 +1,12 @@
+{
+  "$schema": "https://devprune.vkrishna04.me/schemas/v1/devprune.schema.json",
+  "prunable": {
+    "directories": [
+      {
+        "path": "node_modules",
+        "rebuild": "npm ci",
+        "why": "Dev dependency tree (~247 MB), git-ignored and restored exactly from the committed package-lock.json. Verified: after a full `npm ci` both `npm run build:worker` and `npm run type-check` pass. Nothing deployed reads it - the worker ships as the bundled public/_worker.js. Kill any leftover workerd.exe / esbuild.exe first, or Windows refuses to unlink the binaries."
+      }
+    ]
+  }
+}
