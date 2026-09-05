@@ -7,6 +7,10 @@ Serverless, low-cost telemetry counter for projects, docs, and deploy workflows.
 [![Cloudflare Pages](https://img.shields.io/badge/Cloudflare-Pages-F38020?logo=cloudflare&logoColor=white)](https://pages.cloudflare.com/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE.md)
 
+> **Previously called CFlair-Counter.** Same project, same API, same public URL
+> (`https://counter.vkrishna04.me`) - only the name changed. Existing badges and
+> integrations keep working unchanged.
+
 ## Why This Exists (STAR)
 
 ### Situation
@@ -146,7 +150,10 @@ npm run test:newman:ci
 - `INTEGRATION.md` - integration checklist and automation flow.
 - `docs/AI-AGENT-QUICKSTART.md` - give this to coding agents.
 - `docs/DEVELOPMENT-GUIDE.md` - development details.
-- `docs/DEPLOYMENT.md` - deployment and environment setup.
+- `docs/CLOUDFLARE-SETUP.md` - deployment, bindings, custom domain, and the
+  CFlair-Counter -> ViewFlare Pages migration steps.
+- `docs/postman-guide.md` - Postman/Newman collection usage.
+- `docs/BRAND-PROMPTS.md` - image-generation prompts for the logo and banner.
 
 ## Security Notes
 

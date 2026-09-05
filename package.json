@@ -4,7 +4,7 @@
 	"description": "Ultra-lightweight serverless telemetry system for headless project tracking. Optimized for minimal Cloudflare costs.",
 	"main": "functions/index.ts",
 	"scripts": {
-		"dev": "npm run build:worker && wrangler pages dev public --compatibility-date=2024-03-20",
+		"dev": "npm run build:worker && wrangler pages dev public --compatibility-date=2025-11-05",
 		"deploy": "npm run build && wrangler pages deploy public --project-name=viewflare",
 		"build": "npm run build:worker && tsc",
 		"build:worker": "esbuild functions/index.ts --bundle --format=esm --outfile=public/_worker.js --platform=neutral --conditions=worker --minify",

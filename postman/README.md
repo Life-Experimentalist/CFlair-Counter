@@ -1,11 +1,11 @@
-CFlairCounter Postman collection
+ViewFlare Postman collection
 
 Usage notes:
-- The Postman environment `CFlairCounter.postman_environment.json` contains placeholders for `base_url`, `project`, and `admin_password`.
+- The Postman environment `ViewFlare.postman_environment.json` contains placeholders for `base_url`, `project`, and `admin_password`.
 - For security, `admin_password` is intentionally left empty in the committed environment. Set it locally in Postman or supply it as an environment variable in CI (see `.github/workflows/newman.yml`).
 - To run tests locally:
-  1. Import the collection `postman/CFlairCounter.postman_collection.json` into Postman.
-  2. Import the environment `postman/CFlairCounter.postman_environment.json` and set `admin_password` to your admin secret.
+  1. Import the collection `postman/ViewFlare.postman_collection.json` into Postman.
+  2. Import the environment `postman/ViewFlare.postman_environment.json` and set `admin_password` to your admin secret.
   3. Run `npm ci` then `npm run test:newman` to execute the collection tests.
 
 CI notes:

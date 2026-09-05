@@ -1,8 +1,8 @@
 {
     "info": {
-        "name": "CFlairCounter API",
+        "name": "ViewFlare API",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-        "description": "Postman collection to test CFlairCounter endpoints (views, badge, stats, admin)."
+        "description": "Postman collection to test ViewFlare endpoints (views, badge, stats, admin)."
     },
     "event": [
         {
@@ -186,7 +186,7 @@
     "variable": [
         {
             "key": "base_url",
-            "value": "https://6c7ce11c.cflaircounter.pages.dev"
+            "value": "https://counter.vkrishna04.me"
         },
         {
             "key": "project",

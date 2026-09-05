@@ -1,9 +1,13 @@
 # This project uses Cloudflare Pages Advanced Mode with a bundled worker.
 # The entry point 'public/_worker.js' is auto-generated via 'npm run build:worker'.
 
-name = "cflaircounter"
+name = "viewflare"
 main = "_worker.js"
-compatibility_date = "2024-03-20"
+# Newest date the pinned toolchain supports (wrangler 4.46.0 bundles workerd
+# 1.20251105.0). A later date makes `wrangler pages dev` fail with
+# "Compatibility date ... is in the future and unsupported". Bump wrangler first,
+# then this, then package.json's `dev` script, which passes it on the CLI.
+compatibility_date = "2025-11-05"
 
 # Environment variables for production
 [env.production.vars]
@@ -27,6 +31,13 @@ local_protocol = "http"
 
 # Bindings for D1, R2, KV, etc.
 # Docs: https://developers.cloudflare.com/workers/wrangler/configuration/#bindings
+# NOTE: `database_name` below is deliberately still "cflaircounter-db".
+# D1 has no rename operation, and this is the name of the live database that
+# already holds every recorded view count. Renaming it here would point wrangler
+# at a database that does not exist. The *binding* is `DB` (that is what the code
+# reads) and it is unaffected by the project rename. See docs/CLOUDFLARE-SETUP.md
+# "Migrating the Pages project from cflaircounter to viewflare".
+# A fresh deployment may use any database name; put it here.
 [[d1_databases]]
 binding = "DB"
 database_name = "cflaircounter-db"

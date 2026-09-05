@@ -37,10 +37,10 @@ Runs Newman automated Postman tests to verify view counters, badge configuration
 
 ## 📁 Key File Structure
 
-- [functions/index.ts](file:///V:/Code/ProjectCode/CFlair-Counter/functions/index.ts) - Complete worker backend using the Hono framework.
-- [public/index.html](file:///V:/Code/ProjectCode/CFlair-Counter/public/index.html) - Premium landing page and admin panel.
-- [schema.sql](file:///V:/Code/ProjectCode/CFlair-Counter/schema.sql) - D1 Database table structure.
-- [wrangler.toml](file:///V:/Code/ProjectCode/CFlair-Counter/wrangler.toml) - Cloudflare configuration file.
+- [functions/index.ts](../functions/index.ts) - Complete worker backend using the Hono framework.
+- [public/index.html](../public/index.html) - Premium landing page and admin panel.
+- [schema.sql](../schema.sql) - D1 Database table structure.
+- [wrangler.toml](../wrangler.toml) - Cloudflare configuration file.
 
 ---
 

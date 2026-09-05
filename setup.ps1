@@ -1,9 +1,9 @@
 #!/usr/bin/env pwsh
-# CFlair-Counter One-Click Setup Script
+# ViewFlare One-Click Setup Script
 # This script automates the entire setup process for Cloudflare Pages deployment
 
 param(
-	[string]$ProjectName = "cflaircounter",
+	[string]$ProjectName = "viewflare",
 	[string]$AdminPassword = $(Read-Host -Prompt "Admin Password for Dashboard"),
 	[switch]$SkipAdminPassword = $false,
 	[switch]$SkipDatabase = $false,
@@ -16,12 +16,12 @@ $ErrorActionPreference = "Stop"
 # Display help
 if ($Help) {
 	Write-Host @"
-CFlair-Counter One-Click Setup Script
+ViewFlare One-Click Setup Script
 
 Usage: .\setup.ps1 [options]
 
 Options:
-    -ProjectName <name>     Cloudflare Pages project name (default: cflaircounter)
+    -ProjectName <name>     Cloudflare Pages project name (default: viewflare)
     -AdminPassword <pass>   Admin password for dashboard (will prompt if not provided)
     -SkipDatabase          Skip D1 database creation (if already exists)
     -SkipDeploy            Skip deployment step
@@ -36,7 +36,7 @@ Examples:
 }
 
 Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
-Write-Host "   CFlair-Counter Setup Wizard" -ForegroundColor Cyan
+Write-Host "   ViewFlare Setup Wizard" -ForegroundColor Cyan
 Write-Host "   Set-it-and-forget-it deployment" -ForegroundColor Cyan
 Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
 Write-Host ""

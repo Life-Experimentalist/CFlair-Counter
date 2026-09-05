@@ -27,7 +27,7 @@
 		"Serves the live view counters on several of the other projects listed here."
 	],
 	"links": {
-		"repo": "https://github.com/Life-Experimentalist/CFlair-Counter",
+		"repo": "https://github.com/Life-Experimentalist/ViewFlare",
 		"live": "https://counter.vkrishna04.me"
 	},
 	"readme": true
