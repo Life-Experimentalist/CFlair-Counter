@@ -13,6 +13,7 @@ type Bindings = {
 	MAX_PROJECTS?: string;
 	RATE_LIMIT_REQUESTS?: string;
 	RATE_LIMIT_WINDOW?: string;
+	INSTALL_CACHE_TTL?: string;
 	DEBUG?: string;
 };
 
@@ -215,6 +216,38 @@ const initDatabase = async (db: D1Database) => {
 		await db.prepare(
 			"CREATE INDEX IF NOT EXISTS idx_event_cat ON event_logs(event_category, created_at)"
 		).run()
+
+		// Which registries a project publishes to. A project with no rows here
+		// has no install sources and behaves exactly as it did before.
+		await db
+			.prepare(
+				`
+			CREATE TABLE IF NOT EXISTS install_sources (
+				project_name TEXT NOT NULL,
+				source TEXT NOT NULL,   -- vscode | openvsx | pypi | github | npm
+				config TEXT NOT NULL,   -- the identifier that source is looked up by
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				PRIMARY KEY(project_name, source)
+			)
+		`,
+			)
+			.run();
+
+		// One cached count per source, so a single dead upstream cannot take the
+		// whole aggregate response down.
+		await db
+			.prepare(
+				`
+			CREATE TABLE IF NOT EXISTS install_cache (
+				project_name TEXT NOT NULL,
+				source TEXT NOT NULL,
+				count INTEGER,
+				fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				PRIMARY KEY(project_name, source)
+			)
+		`,
+			)
+			.run();
 	} catch (error) {
 		console.error("Database initialization error:", error);
 	}
@@ -479,6 +512,354 @@ const verdanaWidth = (s: string): number => {
 	let w = 0;
 	for (const c of s) w += VERDANA_11[c] ?? 7;
 	return w;
+};
+
+// ---------------------------------------------------------------------------
+// Install / download count aggregation
+//
+// Every number returned below comes from a live upstream API response. Nothing
+// is estimated, and a stale cached value is never presented as a fresh one - it
+// comes back with `stale: true` and its original fetchedAt.
+// ---------------------------------------------------------------------------
+
+// 6 hours. Override with the INSTALL_CACHE_TTL binding (seconds).
+const DEFAULT_INSTALL_CACHE_TTL = 21600;
+
+type InstallSourceId = "vscode" | "openvsx" | "pypi" | "github" | "npm";
+
+const INSTALL_SOURCES: InstallSourceId[] = [
+	"vscode",
+	"openvsx",
+	"pypi",
+	"github",
+	"npm",
+];
+
+// `window: "all-time"` sources report a cumulative lifetime figure.
+// `window: "last_month"` sources only publish a rolling window - PyPI and npm
+// expose nothing else - so a total that mixes the two is flagged with
+// `mixedWindows` rather than passed off as one comparable number.
+const INSTALL_SOURCE_META: Record<
+	InstallSourceId,
+	{ label: string; window: string; measures: string }
+> = {
+	vscode: {
+		label: "VS Code Marketplace",
+		window: "all-time",
+		measures: "installs",
+	},
+	openvsx: { label: "Open VSX", window: "all-time", measures: "downloads" },
+	pypi: { label: "PyPI", window: "last_month", measures: "downloads" },
+	github: {
+		label: "GitHub releases",
+		window: "all-time",
+		measures: "release asset downloads",
+	},
+	npm: { label: "npm", window: "last_month", measures: "downloads" },
+};
+
+const isInstallSource = (value: string): value is InstallSourceId =>
+	(INSTALL_SOURCES as string[]).includes(value);
+
+const installFetchInit = (
+	extraHeaders?: Record<string, string>,
+): RequestInit => ({
+	// GitHub rejects requests with no User-Agent; the others tolerate one.
+	headers: {
+		"User-Agent": "ViewFlare/1.0 (+https://counter.vkrishna04.me)",
+		...(extraHeaders || {}),
+	},
+	signal: AbortSignal.timeout(8000),
+});
+
+// Each fetcher returns a real number read out of the upstream payload, or throws.
+
+const fetchVscodeInstalls = async (id: string): Promise<number> => {
+	const response = await fetch(
+		"https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery",
+		{
+			...installFetchInit({
+				Accept: "application/json;api-version=3.0-preview.1",
+				"Content-Type": "application/json",
+			}),
+			method: "POST",
+			body: JSON.stringify({
+				filters: [
+					{
+						criteria: [{ filterType: 7, value: id }],
+						pageNumber: 1,
+						pageSize: 1,
+					},
+				],
+				flags: 914,
+			}),
+		},
+	);
+	if (!response.ok) throw new Error(`Marketplace HTTP ${response.status}`);
+	const data: any = await response.json();
+	const extension = data?.results?.[0]?.extensions?.[0];
+	if (!extension) {
+		throw new Error(`extension "${id}" not found on the Marketplace`);
+	}
+	const stat = (extension.statistics || []).find(
+		(entry: any) => entry.statisticName === "install",
+	);
+	if (!stat || typeof stat.value !== "number") {
+		throw new Error("no install statistic in Marketplace response");
+	}
+	return Math.round(stat.value);
+};
+
+const fetchOpenVsxDownloads = async (id: string): Promise<number> => {
+	const [namespace, name] = id.split("/");
+	if (!namespace || !name) {
+		throw new Error('Open VSX id must be "namespace/extension"');
+	}
+	const response = await fetch(
+		`https://open-vsx.org/api/${encodeURIComponent(
+			namespace,
+		)}/${encodeURIComponent(name)}`,
+		installFetchInit({ Accept: "application/json" }),
+	);
+	if (!response.ok) throw new Error(`Open VSX HTTP ${response.status}`);
+	const data: any = await response.json();
+	if (typeof data?.downloadCount !== "number") {
+		throw new Error("no downloadCount in Open VSX response");
+	}
+	return data.downloadCount;
+};
+
+const fetchPypiDownloads = async (id: string): Promise<number> => {
+	// The PyPI JSON API still reports downloads as -1 ("not available"), so
+	// pypistats is the only place a real figure comes from. It publishes rolling
+	// windows only; last_month is the one reported here.
+	const response = await fetch(
+		`https://pypistats.org/api/packages/${encodeURIComponent(id)}/recent`,
+		installFetchInit({ Accept: "application/json" }),
+	);
+	if (!response.ok) throw new Error(`pypistats HTTP ${response.status}`);
+	const data: any = await response.json();
+	const count = data?.data?.last_month;
+	if (typeof count !== "number" || count < 0) {
+		throw new Error("no last_month figure in pypistats response");
+	}
+	return count;
+};
+
+const fetchGithubReleaseDownloads = async (id: string): Promise<number> => {
+	// Unauthenticated GitHub allows 60 requests/hour per egress IP, and Workers
+	// share IPs - the cache in front of this is what keeps it usable.
+	let total = 0;
+	for (let page = 1; page <= 3; page++) {
+		const response = await fetch(
+			`https://api.github.com/repos/${id}/releases?per_page=100&page=${page}`,
+			installFetchInit({ Accept: "application/vnd.github+json" }),
+		);
+		if (!response.ok) throw new Error(`GitHub HTTP ${response.status}`);
+		const releases: any = await response.json();
+		if (!Array.isArray(releases)) {
+			throw new Error("unexpected GitHub releases response");
+		}
+		for (const release of releases) {
+			for (const asset of release.assets || []) {
+				total += Number(asset.download_count) || 0;
+			}
+		}
+		if (releases.length < 100) break;
+	}
+	return total;
+};
+
+const fetchNpmDownloads = async (id: string): Promise<number> => {
+	const response = await fetch(
+		`https://api.npmjs.org/downloads/point/last-month/${id}`,
+		installFetchInit({ Accept: "application/json" }),
+	);
+	if (!response.ok) throw new Error(`npm HTTP ${response.status}`);
+	const data: any = await response.json();
+	if (typeof data?.downloads !== "number") {
+		throw new Error("no downloads figure in npm response");
+	}
+	return data.downloads;
+};
+
+const fetchInstallCount = async (
+	source: InstallSourceId,
+	id: string,
+): Promise<number> => {
+	switch (source) {
+		case "vscode":
+			return fetchVscodeInstalls(id);
+		case "openvsx":
+			return fetchOpenVsxDownloads(id);
+		case "pypi":
+			return fetchPypiDownloads(id);
+		case "github":
+			return fetchGithubReleaseDownloads(id);
+		case "npm":
+			return fetchNpmDownloads(id);
+	}
+};
+
+type InstallSourceResult = {
+	source: InstallSourceId;
+	label: string;
+	id: string;
+	measures: string;
+	window: string;
+	count: number | null;
+	fetchedAt: string | null;
+	stale: boolean;
+	ok: boolean;
+	error?: string;
+};
+
+// D1's CURRENT_TIMESTAMP is "YYYY-MM-DD HH:MM:SS" in UTC.
+const parseSqlTimestamp = (value: unknown): number => {
+	if (!value) return NaN;
+	return Date.parse(`${String(value).replace(" ", "T")}Z`);
+};
+
+const collectInstallCounts = async (
+	env: Bindings,
+	projectName: string,
+): Promise<{ configured: number; results: InstallSourceResult[] }> => {
+	const configuredRows = await env.DB.prepare(
+		"SELECT source, config FROM install_sources WHERE project_name = ? ORDER BY source",
+	)
+		.bind(projectName)
+		.all();
+
+	const rows = (configuredRows.results || []) as any[];
+	if (rows.length === 0) return { configured: 0, results: [] };
+
+	const cachedRows = await env.DB.prepare(
+		"SELECT source, count, fetched_at FROM install_cache WHERE project_name = ?",
+	)
+		.bind(projectName)
+		.all();
+	const cacheBySource = new Map<string, any>();
+	for (const row of (cachedRows.results || []) as any[]) {
+		cacheBySource.set(String(row.source), row);
+	}
+
+	const ttlSeconds = Math.max(
+		60,
+		parseInt(env.INSTALL_CACHE_TTL || "", 10) || DEFAULT_INSTALL_CACHE_TTL,
+	);
+	const now = Date.now();
+
+	// One dead upstream must not take the whole response down, so every source
+	// is fetched independently and failures are reported per source.
+	const settled = await Promise.allSettled(
+		rows.map(async (row): Promise<InstallSourceResult> => {
+			const source = String(row.source) as InstallSourceId;
+			const meta = INSTALL_SOURCE_META[source];
+			const id = String(row.config);
+			const base = {
+				source,
+				label: meta.label,
+				id,
+				measures: meta.measures,
+				window: meta.window,
+			};
+
+			const cacheRow = cacheBySource.get(source);
+			const cachedAt = parseSqlTimestamp(cacheRow?.fetched_at);
+			const hasCache =
+				cacheRow != null &&
+				cacheRow.count !== null &&
+				Number.isFinite(cachedAt);
+
+			if (hasCache && now - cachedAt < ttlSeconds * 1000) {
+				return {
+					...base,
+					count: Number(cacheRow.count),
+					fetchedAt: new Date(cachedAt).toISOString(),
+					stale: false,
+					ok: true,
+				};
+			}
+
+			try {
+				const count = await fetchInstallCount(source, id);
+				const fetchedAt = new Date().toISOString();
+				await env.DB.prepare(
+					`
+					INSERT INTO install_cache (project_name, source, count, fetched_at)
+					VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+					ON CONFLICT(project_name, source) DO UPDATE SET
+						count = excluded.count,
+						fetched_at = CURRENT_TIMESTAMP
+					`,
+				)
+					.bind(projectName, source, count)
+					.run();
+				return { ...base, count, fetchedAt, stale: false, ok: true };
+			} catch (error) {
+				const message =
+					error instanceof Error ? error.message : "upstream request failed";
+				// An expired cache entry is better than nothing, but it is labelled.
+				if (hasCache) {
+					return {
+						...base,
+						count: Number(cacheRow.count),
+						fetchedAt: new Date(cachedAt).toISOString(),
+						stale: true,
+						ok: true,
+						error: message,
+					};
+				}
+				return {
+					...base,
+					count: null,
+					fetchedAt: null,
+					stale: false,
+					ok: false,
+					error: message,
+				};
+			}
+		}),
+	);
+
+	const results = settled.map((outcome, index) => {
+		if (outcome.status === "fulfilled") return outcome.value;
+		const source = String(rows[index].source) as InstallSourceId;
+		const meta = INSTALL_SOURCE_META[source];
+		return {
+			source,
+			label: meta.label,
+			id: String(rows[index].config),
+			measures: meta.measures,
+			window: meta.window,
+			count: null,
+			fetchedAt: null,
+			stale: false,
+			ok: false,
+			error: "source handler failed",
+		} as InstallSourceResult;
+	});
+
+	return { configured: rows.length, results };
+};
+
+const summariseInstalls = (results: InstallSourceResult[]) => {
+	const answered = results.filter(
+		(result) => result.ok && typeof result.count === "number",
+	);
+	// Nothing answered and nothing was cached: report null, never 0.
+	const total =
+		answered.length > 0
+			? answered.reduce((sum, result) => sum + (result.count as number), 0)
+			: null;
+	const windows = new Set(answered.map((result) => result.window));
+	return {
+		total,
+		answered: answered.length,
+		mixedWindows: windows.size > 1,
+		// A total drawn from more than one registry must say so on the badge.
+		multiRegistry: answered.length > 1,
+	};
 };
 
 // Generate SVG badge for project views
@@ -1152,6 +1533,192 @@ app.put("/api/admin/projects/:projectName", async (c) => {
 	} catch (error) {
 		console.error("Update project error:", error);
 		return c.json({ success: false, error: "Failed to update project" }, 500);
+	}
+});
+
+// Aggregate install / download counts for a project.
+// Partial failure is a normal outcome here, not an error: whatever answered is
+// returned with a coverage figure, and the sources that did not are marked.
+app.get("/api/installs/:projectName", customRateLimiter, async (c) => {
+	const projectName = c.req.param("projectName");
+	if (!projectName || projectName.length > 100) {
+		return c.json({ success: false, error: "Invalid project name" }, 400);
+	}
+
+	await initDatabase(c.env.DB);
+
+	try {
+		const { configured, results } = await collectInstallCounts(
+			c.env,
+			projectName,
+		);
+
+		// A project with no sources configured behaves exactly as it did before.
+		if (configured === 0) {
+			return c.json(
+				{
+					success: false,
+					error: "No install sources configured for this project",
+					project: projectName,
+					sourcesConfigured: 0,
+					sources: [],
+				},
+				404,
+			);
+		}
+
+		const summary = summariseInstalls(results);
+
+		c.header("Cache-Control", "public, max-age=300");
+		return c.json({
+			success: true,
+			project: projectName,
+			total: summary.total,
+			totalLabel: summary.multiRegistry ? "installs (all registries)" : "installs",
+			// True when a cumulative all-time count is being added to a rolling
+			// window figure. The total is still returned, but it is not one
+			// comparable number and callers are told so.
+			mixedWindows: summary.mixedWindows,
+			coverage: `${summary.answered} of ${configured} sources`,
+			sourcesConfigured: configured,
+			sourcesAnswered: summary.answered,
+			complete: summary.answered === configured,
+			sources: results,
+			timestamp: new Date().toISOString(),
+		});
+	} catch (error) {
+		console.error("Install aggregation error:", error);
+		return c.json(
+			{ success: false, error: "Failed to aggregate install counts" },
+			500,
+		);
+	}
+});
+
+// Admin: configure which registries a project is published on.
+// Body: { password, sources: { vscode: "publisher.ext", npm: null, ... } }
+// A null or empty value removes that source.
+app.put("/api/admin/installs/:projectName", async (c) => {
+	const projectName = c.req.param("projectName");
+	if (!projectName || projectName.length > 100) {
+		return c.json({ success: false, error: "Invalid project name" }, 400);
+	}
+
+	try {
+		const body = await c.req.json();
+
+		let password = body.password;
+		if (!password) {
+			const authHeader = c.req.header("Authorization");
+			const headerPassword = c.req.header("X-Admin-Password");
+			if (authHeader && authHeader.startsWith("Bearer ")) {
+				password = authHeader.substring(7);
+			} else if (headerPassword) {
+				password = headerPassword;
+			}
+		}
+
+		const adminPassword = c.env.ADMIN_PASSWORD;
+		const enableAdmin = c.env.ENABLE_ADMIN !== "false";
+
+		if (!enableAdmin) {
+			return c.json(
+				{ success: false, error: "Admin functionality is disabled" },
+				403,
+			);
+		}
+		if (!password || password !== adminPassword) {
+			return c.json(
+				{ success: false, error: "Unauthorized - Invalid admin password" },
+				401,
+			);
+		}
+
+		const sources = body.sources;
+		if (!sources || typeof sources !== "object" || Array.isArray(sources)) {
+			return c.json(
+				{ success: false, error: "sources must be an object" },
+				400,
+			);
+		}
+
+		for (const [source, value] of Object.entries(sources)) {
+			if (!isInstallSource(source)) {
+				return c.json(
+					{
+						success: false,
+						error: `Unknown source "${source}". Supported: ${INSTALL_SOURCES.join(", ")}`,
+					},
+					400,
+				);
+			}
+			if (value === null || value === "") continue;
+			if (typeof value !== "string" || !/^[A-Za-z0-9._/@-]{1,200}$/.test(value)) {
+				return c.json(
+					{ success: false, error: `Invalid identifier for source "${source}"` },
+					400,
+				);
+			}
+		}
+
+		await initDatabase(c.env.DB);
+
+		for (const [source, value] of Object.entries(sources)) {
+			if (value === null || value === "") {
+				await c.env.DB.prepare(
+					"DELETE FROM install_sources WHERE project_name = ? AND source = ?",
+				)
+					.bind(projectName, source)
+					.run();
+				await c.env.DB.prepare(
+					"DELETE FROM install_cache WHERE project_name = ? AND source = ?",
+				)
+					.bind(projectName, source)
+					.run();
+				continue;
+			}
+			const existing = await c.env.DB.prepare(
+				"SELECT config FROM install_sources WHERE project_name = ? AND source = ?",
+			)
+				.bind(projectName, source)
+				.first();
+
+			await c.env.DB.prepare(
+				`
+				INSERT INTO install_sources (project_name, source, config)
+				VALUES (?, ?, ?)
+				ON CONFLICT(project_name, source) DO UPDATE SET config = excluded.config
+				`,
+			)
+				.bind(projectName, source, value)
+				.run();
+
+			// Pointing at a different package means any cached count for this
+			// source is now a count of something else. Drop it.
+			if (existing && String(existing.config) !== value) {
+				await c.env.DB.prepare(
+					"DELETE FROM install_cache WHERE project_name = ? AND source = ?",
+				)
+					.bind(projectName, source)
+					.run();
+			}
+		}
+
+		const current = await c.env.DB.prepare(
+			"SELECT source, config FROM install_sources WHERE project_name = ? ORDER BY source",
+		)
+			.bind(projectName)
+			.all();
+
+		return c.json({
+			success: true,
+			project: projectName,
+			sources: current.results,
+			timestamp: new Date().toISOString(),
+		});
+	} catch (error) {
+		console.error("Install source config error:", error);
+		return c.json({ success: false, error: "Invalid request" }, 400);
 	}
 });
 

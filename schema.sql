@@ -29,3 +29,23 @@ CREATE TABLE IF NOT EXISTS usage_stats (
     rows_written INTEGER DEFAULT 0,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+-- Which registries a project publishes to, for GET /api/installs/{project}.
+-- A project with no rows here has no install sources configured and the
+-- existing view-counting behaviour is unchanged.
+CREATE TABLE IF NOT EXISTS install_sources (
+    project_name TEXT NOT NULL,
+    source TEXT NOT NULL,   -- vscode | openvsx | pypi | github | npm
+    config TEXT NOT NULL,   -- the identifier that source is looked up by
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(project_name, source)
+);
+
+-- One cached count per source, refreshed on a TTL (INSTALL_CACHE_TTL, default
+-- 6h) so a single dead upstream cannot take the whole aggregate response down.
+CREATE TABLE IF NOT EXISTS install_cache (
+    project_name TEXT NOT NULL,
+    source TEXT NOT NULL,
+    count INTEGER,
+    fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(project_name, source)
+);
