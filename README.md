@@ -1,3 +1,10 @@
+<!-- TODO(brand): the header is text-only until the brand art exists. Once
+     docs/public/logo.png and docs/public/banner.png are in place, put the
+     banner here:
+       <p align="center"><img src="docs/public/banner.png" alt="ViewFlare" width="640"></p>
+     The prompts that produce them are in docs/BRAND-PROMPTS.md. Do not commit
+     the <img> before the files exist - it renders as a broken image on GitHub. -->
+
 # ViewFlare
 
 Serverless, low-cost telemetry counter for projects, docs, and deploy workflows. Built for Cloudflare Pages + D1 with a lightweight Hono API and SVG badge support.
