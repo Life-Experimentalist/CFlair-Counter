@@ -109,7 +109,7 @@ a 500**:
   "success": true,
   "project": "RanobeGemini",
   "total": 651744386,
-  "totalLabel": "installs (all registries)",
+  "totalLabel": "installs (4 of 5 registries, mixed windows)",
   "mixedWindows": true,
   "coverage": "4 of 5 sources",
   "sourcesConfigured": 5,
@@ -146,9 +146,13 @@ a 500**:
 - **`total`** is the sum of the sources that answered - the four with
   `ok: true`, not all five. `coverage` says so explicitly. `total` is `null`
   (never `0`) when nothing answered and nothing was cached.
-- **`totalLabel`** is `"installs (all registries)"` whenever more than one source
-  contributed, so a single headline number is never presented as if it came from
-  one place.
+- **`totalLabel`** is the one-line honest description of what `total` covers, and
+  it is the same string the badge and `shields.json` use. It reads
+  `"installs (all registries)"` only when every configured source answered,
+  `"installs (N of M registries)"` when some did not, and appends
+  `", mixed windows"` when an all-time count and a rolling window were added
+  together. A single headline number is never presented as if it came from one
+  place.
 - **`mixedWindows: true`** means an all-time count is being added to a rolling
   last-month figure. The total is still returned, but it is not one comparable
   number.
@@ -170,9 +174,100 @@ Caching is not optional politeness here: unauthenticated GitHub allows 60
 requests/hour per egress IP and Workers share IPs, and pypistats rate-limits
 aggressively (the `429` in the example above is real, not contrived).
 
+## Goal 4: Install badges
+
+Two badge-shaped views of the same aggregate. Both call the same resolver as
+`GET /api/installs/{project}`, so the SVG, the shields.io JSON and the raw
+endpoint can never disagree about the number or about what it covers.
+
+### `GET /api/installs/{project}/badge`
+
+An SVG badge served directly by ViewFlare - no shields.io round-trip.
+
+```markdown
+![installs](https://counter.vkrishna04.me/api/installs/MyProject/badge)
+```
+
+Query options, identical to the existing view badge:
+
+| Parameter | Values | Default |
+|---|---|---|
+| `style` | `flat`, `flat-square`, `for-the-badge` | `flat` |
+| `color` | a shields colour name (`blue`, `brightgreen`, `orange`, `red`, `lightgrey`, ...) or a hex value written `%23ff0000` | `blue`, or `lightgrey` when there is no number to show |
+| `label` | your own left-hand text, truncated to 40 characters | the coverage label below |
+
+```markdown
+![installs](https://counter.vkrishna04.me/api/installs/MyProject/badge?style=for-the-badge&color=orange)
+```
+
+### `GET /api/installs/{project}/shields.json`
+
+The same figure in
+[shields.io endpoint format](https://shields.io/badges/endpoint-badge), for
+anyone who would rather keep rendering their badges at shields.io. The `url`
+parameter must be URL-encoded:
+
+```markdown
+![installs](https://img.shields.io/endpoint?url=https%3A%2F%2Fcounter.vkrishna04.me%2Fapi%2Finstalls%2FMyProject%2Fshields.json)
+```
+
+Real response, captured from this worker running locally on 2026-09-05:
+
+```json
+{
+  "schemaVersion": 1,
+  "label": "installs (2 of 3 registries, mixed windows)",
+  "message": "359.1M",
+  "color": "blue",
+  "isError": false,
+  "cacheSeconds": 900
+}
+```
+
+It accepts the same `color` and `label` overrides as the SVG route. `style` does
+not apply - shields.io renders the badge, so pass `&style=` to shields.io itself.
+
+### What the label is telling you
+
+The badge shows one number, so the label has to carry the caveats. There are
+five states:
+
+| Label | Meaning |
+|---|---|
+| `installs` | exactly one source is configured and it answered |
+| `installs (all registries)` | every configured source answered and the total covers all of them |
+| `installs (N of M registries)` | only N of the M configured sources answered; the total covers those N |
+| `..., mixed windows` | appended when an all-time count and a rolling last-month figure were added together - the total is real but it is not one comparable number |
+| `installs: unavailable` | nothing answered and nothing was cached. `isError: true`, colour `lightgrey`. No number is invented |
+| `installs: not configured` | the project has no install sources. `isError: true` |
+
+Passing your own `label=` replaces all of that, including the coverage caveat.
+That is your README, so it is allowed - but the honest description then becomes
+your responsibility. The exact figure, the per-source breakdown, `fetchedAt` and
+any `stale: true` flags always live at `GET /api/installs/{project}`.
+
+### `Cache-Control` on the badge routes
+
+GitHub proxies README images through camo, which refetches them constantly, so
+both routes are cacheable. The TTL reflects how confident the answer is:
+
+| Situation | `Cache-Control` |
+|---|---|
+| every source answered live | `public, max-age=3600, stale-while-revalidate=86400` |
+| partial coverage, or any source served stale | `public, max-age=900, stale-while-revalidate=86400` |
+| unavailable / not configured | `public, max-age=300, stale-while-revalidate=86400` |
+
+The **view** badge (`/api/views/{project}/badge`) deliberately stays
+`no-cache, no-store, must-revalidate, max-age=0`. It is a live counter that can
+increment on the same request; caching it would show visitors a stale count.
+Install counts move slowly and come from rate-limited upstreams, so the opposite
+choice is the right one there.
+
 **Agent Checklist:**
 - Keep your integration minimal.
 - Never let tracking failures crash the user's application (always catch errors).
 - Notify the user once the integration is complete and verify the badge appears properly.
 - Never present an install count as live if its source came back `stale: true`,
   and never quote `total` without `coverage` when `complete` is `false`.
+- Do not pass a custom `label=` to an install badge unless the user asked for
+  one - the default label is what states the coverage.

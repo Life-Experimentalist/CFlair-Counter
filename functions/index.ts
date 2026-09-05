@@ -857,9 +857,166 @@ const summariseInstalls = (results: InstallSourceResult[]) => {
 		total,
 		answered: answered.length,
 		mixedWindows: windows.size > 1,
-		// A total drawn from more than one registry must say so on the badge.
-		multiRegistry: answered.length > 1,
 	};
+};
+
+// One label builder for every surface, so the JSON endpoint, the SVG badge and
+// shields.json can never disagree about how much the total actually covers. It
+// never claims "all registries" while a source is missing, and it says so when
+// an all-time count and a rolling window have been added together.
+const buildInstallLabel = (
+	configured: number,
+	summary: { answered: number; mixedWindows: boolean },
+): string => {
+	const parts: string[] = [];
+	if (summary.answered < configured) {
+		parts.push(`${summary.answered} of ${configured} registries`);
+	} else if (summary.answered > 1) {
+		parts.push("all registries");
+	}
+	if (summary.mixedWindows) parts.push("mixed windows");
+	return parts.length > 0 ? `installs (${parts.join(", ")})` : "installs";
+};
+
+// Shields.io-compatible colour names, shared by every badge route.
+const BADGE_COLORS: Record<string, string> = {
+	blue: "#007ec6",
+	brightgreen: "#44cc11",
+	green: "#97ca00",
+	yellowgreen: "#a4a61d",
+	yellow: "#dfb317",
+	orange: "#fe7d37",
+	red: "#e05d44",
+	lightgrey: "#9f9f9f",
+	success: "#44cc11",
+	important: "#fe7d37",
+	critical: "#e05d44",
+	informational: "#007ec6",
+	inactive: "#9f9f9f",
+};
+
+const BADGE_DEFAULT_COLOR = "#007ec6"; // BADGE_COLORS.blue
+
+const resolveBadgeColor = (rawColor: string): string =>
+	BADGE_COLORS[rawColor] ||
+	normalizeBadgeColor(rawColor) ||
+	BADGE_DEFAULT_COLOR;
+
+const BADGE_STYLES = ["flat", "flat-square", "for-the-badge"];
+
+// Renders the badge SVG. Extracted verbatim from the views badge route so the
+// installs badge is pixel-identical to it; the views badge output is unchanged.
+const renderBadgeSvg = (
+	rawLabel: string,
+	valueTextRaw: string,
+	badgeColor: string,
+	style: string,
+): string => {
+	const safeLabel = escapeXml(rawLabel);
+	const safeValueText = escapeXml(valueTextRaw);
+
+	// Calculate widths dynamically
+	const labelWidth = Math.max(verdanaWidth(rawLabel) + 12, 40);
+	const valueWidth = Math.max(verdanaWidth(valueTextRaw) + 12, 30);
+	const totalWidth = labelWidth + valueWidth;
+
+	let svg = "";
+
+	if (style === "flat") {
+		// Modern flat style (shields.io default)
+		svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${totalWidth}" height="20" role="img" aria-label="${safeLabel}: ${safeValueText}">
+	<title>${safeLabel}: ${safeValueText}</title>
+	<linearGradient id="s" x2="0" y2="100%">
+		<stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
+		<stop offset="1" stop-opacity=".1"/>
+	</linearGradient>
+	<clipPath id="r">
+		<rect width="${totalWidth}" height="20" rx="3" fill="#fff"/>
+	</clipPath>
+	<g clip-path="url(#r)">
+		<rect width="${labelWidth}" height="20" fill="#555"/>
+		<rect x="${labelWidth}" width="${valueWidth}" height="20" fill="${badgeColor}"/>
+		<rect width="${totalWidth}" height="20" fill="url(#s)"/>
+	</g>
+	<g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="110">
+		<text aria-hidden="true" x="${
+			(labelWidth / 2) * 10
+		}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="${
+			(labelWidth - 10) * 10
+		}">${safeLabel}</text>
+		<text x="${
+			(labelWidth / 2) * 10
+		}" y="140" transform="scale(.1)" fill="#fff" textLength="${
+			(labelWidth - 10) * 10
+		}">${safeLabel}</text>
+		<text aria-hidden="true" x="${
+			(labelWidth + valueWidth / 2) * 10
+		}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="${
+			(valueWidth - 10) * 10
+		}">${safeValueText}</text>
+		<text x="${
+			(labelWidth + valueWidth / 2) * 10
+		}" y="140" transform="scale(.1)" fill="#fff" textLength="${
+			(valueWidth - 10) * 10
+		}">${safeValueText}</text>
+	</g>
+</svg>`;
+	} else if (style === "flat-square") {
+		// Flat square style (no rounded corners)
+		svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${totalWidth}" height="20" role="img" aria-label="${safeLabel}: ${safeValueText}">
+	<title>${safeLabel}: ${safeValueText}</title>
+	<g shape-rendering="crispEdges">
+		<rect width="${labelWidth}" height="20" fill="#555"/>
+		<rect x="${labelWidth}" width="${valueWidth}" height="20" fill="${badgeColor}"/>
+	</g>
+	<g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="110">
+		<text x="${
+			(labelWidth / 2) * 10
+		}" y="140" transform="scale(.1)" fill="#fff" textLength="${
+			(labelWidth - 10) * 10
+		}">${safeLabel}</text>
+		<text x="${
+			(labelWidth + valueWidth / 2) * 10
+		}" y="140" transform="scale(.1)" fill="#fff" textLength="${
+			(valueWidth - 10) * 10
+		}">${safeValueText}</text>
+	</g>
+</svg>`;
+	} else if (style === "for-the-badge") {
+		// Bold style with larger text
+		const boldHeight = 28;
+		svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${totalWidth}" height="${boldHeight}" role="img" aria-label="${safeLabel}: ${safeValueText}">
+	<title>${safeLabel}: ${safeValueText}</title>
+	<g shape-rendering="crispEdges">
+		<rect width="${labelWidth}" height="${boldHeight}" fill="#555"/>
+		<rect x="${labelWidth}" width="${valueWidth}" height="${boldHeight}" fill="${badgeColor}"/>
+	</g>
+	<g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="100" font-weight="bold">
+		<text x="${
+			(labelWidth / 2) * 10
+		}" y="175" transform="scale(.1)" fill="#fff" textLength="${
+			(labelWidth - 10) * 10
+		}">${safeLabel.toUpperCase()}</text>
+		<text x="${
+			(labelWidth + valueWidth / 2) * 10
+		}" y="175" transform="scale(.1)" fill="#fff" textLength="${
+			(valueWidth - 10) * 10
+		}">${safeValueText}</text>
+	</g>
+</svg>`;
+	} else {
+		// Default to flat style
+		svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="20">
+	<rect width="${labelWidth}" height="20" fill="#555"/>
+	<rect x="${labelWidth}" width="${valueWidth}" height="20" fill="${badgeColor}"/>
+	<text x="${labelWidth / 2}" y="14" fill="#fff" font-family="Verdana,sans-serif" font-size="11" text-anchor="middle">${safeLabel}</text>
+	<text x="${
+		labelWidth + valueWidth / 2
+	}" y="14" fill="#fff" font-family="Verdana,sans-serif" font-size="11" text-anchor="middle">${safeValueText}</text>
+</svg>`;
+	}
+
+	return svg;
 };
 
 // Generate SVG badge for project views
@@ -867,9 +1024,7 @@ const summariseInstalls = (results: InstallSourceResult[]) => {
 app.get("/api/views/:projectName/badge", async (c) => {
 	const projectName = c.req.param("projectName");
 	const styleParam = (c.req.query("style") || "flat").toLowerCase(); // flat, flat-square, for-the-badge
-	const style = ["flat", "flat-square", "for-the-badge"].includes(styleParam)
-		? styleParam
-		: "flat";
+	const style = BADGE_STYLES.includes(styleParam) ? styleParam : "flat";
 	const color = (c.req.query("color") || "blue").toLowerCase();
 	const rawLabel = (c.req.query("label") || "views").slice(0, 24);
 
@@ -937,133 +1092,13 @@ app.get("/api/views/:projectName/badge", async (c) => {
 			.first();
 
 		const viewCount = Number(result?.view_count) || 0;
-		const safeLabel = escapeXml(rawLabel);
 		const valueTextRaw =
 			viewCount >= 1000
 				? `${(viewCount / 1000).toFixed(1)}k`
 				: viewCount.toString();
-		const safeValueText = escapeXml(valueTextRaw);
 
-		// Color mapping for better aesthetics
-		const colorMap: Record<string, string> = {
-			blue: "#007ec6",
-			brightgreen: "#44cc11",
-			green: "#97ca00",
-			yellowgreen: "#a4a61d",
-			yellow: "#dfb317",
-			orange: "#fe7d37",
-			red: "#e05d44",
-			lightgrey: "#9f9f9f",
-			success: "#44cc11",
-			important: "#fe7d37",
-			critical: "#e05d44",
-			informational: "#007ec6",
-			inactive: "#9f9f9f",
-		};
-
-		const badgeColor =
-			colorMap[color] || normalizeBadgeColor(color) || colorMap.blue;
-
-		// Calculate widths dynamically
-		const labelWidth = Math.max(verdanaWidth(rawLabel) + 12, 40);
-		const valueWidth = Math.max(verdanaWidth(valueTextRaw) + 12, 30);
-		const totalWidth = labelWidth + valueWidth;
-
-		let svg = "";
-
-		if (style === "flat") {
-			// Modern flat style (shields.io default)
-			svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${totalWidth}" height="20" role="img" aria-label="${safeLabel}: ${safeValueText}">
-	<title>${safeLabel}: ${safeValueText}</title>
-	<linearGradient id="s" x2="0" y2="100%">
-		<stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
-		<stop offset="1" stop-opacity=".1"/>
-	</linearGradient>
-	<clipPath id="r">
-		<rect width="${totalWidth}" height="20" rx="3" fill="#fff"/>
-	</clipPath>
-	<g clip-path="url(#r)">
-		<rect width="${labelWidth}" height="20" fill="#555"/>
-		<rect x="${labelWidth}" width="${valueWidth}" height="20" fill="${badgeColor}"/>
-		<rect width="${totalWidth}" height="20" fill="url(#s)"/>
-	</g>
-	<g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="110">
-		<text aria-hidden="true" x="${
-			(labelWidth / 2) * 10
-		}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="${
-			(labelWidth - 10) * 10
-		}">${safeLabel}</text>
-		<text x="${
-			(labelWidth / 2) * 10
-		}" y="140" transform="scale(.1)" fill="#fff" textLength="${
-			(labelWidth - 10) * 10
-		}">${safeLabel}</text>
-		<text aria-hidden="true" x="${
-			(labelWidth + valueWidth / 2) * 10
-		}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="${
-			(valueWidth - 10) * 10
-		}">${safeValueText}</text>
-		<text x="${
-			(labelWidth + valueWidth / 2) * 10
-		}" y="140" transform="scale(.1)" fill="#fff" textLength="${
-			(valueWidth - 10) * 10
-		}">${safeValueText}</text>
-	</g>
-</svg>`;
-		} else if (style === "flat-square") {
-			// Flat square style (no rounded corners)
-			svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${totalWidth}" height="20" role="img" aria-label="${safeLabel}: ${safeValueText}">
-	<title>${safeLabel}: ${safeValueText}</title>
-	<g shape-rendering="crispEdges">
-		<rect width="${labelWidth}" height="20" fill="#555"/>
-		<rect x="${labelWidth}" width="${valueWidth}" height="20" fill="${badgeColor}"/>
-	</g>
-	<g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="110">
-		<text x="${
-			(labelWidth / 2) * 10
-		}" y="140" transform="scale(.1)" fill="#fff" textLength="${
-			(labelWidth - 10) * 10
-		}">${safeLabel}</text>
-		<text x="${
-			(labelWidth + valueWidth / 2) * 10
-		}" y="140" transform="scale(.1)" fill="#fff" textLength="${
-			(valueWidth - 10) * 10
-		}">${safeValueText}</text>
-	</g>
-</svg>`;
-		} else if (style === "for-the-badge") {
-			// Bold style with larger text
-			const boldHeight = 28;
-			svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${totalWidth}" height="${boldHeight}" role="img" aria-label="${safeLabel}: ${safeValueText}">
-	<title>${safeLabel}: ${safeValueText}</title>
-	<g shape-rendering="crispEdges">
-		<rect width="${labelWidth}" height="${boldHeight}" fill="#555"/>
-		<rect x="${labelWidth}" width="${valueWidth}" height="${boldHeight}" fill="${badgeColor}"/>
-	</g>
-	<g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="100" font-weight="bold">
-		<text x="${
-			(labelWidth / 2) * 10
-		}" y="175" transform="scale(.1)" fill="#fff" textLength="${
-			(labelWidth - 10) * 10
-		}">${safeLabel.toUpperCase()}</text>
-		<text x="${
-			(labelWidth + valueWidth / 2) * 10
-		}" y="175" transform="scale(.1)" fill="#fff" textLength="${
-			(valueWidth - 10) * 10
-		}">${safeValueText}</text>
-	</g>
-</svg>`;
-		} else {
-			// Default to flat style
-			svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="20">
-	<rect width="${labelWidth}" height="20" fill="#555"/>
-	<rect x="${labelWidth}" width="${valueWidth}" height="20" fill="${badgeColor}"/>
-	<text x="${labelWidth / 2}" y="14" fill="#fff" font-family="Verdana,sans-serif" font-size="11" text-anchor="middle">${safeLabel}</text>
-	<text x="${
-		labelWidth + valueWidth / 2
-	}" y="14" fill="#fff" font-family="Verdana,sans-serif" font-size="11" text-anchor="middle">${safeValueText}</text>
-</svg>`;
-		}
+		const badgeColor = resolveBadgeColor(color);
+		const svg = renderBadgeSvg(rawLabel, valueTextRaw, badgeColor, style);
 
 		c.header("Content-Type", "image/svg+xml");
 		c.header("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0");
@@ -1574,7 +1609,7 @@ app.get("/api/installs/:projectName", customRateLimiter, async (c) => {
 			success: true,
 			project: projectName,
 			total: summary.total,
-			totalLabel: summary.multiRegistry ? "installs (all registries)" : "installs",
+			totalLabel: buildInstallLabel(configured, summary),
 			// True when a cumulative all-time count is being added to a rolling
 			// window figure. The total is still returned, but it is not one
 			// comparable number and callers are told so.
@@ -1594,6 +1629,168 @@ app.get("/api/installs/:projectName", customRateLimiter, async (c) => {
 		);
 	}
 });
+
+// Badge-shaped views of the same aggregate. Both share one resolver so the SVG
+// and the shields.io JSON can never disagree about the number or the label.
+const formatInstallCount = (value: number): string => {
+	if (value >= 1000000000) return `${(value / 1000000000).toFixed(1)}B`;
+	if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+	if (value >= 1000) return `${(value / 1000).toFixed(1)}k`;
+	return value.toString();
+};
+
+type InstallBadgeData = {
+	label: string;
+	message: string;
+	unavailable: boolean;
+	cacheSeconds: number;
+};
+
+// The default label never claims more coverage than the response actually has:
+// "all registries" only when every configured source answered.
+const resolveInstallBadge = async (
+	env: Bindings,
+	projectName: string,
+): Promise<InstallBadgeData> => {
+	const { configured, results } = await collectInstallCounts(
+		env,
+		projectName,
+	);
+
+	if (configured === 0) {
+		return {
+			label: "installs",
+			message: "not configured",
+			unavailable: true,
+			cacheSeconds: 300,
+		};
+	}
+
+	const summary = summariseInstalls(results);
+
+	if (summary.total === null) {
+		return {
+			label: "installs",
+			message: "unavailable",
+			unavailable: true,
+			cacheSeconds: 300,
+		};
+	}
+
+	return {
+		// A badge shows only the total, so the label carries the caveats.
+		label: buildInstallLabel(configured, summary),
+		message: formatInstallCount(summary.total),
+		unavailable: false,
+		// A partial or stale answer is re-checked sooner than a complete one.
+		cacheSeconds:
+			summary.answered < configured || results.some((r) => r.stale)
+				? 900
+				: 3600,
+	};
+};
+
+// SVG badge of the aggregate. Same style/colour/label options as the view badge.
+// No per-IP rate limit here, matching the existing view badge: GitHub's camo
+// proxy fetches from a small pool of IPs, so limiting per IP would break the
+// badge for everyone at once. The D1 cache is what protects the upstreams.
+app.get("/api/installs/:projectName/badge", async (c) => {
+	const projectName = c.req.param("projectName");
+	const styleParam = (c.req.query("style") || "flat").toLowerCase();
+	const style = BADGE_STYLES.includes(styleParam) ? styleParam : "flat";
+	const colorParam = c.req.query("color");
+	const labelParam = c.req.query("label");
+
+	if (!projectName || projectName.length > 100) {
+		return c.text("Invalid project name", 400);
+	}
+
+	await initDatabase(c.env.DB);
+
+	try {
+		const badge = await resolveInstallBadge(c.env, projectName);
+
+		// A caller-supplied label wins - it is their README. The default is the
+		// one that states the coverage.
+		// Only a caller-supplied label is truncated. The default one states the
+		// coverage and must not be cut off mid-caveat.
+		const rawLabel = labelParam ? labelParam.slice(0, 40) : badge.label;
+		const badgeColor = resolveBadgeColor(
+			(
+				colorParam || (badge.unavailable ? "lightgrey" : "blue")
+			).toLowerCase(),
+		);
+		const svg = renderBadgeSvg(rawLabel, badge.message, badgeColor, style);
+
+		c.header("Content-Type", "image/svg+xml");
+		// GitHub's camo proxy refetches these constantly; the numbers move slowly.
+		c.header(
+			"Cache-Control",
+			`public, max-age=${badge.cacheSeconds}, stale-while-revalidate=86400`,
+		);
+		c.header("Access-Control-Allow-Origin", "*");
+		return c.body(svg.trim());
+	} catch (error) {
+		console.error("Install badge error:", error);
+		return c.text("Error generating badge", 500);
+	}
+});
+
+// shields.io endpoint-badge format, for people who would rather keep rendering
+// their badges at shields.io: https://shields.io/badges/endpoint-badge
+app.get(
+	"/api/installs/:projectName/shields.json",
+	async (c) => {
+		const projectName = c.req.param("projectName");
+		const colorParam = c.req.query("color");
+		const labelParam = c.req.query("label");
+
+		if (!projectName || projectName.length > 100) {
+			return c.json(
+				{
+					schemaVersion: 1,
+					label: "installs",
+					message: "invalid project",
+					color: "lightgrey",
+					isError: true,
+				},
+				400,
+			);
+		}
+
+		await initDatabase(c.env.DB);
+
+		try {
+			const badge = await resolveInstallBadge(c.env, projectName);
+
+			c.header(
+				"Cache-Control",
+				`public, max-age=${badge.cacheSeconds}, stale-while-revalidate=86400`,
+			);
+			c.header("Access-Control-Allow-Origin", "*");
+			return c.json({
+				schemaVersion: 1,
+				label: labelParam ? labelParam.slice(0, 40) : badge.label,
+				message: badge.message,
+				color: colorParam || (badge.unavailable ? "lightgrey" : "blue"),
+				isError: badge.unavailable,
+				cacheSeconds: badge.cacheSeconds,
+			});
+		} catch (error) {
+			console.error("Install shields.json error:", error);
+			return c.json(
+				{
+					schemaVersion: 1,
+					label: "installs",
+					message: "error",
+					color: "lightgrey",
+					isError: true,
+				},
+				500,
+			);
+		}
+	},
+);
 
 // Admin: configure which registries a project is published on.
 // Body: { password, sources: { vscode: "publisher.ext", npm: null, ... } }
@@ -1727,13 +1924,16 @@ export default {
 	async fetch(request: Request, env: any, ctx: any) {
 		const url = new URL(request.url);
 
-		// Handle static files - pass to Cloudflare Pages
+		// Handle static files - pass to Cloudflare Pages.
+		// /api/ is always the worker's: /api/installs/x/shields.json ends in
+		// .json but is a route, not an asset.
 		if (
-			url.pathname === "/" ||
-			url.pathname === "/index.html" ||
-			url.pathname.match(
-				/\.(html|css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|json|webp)$/i,
-			)
+			!url.pathname.startsWith("/api/") &&
+			(url.pathname === "/" ||
+				url.pathname === "/index.html" ||
+				url.pathname.match(
+					/\.(html|css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|json|webp)$/i,
+				))
 		) {
 			return env.ASSETS.fetch(request);
 		}
