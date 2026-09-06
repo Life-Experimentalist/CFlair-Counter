@@ -5,7 +5,7 @@
 	"main": "functions/index.ts",
 	"scripts": {
 		"dev": "npm run build:worker && wrangler pages dev public --compatibility-date=2025-11-05",
-		"deploy": "npm run build && wrangler pages deploy public --project-name=viewflare",
+		"deploy": "npm run build && wrangler pages deploy public --project-name=cflaircounter",
 		"build": "npm run build:worker && tsc",
 		"build:worker": "esbuild functions/index.ts --bundle --format=esm --outfile=public/_worker.js --platform=neutral --conditions=worker --minify",
 		"type-check": "tsc --noEmit",

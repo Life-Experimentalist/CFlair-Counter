@@ -1,7 +1,13 @@
 # This project uses Cloudflare Pages Advanced Mode with a bundled worker.
 # The entry point 'public/_worker.js' is auto-generated via 'npm run build:worker'.
 
-name = "viewflare"
+# The Cloudflare Pages project stays "cflaircounter" on purpose. Pages has no
+# rename operation (`wrangler pages project` offers only list/create/delete), so
+# changing this does not rename anything -- it targets a *different* project, and
+# the next deploy would build an empty one. The project name is never seen by a
+# user: the public surface is counter.vkrishna04.me. ViewFlare is the product
+# name, and it does not need to be the infrastructure name.
+name = "cflaircounter"
 main = "_worker.js"
 # Newest date the pinned toolchain supports (wrangler 4.46.0 bundles workerd
 # 1.20251105.0). A later date makes `wrangler pages dev` fail with
