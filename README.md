@@ -97,16 +97,30 @@ fetch("https://your-domain.com/api/views/my-project", { method: "POST" });
 
 ## API Endpoints
 
-| Endpoint                        | Method | Auth     | Purpose                      |
-| ------------------------------- | ------ | -------- | ---------------------------- |
-| `/health`                       | GET    | No       | Health check                 |
-| `/api/stats`                    | GET    | No       | Global stats across projects |
-| `/api/views/:projectName`       | GET    | No       | Get project stats            |
-| `/api/views/:projectName`       | POST   | No       | Increment project views      |
-| `/api/views/:projectName/badge` | GET    | No       | SVG badge                    |
-| `/api/admin/stats`              | POST   | Password | Admin dashboard stats        |
-| `/api/admin/projects`           | GET    | Password | Admin project listing        |
-| `/api/views/:projectName`       | DELETE | Password | Delete a project             |
+| Endpoint | Method | Auth | Purpose |
+| --- | --- | --- | --- |
+| `/health` | GET | No | Health check |
+| `/api/stats` | GET | No | Global stats across projects |
+| `/api/views?names=a,b,c` | GET | No | Batch read, up to 50 projects, never increments |
+| `/api/views/:project` | GET | No | Get one project's stats |
+| `/api/views/:project` | POST | No | Increment project views |
+| `/api/views/:project/badge` | GET | No | SVG views badge |
+| `/api/views/:project/history` | GET | No | Daily series, `?series=snapshots` for the recorded one |
+| `/api/installs/:project` | GET | No | Aggregated install counts across registries |
+| `/api/installs/:project/badge` | GET | No | SVG installs badge |
+| `/api/installs/:project/shields.json` | GET | No | shields.io endpoint badge |
+| `/api/installs/:project/history` | GET | No | Daily install series with change and per-day rate |
+| `/api/events` | POST | No | Record a named event |
+| `/api/metrics` | GET | No | Recent event rollup |
+| `/api/admin/stats` | POST | Password | Admin dashboard stats |
+| `/api/admin/projects` | GET | Password | Admin project listing |
+| `/api/admin/projects/:project` | PUT | Password | Rename or edit a project |
+| `/api/views/:project` | DELETE | Password | Delete a project |
+| `/api/admin/installs/:project` | PUT | Password | Configure install sources |
+| `/api/admin/installs/snapshot` | POST | Password | Record today's snapshot |
+
+`INTEGRATION.md` has the request and response shapes for the installs, history
+and snapshot endpoints.
 
 Admin auth can be sent via:
 - `X-Admin-Password` header

@@ -46,6 +46,37 @@ If the user already has a deployed instance of ViewFlare (or is using the public
      ```
    - *Optional Parameters*: `color` (blue, green, red, purple, etc.), `style` (flat, flat-square, for-the-badge), `label` (custom text).
 
+### Reading many projects at once
+
+A portfolio page listing fifteen projects used to make fifteen requests.
+`GET /api/views?names=a,b,c` answers all of them in one. It is strictly
+read-only: it never increments, so it is safe to call on every render.
+
+```bash
+curl "https://counter.vkrishna04.me/api/views?names=ViewFlare,RanobeGemini,does-not-exist"
+```
+
+```json
+{
+  "success": true,
+  "views": { "ViewFlare": 2481, "RanobeGemini": 190 },
+  "uniqueViews": { "ViewFlare": 1204, "RanobeGemini": 88 },
+  "missing": ["does-not-exist"],
+  "requested": 3,
+  "found": 2,
+  "total": 2671,
+  "timestamp": "2026-09-08T04:11:02.310Z"
+}
+```
+
+- Up to 50 names per request. Names are trimmed and de-duplicated; more than 50
+  is a 400 rather than a silent truncation, and so is an empty `names`.
+- **A project that has never been recorded comes back in `missing`, not as a
+  zero.** A typo in a name cannot pass for a real count of nothing.
+- `total` sums only the projects that were found.
+- `projects=` is accepted as an alias for `names=`.
+- Responses carry `Cache-Control: public, max-age=60`.
+
 ---
 
 ## Goal 3: Reporting real install / download counts

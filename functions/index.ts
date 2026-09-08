@@ -320,6 +320,85 @@ app.get("/health", (c) => {
 });
 
 // Get view count for a project (optimized query)
+// Batch read. A portfolio page listing fifteen projects used to make fifteen
+// requests; this answers all of them at once. Strictly read-only: it never
+// increments, so it is safe to call on every page render.
+const BATCH_VIEWS_LIMIT = 50;
+
+app.get("/api/views", async (c) => {
+	const raw = c.req.query("names") || c.req.query("projects") || "";
+	const requested = [
+		...new Set(
+			raw
+				.split(",")
+				.map((name) => name.trim())
+				.filter((name) => name.length > 0 && name.length <= 100),
+		),
+	];
+
+	if (requested.length === 0) {
+		return c.json(
+			{
+				success: false,
+				error:
+					"Pass a comma-separated names parameter, for example ?names=project-a,project-b",
+				limit: BATCH_VIEWS_LIMIT,
+			},
+			400,
+		);
+	}
+	if (requested.length > BATCH_VIEWS_LIMIT) {
+		return c.json(
+			{
+				success: false,
+				error: `Too many names. The limit is ${BATCH_VIEWS_LIMIT} per request.`,
+				requested: requested.length,
+				limit: BATCH_VIEWS_LIMIT,
+			},
+			400,
+		);
+	}
+
+	await initDatabase(c.env.DB);
+
+	try {
+		const placeholders = requested.map(() => "?").join(",");
+		const rows = await c.env.DB.prepare(
+			`SELECT project_name, view_count, unique_views FROM project_views WHERE project_name IN (${placeholders})`,
+		)
+			.bind(...requested)
+			.all();
+
+		const views: Record<string, number> = {};
+		const unique: Record<string, number> = {};
+		for (const row of (rows.results || []) as any[]) {
+			views[String(row.project_name)] = Number(row.view_count) || 0;
+			unique[String(row.project_name)] = Number(row.unique_views) || 0;
+		}
+
+		// A project that has never been recorded is reported as missing rather
+		// than as a zero, so a typo in a name cannot pass for a real count.
+		const missing = requested.filter((name) => !(name in views));
+		const total = Object.values(views).reduce((sum, n) => sum + n, 0);
+
+		c.header("Cache-Control", "public, max-age=60");
+		c.header("Access-Control-Allow-Origin", "*");
+		return c.json({
+			success: true,
+			views,
+			uniqueViews: unique,
+			missing,
+			requested: requested.length,
+			found: Object.keys(views).length,
+			total,
+			timestamp: new Date().toISOString(),
+		});
+	} catch (error) {
+		console.error("Batch views error:", error);
+		return c.json({ success: false, error: "Database error" }, 500);
+	}
+});
+
 app.get("/api/views/:projectName", async (c) => {
 	const projectName = c.req.param("projectName");
 	if (!projectName || projectName.length > 100) {
