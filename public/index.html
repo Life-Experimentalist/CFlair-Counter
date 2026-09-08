@@ -2447,10 +2447,139 @@ GDPR compliant (no personal data stored)</div>
 							editProject(project, views, unique, description);
 						} else if (action === "increment") {
 							incrementProjectViews(project);
+						} else if (action === "installs") {
+							toggleInstallDetails(btn, project);
 						} else if (action === "delete") {
 							deleteProject(project);
 						}
 					});
+			}
+
+			// Install counts sit beside the view count and are never folded into
+			// it. Each registry measures a different thing over a different
+			// window, so the per-source breakdown is always shown with the total.
+			async function toggleInstallDetails(btn, projectName) {
+				const row = document.getElementById(
+					`installs-row-${btn.dataset.row}`,
+				);
+				if (!row) return;
+
+				if (!row.hidden) {
+					row.hidden = true;
+					return;
+				}
+				row.hidden = false;
+				if (row.dataset.loaded === "true") return;
+
+				const cell = row.firstElementChild;
+				cell.innerHTML = `<div style="padding: 0.75rem 1rem; color: var(--text-muted);">Loading install counts...</div>`;
+
+				try {
+					const response = await fetch(
+						`${API_BASE}/api/installs/${encodeURIComponent(projectName)}`,
+					);
+					const data = await response.json().catch(() => null);
+					cell.innerHTML = renderInstallDetails(
+						projectName,
+						response.status,
+						data,
+					);
+					row.dataset.loaded = "true";
+				} catch (error) {
+					// Left unloaded on purpose, so collapsing and reopening retries.
+					const message = error && error.message ? error.message : error;
+					cell.innerHTML = `<div style="padding: 0.75rem 1rem; color: var(--danger);">Could not reach the installs endpoint. ${escapeHtml(String(message))}</div>`;
+				}
+			}
+
+			const INSTALL_WINDOW_TEXT = {
+				"all-time": "all-time",
+				last_month: "last month",
+			};
+
+			function renderInstallDetails(projectName, status, data) {
+				// A project with no sources is a normal state, not an error, so it
+				// is answered inline rather than as a toast.
+				if (status === 404) {
+					return `
+						<div style="padding: 0.75rem 1rem;">
+							<strong>No install sources configured.</strong>
+							<div style="margin-top: 0.4rem; color: var(--text-muted); font-size: 0.85rem;">
+								Configure them with
+								<code>PUT ${API_BASE}/api/admin/installs/${escapeHtml(projectName)}</code>
+								and a body like
+								<code>{"sources": {"npm": "package-name", "crates": "crate-name"}}</code>
+							</div>
+						</div>
+					`;
+				}
+				if (!data || data.success !== true) {
+					const detail =
+						data && data.error ? data.error : `HTTP ${status}`;
+					return `<div style="padding: 0.75rem 1rem; color: var(--danger);">Could not load install counts. ${escapeHtml(String(detail))}</div>`;
+				}
+
+				const rows = (data.sources || [])
+					.map((source) => {
+						const windowText =
+							INSTALL_WINDOW_TEXT[source.window] || source.window;
+
+						// A source that failed shows its upstream error where the
+						// number would go, and a cached figure that has gone stale
+						// is labelled as such. Neither is presented as fresh.
+						let value;
+						if (
+							source.count === null ||
+							source.count === undefined
+						) {
+							value = `<span style="color: var(--danger);">${escapeHtml(String(source.error || "unavailable"))}</span>`;
+						} else if (source.stale) {
+							value = `${Number(source.count).toLocaleString()} <span title="${escapeHtml(String(source.error || "last refresh failed"))}" style="color: var(--warning); font-size: 0.8rem;">(stale)</span>`;
+						} else {
+							value = Number(source.count).toLocaleString();
+						}
+
+						const fetched = source.fetchedAt
+							? new Date(source.fetchedAt).toLocaleString()
+							: "not yet fetched";
+
+						return `
+							<tr>
+								<td>${escapeHtml(String(source.label || source.source))}</td>
+								<td><code>${escapeHtml(String(source.id || ""))}</code></td>
+								<td style="text-align: right;">${value}</td>
+								<td>${escapeHtml(String(source.measures || ""))}, ${escapeHtml(String(windowText))}</td>
+								<td>${escapeHtml(fetched)}</td>
+							</tr>
+						`;
+					})
+					.join("");
+
+				return `
+					<div style="padding: 0.75rem 1rem;">
+						<div style="display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap;">
+							<strong style="font-size: 1.15rem;">${Number(data.total || 0).toLocaleString()}</strong>
+							<span style="color: var(--text-muted);">${escapeHtml(String(data.totalLabel || ""))}</span>
+						</div>
+						<div style="color: var(--text-muted); font-size: 0.8rem; margin: 0.25rem 0 0.6rem;">
+							${escapeHtml(String(data.coverage || ""))}
+						</div>
+						<div style="overflow-x: auto;">
+							<table class="table" style="margin: 0;">
+								<thead>
+									<tr>
+										<th>Source</th>
+										<th>Id</th>
+										<th style="text-align: right;">Count</th>
+										<th>Measures</th>
+										<th>Fetched</th>
+									</tr>
+								</thead>
+								<tbody>${rows}</tbody>
+							</table>
+						</div>
+					</div>
+				`;
 			}
 
 			function setupCodeBlockCopyButtons(root = document) {
@@ -3070,7 +3199,7 @@ GDPR compliant (no personal data stored)</div>
 							<tbody>
 				`;
 
-				projects.forEach((project) => {
+				projects.forEach((project, index) => {
 					const projectName =
 						project.project_name || project.name || "—";
 					const views = project.view_count || project.totalViews || 0;
@@ -3100,6 +3229,13 @@ GDPR compliant (no personal data stored)</div>
 									style="padding: 0.25rem 0.5rem; font-size: 0.85rem; margin: 0 0.25rem;"
 									title="Get Badge &amp; Links">🎨</button>
 								<button
+									data-action="installs"
+									data-project="${safeProjectName}"
+									data-row="${index}"
+									class="btn btn-secondary"
+									style="padding: 0.25rem 0.5rem; font-size: 0.85rem; margin: 0 0.25rem;"
+									title="Install counts">📦</button>
+								<button
 									data-action="edit"
 									data-project="${safeProjectName}"
 									data-views="${Number(views)}"
@@ -3121,6 +3257,9 @@ GDPR compliant (no personal data stored)</div>
 									style="padding: 0.25rem 0.5rem; font-size: 0.85rem; margin: 0 0.25rem;"
 									title="Delete Project">🗑️</button>
 							</td>
+						</tr>
+						<tr id="installs-row-${index}" hidden>
+							<td colspan="6" style="padding: 0;"></td>
 						</tr>
 					`;
 				});
@@ -3406,6 +3545,20 @@ GDPR compliant (no personal data stored)</div>
 								<strong>Get Stats (GET):</strong><br>
 								<code style="color: #2563eb;">${baseUrl}/api/views/${encodedProject}</code>
 								<button onclick="copyUrlBtn(this, '${baseUrl}/api/views/${encodedProject}')" class="copy-inline-btn" style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+									<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy
+								</button>
+							</div>
+							<div style="margin-bottom: 0.5rem;">
+								<strong>Install Badge (SVG):</strong><br>
+								<code style="color: #2563eb;">${baseUrl}/api/installs/${encodedProject}/badge</code>
+								<button onclick="copyUrlBtn(this, '${baseUrl}/api/installs/${encodedProject}/badge')" class="copy-inline-btn" style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+									<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy
+								</button>
+							</div>
+							<div style="margin-bottom: 0.5rem;">
+								<strong>Install Badge (shields.io endpoint):</strong><br>
+								<code style="color: #2563eb;">${baseUrl}/api/installs/${encodedProject}/shields.json</code>
+								<button onclick="copyUrlBtn(this, '${baseUrl}/api/installs/${encodedProject}/shields.json')" class="copy-inline-btn" style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.75rem;">
 									<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy
 								</button>
 							</div>
