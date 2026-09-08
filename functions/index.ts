@@ -927,6 +927,17 @@ const resolveBadgeColor = (rawColor: string): string =>
 	normalizeBadgeColor(rawColor) ||
 	BADGE_DEFAULT_COLOR;
 
+// Badge text only, the way shields.io shortens it. Every JSON API response
+// keeps the exact integer; this is what stops a five-figure count from
+// stretching the SVG. Shared by the views badge, the installs badge and
+// shields.json so no two badge surfaces can disagree about the same number.
+const formatCompactCount = (value: number): string => {
+	if (value >= 1000000000) return `${(value / 1000000000).toFixed(1)}B`;
+	if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+	if (value >= 1000) return `${(value / 1000).toFixed(1)}k`;
+	return value.toString();
+};
+
 const BADGE_STYLES = ["flat", "flat-square", "for-the-badge"];
 
 // Renders the badge SVG. Extracted verbatim from the views badge route so the
@@ -1117,10 +1128,7 @@ app.get("/api/views/:projectName/badge", async (c) => {
 			.first();
 
 		const viewCount = Number(result?.view_count) || 0;
-		const valueTextRaw =
-			viewCount >= 1000
-				? `${(viewCount / 1000).toFixed(1)}k`
-				: viewCount.toString();
+		const valueTextRaw = formatCompactCount(viewCount);
 
 		const badgeColor = resolveBadgeColor(color);
 		const svg = renderBadgeSvg(rawLabel, valueTextRaw, badgeColor, style);
@@ -1657,12 +1665,6 @@ app.get("/api/installs/:projectName", customRateLimiter, async (c) => {
 
 // Badge-shaped views of the same aggregate. Both share one resolver so the SVG
 // and the shields.io JSON can never disagree about the number or the label.
-const formatInstallCount = (value: number): string => {
-	if (value >= 1000000000) return `${(value / 1000000000).toFixed(1)}B`;
-	if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-	if (value >= 1000) return `${(value / 1000).toFixed(1)}k`;
-	return value.toString();
-};
 
 type InstallBadgeData = {
 	label: string;
@@ -1705,7 +1707,7 @@ const resolveInstallBadge = async (
 	return {
 		// A badge shows only the total, so the label carries the caveats.
 		label: buildInstallLabel(configured, summary),
-		message: formatInstallCount(summary.total),
+		message: formatCompactCount(summary.total),
 		unavailable: false,
 		// A partial or stale answer is re-checked sooner than a complete one.
 		cacheSeconds:
