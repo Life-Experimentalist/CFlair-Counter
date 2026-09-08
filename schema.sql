@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS usage_stats (
 -- existing view-counting behaviour is unchanged.
 CREATE TABLE IF NOT EXISTS install_sources (
     project_name TEXT NOT NULL,
-    source TEXT NOT NULL,   -- vscode | openvsx | pypi | github | npm
+    source TEXT NOT NULL,   -- vscode | openvsx | pypi | github | npm | crates
     config TEXT NOT NULL,   -- the identifier that source is looked up by
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY(project_name, source)

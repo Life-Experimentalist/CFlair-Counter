@@ -67,6 +67,7 @@ and a cached figure is never passed off as a fresh one.
 | `pypi` | `package` | **pypistats** `/api/packages/{pkg}/recent` -> `data.last_month` | **downloads in the last month** |
 | `github` | `owner/repo` | GitHub releases, summed `assets[].download_count` | all-time asset downloads |
 | `npm` | `package` | `https://api.npmjs.org/downloads/point/last-month/{pkg}` -> `downloads` | **downloads in the last month** |
+| `crates` | `crate` | `https://crates.io/api/v1/crates/{crate}` -> `crate.downloads` | all-time downloads |
 
 **Why pypistats and not the PyPI JSON API:** the PyPI JSON API has reported its
 `downloads` fields as `-1` ("not available") for years. pypistats is the only
@@ -84,7 +85,8 @@ curl -X PUT https://counter.vkrishna04.me/api/admin/installs/MyProject   -H "Con
           "openvsx": "publisher/my-extension",
           "github":  "owner/my-project",
           "npm":     "my-package",
-          "pypi":    "my-package"
+          "pypi":    "my-package",
+          "crates":  "my-crate"
         }
       }'
 ```

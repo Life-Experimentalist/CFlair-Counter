@@ -525,7 +525,13 @@ const verdanaWidth = (s: string): number => {
 // 6 hours. Override with the INSTALL_CACHE_TTL binding (seconds).
 const DEFAULT_INSTALL_CACHE_TTL = 21600;
 
-type InstallSourceId = "vscode" | "openvsx" | "pypi" | "github" | "npm";
+type InstallSourceId =
+	| "vscode"
+	| "openvsx"
+	| "pypi"
+	| "github"
+	| "npm"
+	| "crates";
 
 const INSTALL_SOURCES: InstallSourceId[] = [
 	"vscode",
@@ -533,6 +539,7 @@ const INSTALL_SOURCES: InstallSourceId[] = [
 	"pypi",
 	"github",
 	"npm",
+	"crates",
 ];
 
 // `window: "all-time"` sources report a cumulative lifetime figure.
@@ -556,6 +563,7 @@ const INSTALL_SOURCE_META: Record<
 		measures: "release asset downloads",
 	},
 	npm: { label: "npm", window: "last_month", measures: "downloads" },
+	crates: { label: "crates.io", window: "all-time", measures: "downloads" },
 };
 
 const isInstallSource = (value: string): value is InstallSourceId =>
@@ -683,6 +691,21 @@ const fetchNpmDownloads = async (id: string): Promise<number> => {
 	return data.downloads;
 };
 
+const fetchCratesDownloads = async (id: string): Promise<number> => {
+	// crates.io returns 403 without an identifying User-Agent; installFetchInit
+	// sends one for every source.
+	const response = await fetch(
+		`https://crates.io/api/v1/crates/${encodeURIComponent(id)}`,
+		installFetchInit({ Accept: "application/json" }),
+	);
+	if (!response.ok) throw new Error(`crates.io HTTP ${response.status}`);
+	const data: any = await response.json();
+	if (typeof data?.crate?.downloads !== "number") {
+		throw new Error("no downloads figure in crates.io response");
+	}
+	return data.crate.downloads;
+};
+
 const fetchInstallCount = async (
 	source: InstallSourceId,
 	id: string,
@@ -698,6 +721,8 @@ const fetchInstallCount = async (
 			return fetchGithubReleaseDownloads(id);
 		case "npm":
 			return fetchNpmDownloads(id);
+		case "crates":
+			return fetchCratesDownloads(id);
 	}
 };
 
