@@ -25,10 +25,25 @@ If the user already has a deployed instance of ViewFlare (or is using the public
 1. **Ask for the Domain**: If the user hasn't provided their ViewFlare domain, ask for it (e.g., `https://counter.vkrishna04.me` or `https://viewflare.pages.dev`).
 2. **Determine the Project Name**: Create a URL-safe slug for the page or component being tracked (e.g., `portfolio-home`, `docs-api`).
 3. **Log a View (Code Integration)**:
-   - Insert a silent background POST request when the tracked page loads.
-   - **JavaScript/TypeScript**:
+   - Insert a silent background POST request when the tracked page loads. Treat
+     it as fire-and-forget: short timeout, swallowed error, never blocking or
+     breaking the thing it is measuring. It needs no headers, no body and no
+     API key.
+   - **Browser JavaScript**, where `keepalive` lets the request outlive the
+     page, which matters because a pageload beacon often fires just as the
+     visitor navigates away:
      ```javascript
-     fetch('https://[DOMAIN]/api/views/[PROJECT_NAME]', { method: 'POST' }).catch(console.error);
+     fetch('https://[DOMAIN]/api/views/[PROJECT_NAME]', {
+       method: 'POST',
+       keepalive: true,
+     }).catch(() => {});
+     ```
+   - **Node (server side)**:
+     ```javascript
+     fetch('https://[DOMAIN]/api/views/[PROJECT_NAME]', {
+       method: 'POST',
+       signal: AbortSignal.timeout(3000),
+     }).catch(() => {});
      ```
    - **Python**:
      ```python
@@ -38,6 +53,27 @@ If the user already has a deployed instance of ViewFlare (or is using the public
      except Exception:
          pass
      ```
+   - **Shell / CI**, where the `|| true` keeps a failed call from failing the
+     step:
+     ```bash
+     curl -s -o /dev/null -m 3 -X POST "https://[DOMAIN]/api/views/[PROJECT_NAME]" || true
+     ```
+   - **Go**:
+     ```go
+     client := &http.Client{Timeout: 3 * time.Second}
+     if resp, err := client.Post("https://[DOMAIN]/api/views/[PROJECT_NAME]", "", nil); err == nil {
+         resp.Body.Close()
+     }
+     ```
+   - **Rust**, with `ureq = "2"` in `Cargo.toml`:
+     ```rust
+     let _ = ureq::post("https://[DOMAIN]/api/views/[PROJECT_NAME]")
+         .timeout(std::time::Duration::from_secs(3))
+         .call();
+     ```
+   - The response is JSON and carries the new count, so any of these can read
+     it back instead of discarding it:
+     `{"success": true, "projectName": "...", "totalViews": 2, "uniqueViews": 1}`.
 4. **Display a Badge (Markdown / HTML)**:
    - Insert an image pointing to the badge generator endpoint.
    - **Markdown**:
@@ -451,3 +487,87 @@ It only goes back as far as the first night the job ran.
 The job fails on a non-200 from the endpoint. A single dead registry is not a
 failure: it lands in `skipped`, gets printed in the job log, and the run stays
 green.
+
+---
+
+## Goal 6: Recording named events
+
+The view counter answers "how many". `POST /api/events` answers "what
+happened": a signup, a download, a button press, a CLI invocation, a finished
+job. Events live in their own table and never touch view counts.
+
+```bash
+curl -s -o /dev/null -m 3 -X POST "https://[DOMAIN]/api/events" \
+  -H "Content-Type: application/json" \
+  -d '{"category":"cli","event":"build_run","metadata":{"version":"1.4.0"}}' || true
+```
+
+```json
+{
+  "success": true,
+  "category": "cli",
+  "event": "build_run",
+  "timestamp": "2026-09-08T04:17:02.959Z"
+}
+```
+
+What the endpoint accepts:
+
+- `category` and `event` are both required strings of 64 characters or fewer.
+  Anything missing, non-string or over-long is a 400, not a quietly dropped
+  record. Malformed JSON is a 400 with `"error": "Invalid JSON body"`.
+- `metadata` is optional and free-form. It is stored as JSON next to the event.
+  It is never indexed, filtered on, or summarised.
+- There is no project name here. Group events with `category` instead.
+- The caller is recorded as `session_id`: a short non-cryptographic hash of IP
+  plus user agent, the same one the view counter uses. The raw IP and user
+  agent are not stored. That hash is not salted or rotated, so the same visitor
+  on the same browser produces the same value over time.
+
+Same fire-and-forget rules as a view.
+
+```javascript
+fetch('https://[DOMAIN]/api/events', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ category: 'ui', event: 'export_clicked' }),
+  keepalive: true,
+}).catch(() => {});
+```
+
+```python
+import requests
+try:
+    requests.post('https://[DOMAIN]/api/events', timeout=3,
+                  json={'category': 'worker', 'event': 'job_finished'})
+except Exception:
+    pass
+```
+
+### Reading the rollup
+
+`GET /api/metrics` returns recorded events grouped by category, then by name,
+with a count for each.
+
+```bash
+curl "https://[DOMAIN]/api/metrics"
+```
+
+```json
+{
+  "success": true,
+  "metrics": { "docs": { "smoke_test": 1 } },
+  "timestamp": "2026-09-08T04:17:03.063Z"
+}
+```
+
+- Counts are **all-time**. This endpoint has no date filter and no window
+  parameter, so it is a lifetime total, not a recent one.
+- The 100 most frequent category/event pairs are returned, ranked by count
+  before they are grouped. An instance with more than 100 distinct pairs will
+  not see the rarest ones here.
+- `metadata` never appears in the rollup. It is stored, not aggregated. Read it
+  out of D1 directly if you need it.
+- Both endpoints are rate limited per IP: 60 requests a minute by default,
+  configurable with `RATE_LIMIT_REQUESTS` and `RATE_LIMIT_WINDOW`. Over the
+  limit is a 429 carrying `Retry-After` and `X-RateLimit-*` headers.

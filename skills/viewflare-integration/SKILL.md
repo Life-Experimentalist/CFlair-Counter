@@ -27,11 +27,19 @@ If the user already has an instance or wants to use an existing domain to track 
 1. **Identify the Domain**: Obtain the ViewFlare API domain (e.g., `https://viewflare.pages.dev`).
 2. **Determine the Project Identifier**: Create a unique URL-safe slug for the specific page/component being tracked (e.g., `readme-views`, `app-homepage`).
 3. **Insert Tracking Logic (Silent POST Request)**:
-   - Example (JavaScript):
+   - Example (browser JavaScript):
      ```javascript
-     fetch('https://[DOMAIN]/api/views/[PROJECT_ID]', { method: 'POST' }).catch(console.error);
+     fetch('https://[DOMAIN]/api/views/[PROJECT_ID]', { method: 'POST', keepalive: true }).catch(() => {});
      ```
-   - Make sure to catch errors so that tracking failures do not break the main application.
+   - Swallow the error so a tracking failure cannot break the main application,
+     and set a short timeout away from the browser (`AbortSignal.timeout(3000)`
+     in Node, `-m 3` for curl, `timeout=3` for requests).
+   - `INTEGRATION.md` Goal 2 carries the same snippet for Node, Python, shell,
+     Go and Rust.
+   - To record something other than a page view, such as a signup, a download
+     or a CLI run, `POST /api/events` with `{"category": "...", "event": "..."}`
+     and an optional `metadata` object. `GET /api/metrics` reads the counts
+     back. `INTEGRATION.md` Goal 6 has the full contract.
 4. **Insert the Badge (Markdown/HTML)**:
    - Example (Markdown):
      ```markdown

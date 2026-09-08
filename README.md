@@ -111,7 +111,7 @@ fetch("https://your-domain.com/api/views/my-project", { method: "POST" });
 | `/api/installs/:project/shields.json` | GET | No | shields.io endpoint badge |
 | `/api/installs/:project/history` | GET | No | Daily install series with change and per-day rate |
 | `/api/events` | POST | No | Record a named event |
-| `/api/metrics` | GET | No | Recent event rollup |
+| `/api/metrics` | GET | No | All-time event rollup, top 100 pairs |
 | `/api/admin/stats` | POST | Password | Admin dashboard stats |
 | `/api/admin/projects` | GET | Password | Admin project listing |
 | `/api/admin/projects/:project` | PUT | Password | Rename or edit a project |
