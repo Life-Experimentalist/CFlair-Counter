@@ -273,3 +273,150 @@ choice is the right one there.
   and never quote `total` without `coverage` when `complete` is `false`.
 - Do not pass a custom `label=` to an install badge unless the user asked for
   one - the default label is what states the coverage.
+
+## Goal 5: History over time
+
+A registry only ever reports what is true right now, and two of the sources
+(`npm`, `pypi`) report a rolling last-month window that nothing can reconstruct
+afterwards. Charting any of it means writing down what was true each day.
+
+Cloudflare Pages Functions have no cron trigger, so the schedule lives in
+`.github/workflows/snapshot.yml`.
+
+### `POST /api/admin/installs/snapshot`
+
+Records one row per project and source for today (UTC), and one row per project
+for view counts. Authenticated the same three ways as the other admin routes:
+a `password` field in the body, `X-Admin-Password`, or `Authorization: Bearer`.
+
+```bash
+curl -X POST https://counter.vkrishna04.me/api/admin/installs/snapshot \
+  -H "Content-Type: application/json" \
+  -H "X-Admin-Password: YOUR_ADMIN_PASSWORD" \
+  -d '{}'
+```
+
+```json
+{
+  "success": true,
+  "day": "2026-09-08",
+  "projectsScanned": 4,
+  "projectsTotal": 4,
+  "offset": 0,
+  "nextOffset": null,
+  "done": true,
+  "installRowsWritten": 9,
+  "viewRowsWritten": 2,
+  "skipped": [
+    { "project": "RanobeGemini", "source": "pypi",
+      "reason": "cached figure is stale, not recorded as today",
+      "error": "pypistats HTTP 429" }
+  ],
+  "timestamp": "2026-09-08T03:19:18.941Z"
+}
+```
+
+Three things to know about it:
+
+- **Re-running it is safe.** The unique key is (day, project, source), and the
+  write is an upsert. Two runs on the same day leave the same rows. The install
+  cache is warm after the first run, so the second is nearly free.
+- **A source that could not be read is skipped, not guessed.** A failed fetch
+  writes nothing. A *stale* cached figure also writes nothing, because a figure
+  from an earlier day stamped with today's date is a fabricated data point. Both
+  appear in `skipped` with the upstream error.
+- **It walks the project list a page at a time.** One request may only make so
+  many outbound fetches, so the endpoint handles up to 20 projects per call and
+  returns `nextOffset` when more remain. Send it back as `{"offset": N}` until
+  `done` is `true`. The shipped workflow does exactly that.
+
+### `GET /api/installs/{project}/history`
+
+| Query | Default | Meaning |
+|---|---|---|
+| `days` | `90` | How far back to read, 1 to 365 |
+| `bucket` | `day` | `day`, `week` (ISO, Monday-start) or `month` |
+
+```bash
+curl "https://counter.vkrishna04.me/api/installs/MyProject/history?days=90&bucket=week"
+```
+
+```json
+{
+  "success": true,
+  "project": "MyProject",
+  "days": 90,
+  "bucket": "week",
+  "sources": [
+    {
+      "source": "crates",
+      "label": "crates.io",
+      "window": "all-time",
+      "summary": {
+        "points": 5, "first": 1000000, "last": 1500000,
+        "change": 500000, "changePercent": 50.0, "perDay": 17857.14
+      },
+      "points": [
+        { "day": "2026-08-10", "value": 1000000 },
+        { "day": "2026-08-17", "value": 1100000 }
+      ]
+    }
+  ],
+  "timestamp": "2026-09-08T03:19:34.686Z"
+}
+```
+
+**Snapshots are gauges, not counters.** Each row is the registry's own running
+total on that day, so rolling a week or a month up keeps that bucket's *last*
+reading. Summing the days inside a bucket would be meaningless.
+
+`summary` is arithmetic on the returned points and nothing more: `change` is
+last minus first, `changePercent` is that over first, and `perDay` divides by
+the calendar days between the two. With fewer than two points there is nothing
+to compare, so those three are `null` rather than `0`.
+
+Sources are deliberately not summed here. They measure different things over
+different windows; `GET /api/installs/{project}` is the endpoint that carries
+the labelled aggregate.
+
+### `GET /api/views/{project}/history?series=snapshots`
+
+The default response of this endpoint is unchanged: a visitor-derived daily
+count for the last 30 days, from `visitor_tracking`. That table stores one row
+per visitor with the *last* visit time, so it is an approximation, not a series.
+
+`series=snapshots` reads the real thing, recorded by the same nightly job:
+
+```bash
+curl "https://counter.vkrishna04.me/api/views/MyProject/history?series=snapshots&days=90&bucket=week"
+```
+
+```json
+{
+  "success": true,
+  "projectName": "MyProject",
+  "series": "snapshots",
+  "days": 90,
+  "bucket": "day",
+  "summary": { "points": 1, "first": 2, "last": 2,
+               "change": null, "changePercent": null, "perDay": null },
+  "points": [ { "day": "2026-09-08", "value": 2, "uniqueViews": 1 } ]
+}
+```
+
+It only goes back as far as the first night the job ran.
+
+### Setting the schedule up
+
+`.github/workflows/snapshot.yml` runs at 02:23 UTC daily and on
+`workflow_dispatch`. It needs one thing that is not in the repository:
+
+> **The repository owner must create an `ADMIN_PASSWORD` Actions secret by
+> hand**, under Settings -> Secrets and variables -> Actions. The workflow reads
+> `secrets.ADMIN_PASSWORD` and never embeds the value. Without the secret the
+> job fails on its first step with a clear message. The placeholder in
+> `wrangler.toml` stays a placeholder.
+
+The job fails on a non-200 from the endpoint. A single dead registry is not a
+failure: it lands in `skipped`, gets printed in the job log, and the run stays
+green.

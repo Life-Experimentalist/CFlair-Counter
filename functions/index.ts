@@ -224,7 +224,7 @@ const initDatabase = async (db: D1Database) => {
 				`
 			CREATE TABLE IF NOT EXISTS install_sources (
 				project_name TEXT NOT NULL,
-				source TEXT NOT NULL,   -- vscode | openvsx | pypi | github | npm
+				source TEXT NOT NULL,   -- vscode | openvsx | pypi | github | npm | crates
 				config TEXT NOT NULL,   -- the identifier that source is looked up by
 				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 				PRIMARY KEY(project_name, source)
@@ -244,6 +244,50 @@ const initDatabase = async (db: D1Database) => {
 				count INTEGER,
 				fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 				PRIMARY KEY(project_name, source)
+			)
+		`,
+			)
+			.run();
+
+		// One row per project, source and UTC day. The rolling-window sources
+		// (npm, pypi) only publish the last month, so charting them over a longer
+		// period means recording them as they go. "window" is quoted because
+		// SQLite treats it as a keyword.
+		await db
+			.prepare(
+				`
+			CREATE TABLE IF NOT EXISTS install_snapshots (
+				day TEXT NOT NULL,            -- YYYY-MM-DD, UTC
+				project_name TEXT NOT NULL,
+				source TEXT NOT NULL,
+				value INTEGER NOT NULL,
+				"window" TEXT NOT NULL,       -- all-time | last_month
+				recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				PRIMARY KEY(day, project_name, source)
+			)
+		`,
+			)
+			.run();
+
+		await db
+			.prepare(
+				"CREATE INDEX IF NOT EXISTS idx_install_snapshots_project ON install_snapshots(project_name, day)",
+			)
+			.run();
+
+		// The same idea for view counts. project_views only holds a running total
+		// and visitor_tracking.last_visit is overwritten per visitor, so neither is
+		// a real time series. This is.
+		await db
+			.prepare(
+				`
+			CREATE TABLE IF NOT EXISTS view_snapshots (
+				day TEXT NOT NULL,            -- YYYY-MM-DD, UTC
+				project_name TEXT NOT NULL,
+				view_count INTEGER NOT NULL,
+				unique_views INTEGER NOT NULL DEFAULT 0,
+				recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				PRIMARY KEY(day, project_name)
 			)
 		`,
 			)
@@ -1154,6 +1198,43 @@ app.get("/api/views/:projectName/history", async (c) => {
 	await initDatabase(c.env.DB)
 
 	try {
+		// series=snapshots reads the daily rows written by
+		// POST /api/admin/installs/snapshot: a real running total per day.
+		// The default stays the visitor-derived view this endpoint has always
+		// returned, so existing callers see the same shape.
+		if (c.req.query("series") === "snapshots") {
+			const days = parseHistoryDays(c.req.query("days"), 90)
+			const bucket = parseHistoryBucket(c.req.query("bucket"))
+			const snapshotRows = await c.env.DB.prepare(`
+				SELECT day, view_count, unique_views
+				FROM view_snapshots
+				WHERE project_name = ?
+					AND day >= DATE('now', ?)
+				ORDER BY day ASC
+			`)
+				.bind(projectName, `-${days} days`)
+				.all()
+
+			const raw = ((snapshotRows.results || []) as any[]).map((row) => ({
+				day: String(row.day),
+				value: Number(row.view_count),
+				uniqueViews: Number(row.unique_views) || 0,
+			}))
+			const points = bucketSeries(raw, bucket)
+
+			c.header("Cache-Control", "public, max-age=900")
+			c.header("Access-Control-Allow-Origin", "*")
+			return c.json({
+				success: true,
+				projectName,
+				series: "snapshots",
+				days,
+				bucket,
+				summary: summariseSeries(points),
+				points,
+			})
+		}
+
 		const rows = await c.env.DB.prepare(`
 			SELECT DATE(last_visit) as date, COUNT(*) as visits
 			FROM visitor_tracking
@@ -1168,6 +1249,7 @@ app.get("/api/views/:projectName/history", async (c) => {
 		return c.json({
 			success: true,
 			projectName,
+			series: "visitors",
 			history: rows.results,
 		})
 	} catch (error) {
@@ -1943,6 +2025,321 @@ app.put("/api/admin/installs/:projectName", async (c) => {
 	} catch (error) {
 		console.error("Install source config error:", error);
 		return c.json({ success: false, error: "Invalid request" }, 400);
+	}
+});
+
+// ---------------------------------------------------------------------------
+// Snapshots
+//
+// The registries only report a current figure, and two of them (npm, pypi)
+// report a rolling last-month window that nothing else can reconstruct later.
+// Charting any of it over time means writing down what was true each day.
+// Pages Functions have no cron trigger, so the schedule lives in
+// .github/workflows/snapshot.yml and calls the endpoint below.
+// ---------------------------------------------------------------------------
+
+// The same three ways the other admin routes accept a password: JSON body,
+// X-Admin-Password, or an Authorization bearer token.
+const resolveAdminPassword = (c: any, body: any): string | undefined => {
+	if (body && typeof body.password === "string" && body.password) {
+		return body.password;
+	}
+	const authHeader = c.req.header("Authorization");
+	if (authHeader && authHeader.startsWith("Bearer ")) {
+		return authHeader.substring(7);
+	}
+	return c.req.header("X-Admin-Password");
+};
+
+// Workers cap the outbound subrequests one incoming request may make, and a
+// full sweep is one fetch per project per source. The endpoint therefore walks
+// a page of projects at a time and hands back the offset to resume from.
+const SNAPSHOT_PROJECT_LIMIT = 20;
+
+app.post("/api/admin/installs/snapshot", async (c) => {
+	let body: any = {};
+	try {
+		body = await c.req.json();
+	} catch {
+		body = {};
+	}
+
+	if (c.env.ENABLE_ADMIN === "false") {
+		return c.json(
+			{ success: false, error: "Admin functionality is disabled" },
+			403,
+		);
+	}
+	const password = resolveAdminPassword(c, body);
+	if (!password || password !== c.env.ADMIN_PASSWORD) {
+		return c.json(
+			{ success: false, error: "Unauthorized - Invalid admin password" },
+			401,
+		);
+	}
+
+	try {
+		await initDatabase(c.env.DB);
+
+		const day = new Date().toISOString().slice(0, 10);
+		const offset = Math.max(0, parseInt(String(body.offset ?? "0"), 10) || 0);
+		const limit = Math.min(
+			SNAPSHOT_PROJECT_LIMIT,
+			Math.max(
+				1,
+				parseInt(String(body.limit ?? ""), 10) || SNAPSHOT_PROJECT_LIMIT,
+			),
+		);
+
+		// View counts need no upstream call, so the whole set is recorded in one
+		// statement on every run rather than paged.
+		const viewWrite = await c.env.DB.prepare(
+			`
+			INSERT INTO view_snapshots (day, project_name, view_count, unique_views)
+			SELECT ?, project_name, view_count, COALESCE(unique_views, 0)
+			FROM project_views
+			-- SQLite cannot tell whether ON CONFLICT belongs to the SELECT or
+			-- the INSERT unless the SELECT has a WHERE clause.
+			WHERE true
+			ON CONFLICT(day, project_name) DO UPDATE SET
+				view_count = excluded.view_count,
+				unique_views = excluded.unique_views,
+				recorded_at = CURRENT_TIMESTAMP
+			`,
+		)
+			.bind(day)
+			.run();
+
+		const totalRow = await c.env.DB.prepare(
+			"SELECT COUNT(DISTINCT project_name) AS total FROM install_sources",
+		).first();
+		const totalProjects = Number(totalRow?.total) || 0;
+
+		const projectRows = await c.env.DB.prepare(
+			"SELECT DISTINCT project_name FROM install_sources ORDER BY project_name LIMIT ? OFFSET ?",
+		)
+			.bind(limit, offset)
+			.all();
+		const projects = ((projectRows.results || []) as any[]).map((row) =>
+			String(row.project_name),
+		);
+
+		const writes: D1PreparedStatement[] = [];
+		const skipped: {
+			project: string;
+			source: string;
+			reason: string;
+			error?: string;
+		}[] = [];
+
+		for (const projectName of projects) {
+			const { results } = await collectInstallCounts(c.env, projectName);
+			for (const result of results) {
+				// A stale figure is an older number wearing today's date, and a
+				// failed source has no number at all. Neither gets written.
+				if (!result.ok || result.count === null) {
+					skipped.push({
+						project: projectName,
+						source: result.source,
+						reason: "source unavailable",
+						error: result.error,
+					});
+					continue;
+				}
+				if (result.stale) {
+					skipped.push({
+						project: projectName,
+						source: result.source,
+						reason: "cached figure is stale, not recorded as today",
+						error: result.error,
+					});
+					continue;
+				}
+				writes.push(
+					c.env.DB.prepare(
+						`
+						INSERT INTO install_snapshots (day, project_name, source, value, "window")
+						VALUES (?, ?, ?, ?, ?)
+						ON CONFLICT(day, project_name, source) DO UPDATE SET
+							value = excluded.value,
+							"window" = excluded."window",
+							recorded_at = CURRENT_TIMESTAMP
+						`,
+					).bind(day, projectName, result.source, result.count, result.window),
+				);
+			}
+		}
+
+		if (writes.length > 0) await c.env.DB.batch(writes);
+
+		const nextOffset = offset + projects.length;
+		const done = projects.length === 0 || nextOffset >= totalProjects;
+
+		return c.json({
+			success: true,
+			day,
+			projectsScanned: projects.length,
+			projectsTotal: totalProjects,
+			offset,
+			nextOffset: done ? null : nextOffset,
+			done,
+			installRowsWritten: writes.length,
+			viewRowsWritten: viewWrite.meta?.changes ?? null,
+			skipped,
+			timestamp: new Date().toISOString(),
+		});
+	} catch (error) {
+		console.error("Snapshot error:", error);
+		return c.json({ success: false, error: "Snapshot failed" }, 500);
+	}
+});
+
+const SNAPSHOT_BUCKETS = ["day", "week", "month"];
+
+// Snapshots are gauges, not counters: each row is the registry's own running
+// total on that day. Rolling days up into a bucket therefore means keeping the
+// bucket's last reading, never summing the days inside it.
+const bucketKeyFor = (day: string, bucket: string): string => {
+	if (bucket === "month") return day.slice(0, 7);
+	if (bucket === "week") {
+		const date = new Date(`${day}T00:00:00Z`);
+		if (Number.isNaN(date.getTime())) return day;
+		// Shift back to the Monday that starts this ISO week.
+		date.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7));
+		return date.toISOString().slice(0, 10);
+	}
+	return day;
+};
+
+type SeriesPoint = { day: string; value: number };
+
+const bucketSeries = (points: SeriesPoint[], bucket: string): SeriesPoint[] => {
+	if (bucket === "day") return points;
+	const byBucket = new Map<string, SeriesPoint>();
+	for (const point of points) {
+		const key = bucketKeyFor(point.day, bucket);
+		byBucket.set(key, { day: key, value: point.value });
+	}
+	return [...byBucket.values()].sort((a, b) => a.day.localeCompare(b.day));
+};
+
+// Every figure here is derived from the recorded points and nothing else. With
+// fewer than two points there is no change to report, so those fields are null
+// rather than zero.
+const summariseSeries = (points: SeriesPoint[]) => {
+	if (points.length === 0) {
+		return {
+			points: 0,
+			first: null,
+			last: null,
+			change: null,
+			changePercent: null,
+			perDay: null,
+		};
+	}
+	const first = points[0]!;
+	const last = points[points.length - 1]!;
+	const change = last.value - first.value;
+	// A month bucket is keyed "YYYY-MM"; pin it to the first of the month so the
+	// span does not depend on how the runtime parses a partial date.
+	const atMidnightUtc = (day: string): number =>
+		Date.parse(`${day.length === 7 ? `${day}-01` : day}T00:00:00Z`);
+	const spanMs = atMidnightUtc(last.day) - atMidnightUtc(first.day);
+	const spanDays = Number.isFinite(spanMs)
+		? Math.max(1, Math.round(spanMs / 86400000))
+		: 1;
+	return {
+		points: points.length,
+		first: first.value,
+		last: last.value,
+		change: points.length > 1 ? change : null,
+		changePercent:
+			points.length > 1 && first.value > 0
+				? Number(((change / first.value) * 100).toFixed(2))
+				: null,
+		perDay: points.length > 1 ? Number((change / spanDays).toFixed(2)) : null,
+	};
+};
+
+const parseHistoryDays = (
+	raw: string | undefined,
+	fallback: number,
+): number => {
+	const parsed = parseInt(raw || "", 10);
+	if (!Number.isFinite(parsed)) return fallback;
+	return Math.min(365, Math.max(1, parsed));
+};
+
+const parseHistoryBucket = (raw: string | undefined): string =>
+	SNAPSHOT_BUCKETS.includes(raw || "") ? (raw as string) : "day";
+
+app.get("/api/installs/:projectName/history", async (c) => {
+	const projectName = c.req.param("projectName");
+	if (!projectName || projectName.length > 100) {
+		return c.json({ success: false, error: "Invalid project name" }, 400);
+	}
+
+	const days = parseHistoryDays(c.req.query("days"), 90);
+	const bucket = parseHistoryBucket(c.req.query("bucket"));
+
+	try {
+		await initDatabase(c.env.DB);
+
+		const rows = await c.env.DB.prepare(
+			`
+			SELECT day, source, value, "window"
+			FROM install_snapshots
+			WHERE project_name = ?
+				AND day >= DATE('now', ?)
+			ORDER BY source ASC, day ASC
+			`,
+		)
+			.bind(projectName, `-${days} days`)
+			.all();
+
+		const bySource = new Map<
+			string,
+			{ window: string; points: SeriesPoint[] }
+		>();
+		for (const row of (rows.results || []) as any[]) {
+			const source = String(row.source);
+			if (!bySource.has(source)) {
+				bySource.set(source, { window: String(row.window), points: [] });
+			}
+			bySource.get(source)!.points.push({
+				day: String(row.day),
+				value: Number(row.value),
+			});
+		}
+
+		const sources = [...bySource.entries()].map(([source, entry]) => {
+			const points = bucketSeries(entry.points, bucket);
+			const meta = INSTALL_SOURCE_META[source as InstallSourceId];
+			return {
+				source,
+				label: meta ? meta.label : source,
+				window: entry.window,
+				summary: summariseSeries(points),
+				points,
+			};
+		});
+
+		c.header("Cache-Control", "public, max-age=900");
+		c.header("Access-Control-Allow-Origin", "*");
+		return c.json({
+			success: true,
+			project: projectName,
+			days,
+			bucket,
+			sources,
+			// Sources are deliberately not summed here. They measure different
+			// things over different windows; GET /api/installs/{project} is the
+			// endpoint that carries the labelled aggregate.
+			timestamp: new Date().toISOString(),
+		});
+	} catch (error) {
+		console.error("Install history error:", error);
+		return c.json({ success: false, error: "Database error" }, 500);
 	}
 });
 

@@ -1,0 +1,68 @@
+name: Daily snapshot
+
+# Cloudflare Pages Functions have no cron trigger (that is a Workers feature),
+# so the schedule lives here and calls the admin snapshot endpoint.
+#
+# Requires a repository secret named ADMIN_PASSWORD, created by hand in
+# Settings -> Secrets and variables -> Actions. The workflow never embeds the
+# value and the job fails loudly if the secret is missing.
+
+on:
+  schedule:
+    - cron: "23 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: viewflare-snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BASE_URL: https://counter.vkrishna04.me
+    steps:
+      - name: Record install and view counts
+        env:
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${ADMIN_PASSWORD}" ]; then
+            echo "ADMIN_PASSWORD repository secret is not set." >&2
+            exit 1
+          fi
+
+          # The endpoint walks a page of projects per call, because one request
+          # can only make so many outbound fetches. Follow nextOffset until it
+          # reports done.
+          offset=0
+          for attempt in $(seq 1 20); do
+            response="$(curl -fsS --max-time 120 \
+              -X POST "${BASE_URL}/api/admin/installs/snapshot" \
+              -H "Content-Type: application/json" \
+              -H "X-Admin-Password: ${ADMIN_PASSWORD}" \
+              -d "{\"offset\": ${offset}}")"
+
+            echo "${response}" | jq '{day, offset, projectsScanned, projectsTotal, installRowsWritten, viewRowsWritten, done, skipped: (.skipped | length)}'
+
+            # Any source that could not be recorded is printed, not hidden. It
+            # is not a failure: one dead registry must not fail the whole run.
+            echo "${response}" | jq -e '.skipped | length == 0' >/dev/null \
+              || echo "${response}" | jq '.skipped'
+
+            echo "${response}" | jq -e '.success == true' >/dev/null
+
+            if [ "$(echo "${response}" | jq -r '.done')" = "true" ]; then
+              echo "Snapshot complete."
+              exit 0
+            fi
+            offset="$(echo "${response}" | jq -r '.nextOffset')"
+          done
+
+          echo "Snapshot did not finish within 20 pages." >&2
+          exit 1

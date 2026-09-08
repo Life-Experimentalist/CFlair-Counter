@@ -73,3 +73,6 @@ public/_worker.js
 .devprune.json
 .devprune-ignore
 ignore.devprune.json
+
+# Local wrangler dev secrets
+.dev.vars

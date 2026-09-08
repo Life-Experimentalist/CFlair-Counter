@@ -49,3 +49,42 @@ CREATE TABLE IF NOT EXISTS install_cache (
     fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY(project_name, source)
 );
+
+-- Structured event log for POST /api/events.
+CREATE TABLE IF NOT EXISTS event_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_category TEXT NOT NULL,
+    event_name TEXT NOT NULL,
+    session_id TEXT,
+    metadata_json TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_event_cat ON event_logs(event_category, created_at);
+
+-- One row per project, source and UTC day, written by
+-- POST /api/admin/installs/snapshot. The rolling-window sources (npm, pypi)
+-- only publish the last month, so charting them over a longer period means
+-- recording them as they go. "window" is quoted because SQLite treats it as a
+-- keyword.
+CREATE TABLE IF NOT EXISTS install_snapshots (
+    day TEXT NOT NULL,            -- YYYY-MM-DD, UTC
+    project_name TEXT NOT NULL,
+    source TEXT NOT NULL,
+    value INTEGER NOT NULL,
+    "window" TEXT NOT NULL,       -- all-time | last_month
+    recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(day, project_name, source)
+);
+CREATE INDEX IF NOT EXISTS idx_install_snapshots_project ON install_snapshots(project_name, day);
+
+-- The same idea for view counts. project_views only holds a running total and
+-- visitor_tracking.last_visit is overwritten per visitor, so neither is a real
+-- time series.
+CREATE TABLE IF NOT EXISTS view_snapshots (
+    day TEXT NOT NULL,            -- YYYY-MM-DD, UTC
+    project_name TEXT NOT NULL,
+    view_count INTEGER NOT NULL,
+    unique_views INTEGER NOT NULL DEFAULT 0,
+    recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(day, project_name)
+);
