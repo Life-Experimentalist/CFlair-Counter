@@ -102,6 +102,9 @@ So the rename is a GitHub and branding change only:
 
 ### Order of operations
 
+Done as of commit `28e7aa6`. Kept here because it explains why the Cloudflare
+names still say `cflaircounter`.
+
 1. **Rename the GitHub repository first** (`CFlair-Counter` → `ViewFlare`), *before*
    pushing. The README badge and `.portfolio/project.json` already point at
    `Life-Experimentalist/ViewFlare`. GitHub redirects an old name to a new one and never

@@ -70,3 +70,6 @@ desktop.ini
 
 # Auto-generated worker bundle
 public/_worker.js
+.devprune.json
+.devprune-ignore
+ignore.devprune.json
