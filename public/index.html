@@ -10,9 +10,11 @@
 			content="Professional serverless view counter with advanced analytics and admin management."
 		/>
 		<!-- TODO(brand): logo.png and logo-dark.png are still the old
-		     CFlair-Counter art. Replace both files in place (same names, same
-		     paths) with the new ViewFlare mark once it exists - the prompts are
-		     in docs/BRAND-PROMPTS.md. No markup change is needed. -->
+		     CFlair-Counter art, which is why the header, hero and footer now draw
+		     an inline mark instead. These two files are still the favicon and the
+		     social card image. Replace them in place (same names, same paths)
+		     with the new ViewFlare mark once it exists - the prompts are in
+		     docs/BRAND-PROMPTS.md. No markup change is needed. -->
 		<link rel="icon" type="image/png" href="logo.png" />
 		<link rel="apple-touch-icon" href="logo.png" />
 		<meta
@@ -31,102 +33,239 @@
 		<meta name="twitter:image" content="/logo.png" />
 
 		<style>
-			@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap");
+			@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap");
 
 			* {
 				margin: 0;
 				padding: 0;
 				box-sizing: border-box;
-				font-family: "Outfit", sans-serif;
 			}
 
+			/* Dark is the real design here. The light theme below is kept
+			   functional and legible, not cosmic. */
 			:root {
-				--primary: #8b5cf6;
-				--primary-dark: #7c3aed;
-				--secondary: #ec4899;
-				--success: #10b981;
-				--warning: #f59e0b;
-				--danger: #ef4444;
-				--info: #3b82f6;
+				--space-0: #05060d;
+				--space-1: #0a0d18;
+				--space-2: #111524;
+				--space-3: #171c2e;
 
-				--bg-base: #f8fafc;
-				--bg-gradient-start: #f1f5f9;
-				--bg-gradient-end: #e2e8f0;
+				--line: rgba(150, 168, 214, 0.13);
+				--line-strong: rgba(150, 168, 214, 0.3);
 
-				--card-bg: rgba(255, 255, 255, 0.7);
-				--card-border: rgba(255, 255, 255, 0.5);
+				--text-main: #e9edf9;
+				--text-muted: #8a92ac;
 
-				--text-main: #0f172a;
-				--text-muted: #475569;
+				/* The flare: an ember core cooling through rose into violet.
+				   --ion is the cold counterpart, used for links and figures. */
+				--flare-1: #ffc247;
+				--flare-2: #ff7a45;
+				--flare-3: #e0457b;
+				--flare-4: #9b5de5;
+				--ion: #5ad3f0;
 
-				--navbar-bg: rgba(255, 255, 255, 0.7);
-				--glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+				--primary: #ff7a45;
+				--primary-dark: #e0457b;
+				--secondary: #9b5de5;
+				--accent-rgb: 255, 122, 69;
 
-				--radius-md: 16px;
-				--radius-lg: 24px;
-				--transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+				--success: #34d399;
+				--warning: #fbbf24;
+				--danger: #fb6f6f;
+				--info: #5ad3f0;
+
+				--bg-base: #05060d;
+				--bg-gradient-start: #05060d;
+				--bg-gradient-end: #0a0d18;
+
+				--card-bg: rgba(12, 16, 28, 0.72);
+				--card-border: var(--line);
+
+				--navbar-bg: rgba(7, 9, 18, 0.72);
+				--glass-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.04) inset;
+
+				--radius-sm: 8px;
+				--radius-md: 12px;
+				--radius-lg: 16px;
+				--transition: all 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+
+				--font-display: "Space Grotesk", "Segoe UI", sans-serif;
+				--font-body: "IBM Plex Sans", "Segoe UI", sans-serif;
+				--font-mono: "JetBrains Mono", ui-monospace, monospace;
 			}
 
+			/* data-theme="dark" is the default set above, repeated here so the
+			   attribute selector wins over any light rule of equal weight. */
 			[data-theme="dark"] {
-				--primary: #a78bfa;
-				--primary-dark: #8b5cf6;
-				--secondary: #f472b6;
+				--space-0: #05060d;
+				--space-1: #0a0d18;
+				--space-2: #111524;
+				--space-3: #171c2e;
+				--line: rgba(150, 168, 214, 0.13);
+				--line-strong: rgba(150, 168, 214, 0.3);
+				--text-main: #e9edf9;
+				--text-muted: #8a92ac;
+				--primary: #ff7a45;
+				--primary-dark: #e0457b;
+				--secondary: #9b5de5;
+				--accent-rgb: 255, 122, 69;
+				--ion: #5ad3f0;
+				--bg-base: #05060d;
+				--card-bg: rgba(12, 16, 28, 0.72);
+				--navbar-bg: rgba(7, 9, 18, 0.72);
+			}
 
-				--bg-base: #0f172a;
-				--bg-gradient-start: #0f172a;
-				--bg-gradient-end: #1e1b4b;
+			[data-theme="light"] {
+				--space-0: #fbfaf7;
+				--space-1: #ffffff;
+				--space-2: #f4f2ee;
+				--space-3: #eceae4;
 
-				--card-bg: rgba(30, 41, 59, 0.7);
-				--card-border: rgba(255, 255, 255, 0.05);
+				--line: rgba(24, 28, 46, 0.11);
+				--line-strong: rgba(24, 28, 46, 0.26);
 
-				--text-main: #f8fafc;
-				--text-muted: #cbd5e1;
+				--text-main: #14161f;
+				--text-muted: #5c6278;
 
-				--navbar-bg: rgba(15, 23, 42, 0.7);
-				--glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+				--flare-1: #c2760a;
+				--flare-2: #d2461a;
+				--flare-3: #b7245a;
+				--flare-4: #6d35b5;
+				--ion: #0a6f92;
+
+				--primary: #d2461a;
+				--primary-dark: #b7245a;
+				--secondary: #6d35b5;
+				--accent-rgb: 210, 70, 26;
+
+				--success: #0f8a5f;
+				--warning: #a9700a;
+				--danger: #c4302b;
+				--info: #0a6f92;
+
+				--bg-base: #fbfaf7;
+				--card-bg: #ffffff;
+				--card-border: var(--line);
+				--navbar-bg: rgba(255, 255, 255, 0.82);
+				--glass-shadow: 0 1px 2px rgba(20, 22, 31, 0.06);
+			}
+
+			html {
+				background: var(--space-0);
 			}
 
 			body {
+				position: relative;
+				z-index: 0;
 				color: var(--text-main);
-				background-color: var(--bg-base);
-				background-image:
-					radial-gradient(
-						at 0% 0%,
-						hsla(253, 16%, 7%, 1) 0,
-						transparent 50%
-					),
-					radial-gradient(
-						at 50% 0%,
-						hsla(225, 39%, 30%, 1) 0,
-						transparent 50%
-					),
-					radial-gradient(
-						at 100% 0%,
-						hsla(339, 49%, 30%, 1) 0,
-						transparent 50%
-					);
-				background-attachment: fixed;
+				background: var(--space-0);
+				font-family: var(--font-body);
+				font-size: 16px;
+				line-height: 1.6;
 				min-height: 100vh;
-				transition: var(--transition);
+				-webkit-font-smoothing: antialiased;
 			}
 
-			[data-theme="light"] body {
+			code,
+			pre,
+			kbd,
+			samp {
+				font-family: var(--font-mono);
+			}
+
+			/* Two fixed layers behind everything: a tiled starfield and the
+			   nebula it sits in. Both are painted, never scrolled, so there is
+			   no repaint cost on scroll and no background-attachment jank. */
+			body::before,
+			body::after {
+				content: "";
+				position: fixed;
+				inset: -15%;
+				z-index: -1;
+				pointer-events: none;
+			}
+
+			body::before {
 				background-image:
 					radial-gradient(
-						at 0% 0%,
-						hsla(253, 100%, 90%, 1) 0,
+						circle at 30% 20%,
+						rgba(155, 93, 229, 0.22),
+						transparent 55%
+					),
+					radial-gradient(
+						circle at 78% 8%,
+						rgba(224, 69, 123, 0.16),
 						transparent 50%
 					),
 					radial-gradient(
-						at 50% 0%,
-						hsla(225, 100%, 90%, 1) 0,
-						transparent 50%
+						circle at 12% 78%,
+						rgba(90, 211, 240, 0.1),
+						transparent 45%
 					),
 					radial-gradient(
-						at 100% 0%,
-						hsla(339, 100%, 90%, 1) 0,
-						transparent 50%
+						circle at 92% 72%,
+						rgba(255, 122, 69, 0.12),
+						transparent 45%
 					);
+			}
+
+			body::after {
+				background-image:
+					radial-gradient(
+						1.6px 1.6px at 18% 24%,
+						rgba(255, 255, 255, 0.95),
+						transparent 60%
+					),
+					radial-gradient(
+						1.2px 1.2px at 72% 61%,
+						rgba(200, 220, 255, 0.8),
+						transparent 60%
+					),
+					radial-gradient(
+						1px 1px at 44% 82%,
+						rgba(255, 236, 210, 0.75),
+						transparent 60%
+					),
+					radial-gradient(
+						1px 1px at 88% 16%,
+						rgba(255, 255, 255, 0.6),
+						transparent 60%
+					);
+				background-size:
+					320px 320px,
+					210px 210px,
+					470px 470px,
+					140px 140px;
+				opacity: 0.85;
+			}
+
+			@media (prefers-reduced-motion: no-preference) {
+				body::after {
+					animation: drift 240s linear infinite;
+				}
+			}
+
+			@keyframes drift {
+				to {
+					transform: translate3d(-320px, -210px, 0);
+				}
+			}
+
+			[data-theme="light"] body::before {
+				background-image:
+					radial-gradient(
+						circle at 25% 12%,
+						rgba(210, 70, 26, 0.07),
+						transparent 50%
+					),
+					radial-gradient(
+						circle at 82% 78%,
+						rgba(109, 53, 181, 0.06),
+						transparent 45%
+					);
+			}
+
+			[data-theme="light"] body::after {
+				display: none;
 			}
 
 			/* Glassmorphism Utilities */
@@ -195,14 +334,14 @@
 			}
 
 			.nav-link:hover {
-				background: rgba(139, 92, 246, 0.1);
+				background: rgba(var(--accent-rgb), 0.1);
 				color: var(--primary);
 			}
 
 			.nav-link.active {
 				background: var(--primary);
 				color: white;
-				box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+				box-shadow: 0 4px 15px rgba(var(--accent-rgb), 0.4);
 			}
 
 			.nav-link.external {
@@ -274,7 +413,7 @@
 				border-radius: 99px;
 				font-size: 0.9rem;
 				font-weight: 600;
-				box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+				box-shadow: 0 4px 15px rgba(var(--accent-rgb), 0.3);
 				display: inline-block;
 				margin: 0.5rem;
 				transition: var(--transition);
@@ -282,7 +421,7 @@
 
 			.badge:hover {
 				transform: translateY(-2px);
-				box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+				box-shadow: 0 6px 20px rgba(var(--accent-rgb), 0.4);
 			}
 
 			.endpoint-card {
@@ -346,22 +485,22 @@
 					var(--secondary)
 				);
 				color: white;
-				box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+				box-shadow: 0 4px 15px rgba(var(--accent-rgb), 0.3);
 			}
 
 			.btn-primary:hover {
 				transform: translateY(-2px);
-				box-shadow: 0 8px 25px rgba(139, 92, 246, 0.5);
+				box-shadow: 0 8px 25px rgba(var(--accent-rgb), 0.5);
 			}
 
 			.btn-secondary {
-				background: rgba(139, 92, 246, 0.1);
+				background: rgba(var(--accent-rgb), 0.1);
 				color: var(--primary);
-				border: 1px solid rgba(139, 92, 246, 0.2);
+				border: 1px solid rgba(var(--accent-rgb), 0.2);
 			}
 
 			.btn-secondary:hover {
-				background: rgba(139, 92, 246, 0.2);
+				background: rgba(var(--accent-rgb), 0.2);
 				transform: translateY(-2px);
 			}
 
@@ -386,7 +525,7 @@
 
 			.card:hover {
 				transform: translateY(-5px);
-				border-color: rgba(139, 92, 246, 0.3);
+				border-color: rgba(var(--accent-rgb), 0.3);
 			}
 
 			.card h2 {
@@ -439,7 +578,7 @@
 
 			.stat-item:hover {
 				transform: translateY(-5px);
-				background: rgba(139, 92, 246, 0.05);
+				background: rgba(var(--accent-rgb), 0.05);
 			}
 
 			.stat-number {
@@ -476,8 +615,8 @@
 
 			.feature-card:hover {
 				transform: translateY(-5px);
-				background: rgba(139, 92, 246, 0.05);
-				border-color: rgba(139, 92, 246, 0.3);
+				background: rgba(var(--accent-rgb), 0.05);
+				border-color: rgba(var(--accent-rgb), 0.3);
 			}
 
 			.feature-icon {
@@ -485,7 +624,7 @@
 				margin-bottom: 1rem;
 				display: inline-block;
 				padding: 1rem;
-				background: rgba(139, 92, 246, 0.1);
+				background: rgba(var(--accent-rgb), 0.1);
 				border-radius: var(--radius-md);
 			}
 
@@ -533,7 +672,7 @@
 
 			.form-input:focus {
 				border-color: var(--primary);
-				box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+				box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.2);
 			}
 
 			/* Code Blocks */
@@ -600,7 +739,7 @@
 			}
 
 			.table th {
-				background: rgba(139, 92, 246, 0.06);
+				background: rgba(var(--accent-rgb), 0.06);
 				color: var(--text-main);
 				font-weight: 700;
 				padding: 0.85rem 1.25rem;
@@ -623,11 +762,11 @@
 
 			.table tr:hover td {
 				color: var(--text-main);
-				background: rgba(139, 92, 246, 0.03);
+				background: rgba(var(--accent-rgb), 0.03);
 			}
 
 			[data-theme="light"] .table tr:hover td {
-				background: rgba(139, 92, 246, 0.02);
+				background: rgba(var(--accent-rgb), 0.02);
 			}
 
 			/* Theme Switch */
@@ -1021,7 +1160,7 @@
 				border-color: var(--primary);
 				color: white;
 				transform: translateY(-1px);
-				box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+				box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.3);
 			}
 			.copy-code-btn:active {
 				transform: translateY(0);
@@ -1029,8 +1168,8 @@
 
 			/* Inline copy button styling */
 			.copy-inline-btn {
-				background: rgba(139, 92, 246, 0.08);
-				border: 1px solid rgba(139, 92, 246, 0.15);
+				background: rgba(var(--accent-rgb), 0.08);
+				border: 1px solid rgba(var(--accent-rgb), 0.15);
 				color: var(--primary);
 				padding: 0.35rem 0.75rem;
 				font-size: 0.8rem;
@@ -1050,7 +1189,7 @@
 				color: white;
 				border-color: var(--primary);
 				transform: translateY(-1px);
-				box-shadow: 0 4px 12px rgba(139, 92, 246, 0.25);
+				box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.25);
 			}
 			.copy-inline-btn:active {
 				transform: translateY(0);
@@ -1085,24 +1224,852 @@
 					text-align: center;
 				}
 			}
+
+			/* ================================================================
+			   Deep-field overrides
+			   Everything above is the original component CSS. This block
+			   restates only the pieces the new palette and type scale change,
+			   rather than editing them in place, so the diff stays readable.
+			   ================================================================ */
+
+			.ico {
+				width: 1em;
+				height: 1em;
+				flex: none;
+				fill: none;
+				stroke: currentColor;
+				stroke-width: 1.7;
+				stroke-linecap: round;
+				stroke-linejoin: round;
+			}
+
+			:focus-visible {
+				outline: 2px solid var(--primary);
+				outline-offset: 2px;
+				border-radius: 4px;
+			}
+
+			.glass {
+				background: var(--card-bg);
+				backdrop-filter: blur(18px);
+				-webkit-backdrop-filter: blur(18px);
+				border: 1px solid var(--line);
+				box-shadow: none;
+			}
+
+			/* --- Navigation ------------------------------------------------ */
+
+			.navbar {
+				border-radius: 0;
+				max-width: none;
+				margin: 0;
+				top: 0;
+				border: 0;
+				border-bottom: 1px solid var(--line);
+				background: var(--navbar-bg);
+				backdrop-filter: blur(18px);
+				-webkit-backdrop-filter: blur(18px);
+				box-shadow: none;
+				padding: 0;
+			}
+
+			.nav-container {
+				max-width: 1180px;
+				margin: 0 auto;
+				padding: 0.85rem 2rem;
+			}
+
+			.nav-brand {
+				font-family: var(--font-display);
+				font-size: 1.12rem;
+				font-weight: 600;
+				letter-spacing: -0.02em;
+				color: var(--text-main);
+				background: none;
+				-webkit-text-fill-color: currentColor;
+				display: inline-flex;
+				align-items: center;
+				gap: 0.55rem;
+			}
+
+			.brand-mark {
+				width: 26px;
+				height: 26px;
+				flex: none;
+			}
+
+			.nav-links {
+				gap: 0.15rem;
+			}
+
+			.nav-link {
+				display: inline-flex;
+				align-items: center;
+				gap: 0.45rem;
+				font-size: 0.88rem;
+				font-weight: 500;
+				letter-spacing: 0.01em;
+				color: var(--text-muted);
+				background: none;
+				border-radius: var(--radius-sm);
+				padding: 0.45rem 0.7rem;
+			}
+
+			.nav-link .ico {
+				width: 15px;
+				height: 15px;
+				opacity: 0.75;
+			}
+
+			.nav-link:hover {
+				color: var(--text-main);
+				background: rgba(var(--accent-rgb), 0.08);
+				transform: none;
+			}
+
+			.nav-link.active {
+				color: var(--text-main);
+				background: rgba(var(--accent-rgb), 0.12);
+				box-shadow: none;
+			}
+
+			.nav-link.active .ico {
+				color: var(--primary);
+				opacity: 1;
+			}
+
+			/* --- Hero ------------------------------------------------------ */
+
+			.container {
+				max-width: 1180px;
+				padding: 3.5rem 2rem 4rem;
+			}
+
+			.hero {
+				text-align: left;
+				margin: 3rem 0 4.5rem;
+				max-width: 46rem;
+			}
+
+			.eyebrow {
+				display: inline-flex;
+				align-items: center;
+				gap: 0.5rem;
+				font-family: var(--font-mono);
+				font-size: 0.72rem;
+				font-weight: 500;
+				letter-spacing: 0.16em;
+				text-transform: uppercase;
+				color: var(--text-muted);
+				margin-bottom: 1.4rem;
+			}
+
+			.eyebrow::before {
+				content: "";
+				width: 22px;
+				height: 1px;
+				background: var(--primary);
+			}
+
+			.hero h1 {
+				font-family: var(--font-display);
+				font-size: clamp(2.5rem, 6.4vw, 4.6rem);
+				font-weight: 700;
+				line-height: 1.02;
+				letter-spacing: -0.045em;
+				color: var(--text-main);
+				background: none;
+				-webkit-text-fill-color: currentColor;
+				margin-bottom: 1.3rem;
+				text-wrap: balance;
+			}
+
+			/* The only gradient on the page, on one word, where the product
+			   name actually is. */
+			.hero h1 .flare {
+				background: linear-gradient(
+					100deg,
+					var(--flare-1),
+					var(--flare-2) 45%,
+					var(--flare-3)
+				);
+				-webkit-background-clip: text;
+				background-clip: text;
+				-webkit-text-fill-color: transparent;
+				color: transparent;
+			}
+
+			.hero p {
+				font-size: 1.1rem;
+				line-height: 1.65;
+				color: var(--text-muted);
+				max-width: 34rem;
+				margin: 0 0 2rem;
+			}
+
+			.hero-badges {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.5rem;
+				margin-bottom: 2.5rem;
+			}
+
+			.badge {
+				display: inline-flex;
+				align-items: center;
+				gap: 0.4rem;
+				background: transparent;
+				border: 1px solid var(--line);
+				border-radius: 99px;
+				color: var(--text-muted);
+				font-family: var(--font-mono);
+				font-size: 0.73rem;
+				font-weight: 400;
+				letter-spacing: 0.04em;
+				padding: 0.32rem 0.75rem;
+				box-shadow: none;
+			}
+
+			.badge:hover {
+				transform: none;
+				border-color: var(--line-strong);
+				color: var(--text-main);
+				box-shadow: none;
+			}
+
+			.badge .ico {
+				width: 13px;
+				height: 13px;
+				color: var(--primary);
+			}
+
+			/* --- Surfaces -------------------------------------------------- */
+
+			.card,
+			.feature-card,
+			.stat-item,
+			.endpoint-card,
+			.table-container,
+			.code-block {
+				border-radius: var(--radius-md);
+			}
+
+			.card {
+				background: var(--card-bg);
+				border: 1px solid var(--line);
+				box-shadow: none;
+				padding: 2rem;
+				margin-bottom: 1.5rem;
+			}
+
+			.card:hover {
+				transform: none;
+				border-color: var(--line-strong);
+				box-shadow: none;
+			}
+
+			.card h2 {
+				font-family: var(--font-display);
+				font-size: 1.35rem;
+				font-weight: 600;
+				letter-spacing: -0.02em;
+				color: var(--text-main);
+				margin-bottom: 1.25rem;
+				display: flex;
+				align-items: center;
+				gap: 0.6rem;
+			}
+
+			.card h2 .ico {
+				width: 18px;
+				height: 18px;
+				color: var(--primary);
+			}
+
+			.endpoint-card {
+				background: var(--space-1);
+				border: 1px solid var(--line);
+				box-shadow: none;
+				padding: 1.15rem 1.35rem;
+				display: inline-block;
+				text-align: left;
+			}
+
+			.endpoint-dot.ok {
+				background: var(--success);
+				box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.16);
+			}
+
+			.endpoint-dot.fail {
+				background: var(--danger);
+				box-shadow: 0 0 0 3px rgba(251, 111, 111, 0.16);
+			}
+
+			.stat-item {
+				background: var(--space-1);
+				border: 1px solid var(--line);
+				box-shadow: none;
+				padding: 1.6rem 1.4rem;
+				text-align: left;
+			}
+
+			.stat-item::before {
+				display: none;
+			}
+
+			.stat-item:hover {
+				transform: none;
+				border-color: var(--line-strong);
+			}
+
+			.stat-number {
+				font-family: var(--font-mono);
+				font-variant-numeric: tabular-nums;
+				font-size: clamp(1.8rem, 4vw, 2.6rem);
+				font-weight: 500;
+				letter-spacing: -0.03em;
+				color: var(--text-main);
+				background: none;
+				-webkit-text-fill-color: currentColor;
+				margin-bottom: 0.3rem;
+			}
+
+			.stat-label {
+				font-family: var(--font-mono);
+				font-size: 0.72rem;
+				font-weight: 400;
+				letter-spacing: 0.14em;
+				text-transform: uppercase;
+				color: var(--text-muted);
+			}
+
+			.feature-card {
+				background: var(--space-1);
+				border: 1px solid var(--line);
+				padding: 1.6rem;
+			}
+
+			.feature-card:hover {
+				transform: none;
+				border-color: var(--line-strong);
+				box-shadow: none;
+			}
+
+			.feature-icon {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				width: 38px;
+				height: 38px;
+				border-radius: var(--radius-sm);
+				border: 1px solid var(--line);
+				background: rgba(var(--accent-rgb), 0.09);
+				color: var(--primary);
+				font-size: 0;
+				margin-bottom: 1.1rem;
+			}
+
+			.feature-icon .ico {
+				width: 19px;
+				height: 19px;
+			}
+
+			.feature-card h3 {
+				font-family: var(--font-display);
+				font-size: 1.02rem;
+				font-weight: 600;
+				letter-spacing: -0.01em;
+				color: var(--text-main);
+				margin-bottom: 0.45rem;
+			}
+
+			.feature-card p {
+				font-size: 0.92rem;
+				color: var(--text-muted);
+			}
+
+			/* --- Controls -------------------------------------------------- */
+
+			.btn .ico {
+				width: 15px;
+				height: 15px;
+			}
+
+			.footer-logo .brand-mark {
+				width: 22px;
+				height: 22px;
+			}
+
+			.btn {
+				border-radius: var(--radius-sm);
+				font-family: var(--font-body);
+				font-size: 0.9rem;
+				font-weight: 500;
+				letter-spacing: 0;
+				cursor: pointer;
+			}
+
+			.btn-primary {
+				background: linear-gradient(
+					100deg,
+					var(--flare-1),
+					var(--flare-2) 60%,
+					var(--flare-3)
+				);
+				color: #0a0710;
+				border: 0;
+				box-shadow: none;
+			}
+
+			.btn-primary:hover {
+				transform: none;
+				filter: brightness(1.08);
+				box-shadow: 0 0 24px rgba(var(--accent-rgb), 0.28);
+			}
+
+			.btn-secondary {
+				background: var(--space-2);
+				border: 1px solid var(--line);
+				color: var(--text-main);
+			}
+
+			.btn-secondary:hover {
+				background: var(--space-3);
+				border-color: var(--line-strong);
+				transform: none;
+			}
+
+			.form-label {
+				font-family: var(--font-mono);
+				font-size: 0.72rem;
+				font-weight: 400;
+				letter-spacing: 0.12em;
+				text-transform: uppercase;
+				color: var(--text-muted);
+			}
+
+			.form-input {
+				background: var(--space-1);
+				border: 1px solid var(--line);
+				border-radius: var(--radius-sm);
+				color: var(--text-main);
+				font-family: var(--font-body);
+			}
+
+			.form-input:focus {
+				border-color: var(--primary);
+				box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.16);
+			}
+
+			/* --- Data ------------------------------------------------------ */
+
+			.table-container {
+				background: var(--space-1);
+				border: 1px solid var(--line);
+			}
+
+			.table th {
+				background: var(--space-2);
+				border-bottom: 1px solid var(--line);
+				font-family: var(--font-mono);
+				font-size: 0.7rem;
+				font-weight: 500;
+				letter-spacing: 0.12em;
+				text-transform: uppercase;
+				color: var(--text-muted);
+			}
+
+			.table td {
+				border-bottom: 1px solid var(--line);
+				font-variant-numeric: tabular-nums;
+				color: var(--text-main);
+			}
+
+			.table tr:hover td,
+			[data-theme="light"] .table tr:hover td {
+				background: rgba(var(--accent-rgb), 0.06);
+			}
+
+			.code-block {
+				background: var(--space-2);
+				border: 1px solid var(--line);
+				font-family: var(--font-mono);
+				font-size: 0.85rem;
+				color: var(--text-main);
+			}
+
+			.code-block .k {
+				color: var(--flare-4);
+			}
+			.code-block .s {
+				color: var(--success);
+			}
+			.code-block .n {
+				color: var(--flare-1);
+			}
+			.code-block .c {
+				color: var(--text-muted);
+			}
+			.code-block .f {
+				color: var(--ion);
+			}
+
+			.copy-code-btn,
+			.copy-inline-btn {
+				background: var(--space-3);
+				border: 1px solid var(--line);
+				color: var(--text-muted);
+				border-radius: 6px;
+				cursor: pointer;
+			}
+
+			.copy-code-btn:hover,
+			.copy-inline-btn:hover {
+				color: var(--text-main);
+				border-color: var(--line-strong);
+			}
+
+			/* --- Modals ---------------------------------------------------- */
+
+			.modal {
+				background: rgba(3, 4, 10, 0.72);
+				backdrop-filter: blur(6px);
+				-webkit-backdrop-filter: blur(6px);
+			}
+
+			.modal-content {
+				background: var(--space-1);
+				border: 1px solid var(--line-strong);
+				border-radius: var(--radius-lg);
+				box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+			}
+
+			.modal-title {
+				font-family: var(--font-display);
+				font-weight: 600;
+				letter-spacing: -0.02em;
+				background: none;
+				-webkit-text-fill-color: currentColor;
+				color: var(--text-main);
+			}
+
+			.modal-close {
+				color: var(--text-muted);
+				cursor: pointer;
+			}
+
+			.modal-close:hover {
+				color: var(--danger);
+				background: rgba(251, 111, 111, 0.1);
+			}
+
+			/* --- Footer ---------------------------------------------------- */
+
+			.footer {
+				background: transparent;
+				border-top: 1px solid var(--line);
+				box-shadow: none;
+				backdrop-filter: none;
+				-webkit-backdrop-filter: none;
+				border-radius: 0;
+				margin: 4rem 0 0;
+				max-width: none;
+			}
+
+			.footer a {
+				color: var(--text-muted);
+			}
+
+			.footer a:hover {
+				color: var(--primary);
+			}
+
+			.footer h4 {
+				font-family: var(--font-display);
+				letter-spacing: -0.01em;
+				background: none;
+				-webkit-text-fill-color: currentColor;
+				color: var(--text-main);
+			}
+
+			@media (prefers-reduced-motion: reduce) {
+				*,
+				*::before,
+				*::after {
+					animation-duration: 0.001ms !important;
+					animation-iteration-count: 1 !important;
+					transition-duration: 0.001ms !important;
+				}
+			}
+
+			@media (max-width: 768px) {
+				.nav-container {
+					padding: 0.7rem 1rem;
+				}
+
+				.container {
+					padding: 2rem 1.15rem 3rem;
+				}
+
+				.hero {
+					margin: 1.5rem 0 3rem;
+				}
+
+				.hero h1 {
+					font-size: clamp(2rem, 10vw, 2.9rem);
+				}
+
+				.hero p {
+					font-size: 1rem;
+				}
+
+				.endpoint-card {
+					display: block;
+				}
+			}
+
+			/* --- Sky, second pass ------------------------------------------ */
+
+			/* The nebula sat too bright and the cyan lobe turned the middle of
+			   the page teal. Fewer lobes, lower alpha, and a vignette so the
+			   edges fall back to near black. */
+			body::before {
+				background-image:
+					radial-gradient(
+						120% 85% at 50% 0%,
+						transparent 38%,
+						rgba(3, 4, 10, 0.62) 100%
+					),
+					radial-gradient(
+						circle at 24% 12%,
+						rgba(155, 93, 229, 0.15),
+						transparent 52%
+					),
+					radial-gradient(
+						circle at 82% 4%,
+						rgba(224, 69, 123, 0.1),
+						transparent 46%
+					),
+					radial-gradient(
+						circle at 90% 70%,
+						rgba(255, 122, 69, 0.07),
+						transparent 42%
+					);
+			}
+
+			body::after {
+				background-image:
+					radial-gradient(
+						1.9px 1.9px at 18% 24%,
+						rgba(255, 255, 255, 1),
+						transparent 58%
+					),
+					radial-gradient(
+						1.5px 1.5px at 72% 61%,
+						rgba(206, 223, 255, 0.92),
+						transparent 58%
+					),
+					radial-gradient(
+						1.4px 1.4px at 44% 82%,
+						rgba(255, 238, 214, 0.88),
+						transparent 58%
+					),
+					radial-gradient(
+						1.2px 1.2px at 88% 16%,
+						rgba(255, 255, 255, 0.78),
+						transparent 58%
+					),
+					radial-gradient(
+						1.1px 1.1px at 8% 58%,
+						rgba(255, 255, 255, 0.62),
+						transparent 58%
+					);
+				background-size:
+					320px 320px,
+					210px 210px,
+					470px 470px,
+					140px 140px,
+					265px 265px;
+				opacity: 1;
+			}
+
+			/* The footer wordmark was the only gradient text left, which read as
+			   a second brand next to the solid one in the header. */
+			.footer-logo {
+				font-family: var(--font-display);
+				font-size: 1.3rem;
+				font-weight: 600;
+				letter-spacing: -0.02em;
+				color: var(--text-main);
+				background: none;
+				-webkit-text-fill-color: currentColor;
+				gap: 0.55rem;
+			}
+
+			pre.code-block {
+				margin: 1rem 0;
+				tab-size: 2;
+			}
 		</style>
 	</head>
 	<body>
+		<!-- Icon sprite. One stroke width, one visual language, referenced
+		     with <use> so the paths are defined once. -->
+		<svg
+			aria-hidden="true"
+			focusable="false"
+			style="position: absolute; width: 0; height: 0; overflow: hidden"
+		>
+			<defs>
+				<linearGradient id="flare-ramp" x1="0" y1="0" x2="1" y2="1">
+					<stop offset="0" stop-color="#ffc247" />
+					<stop offset="0.5" stop-color="#ff7a45" />
+					<stop offset="1" stop-color="#e0457b" />
+				</linearGradient>
+				<symbol id="i-home" viewBox="0 0 24 24">
+					<path d="M3 10.4 12 3l9 7.4" />
+					<path d="M5.5 9.2V21h13V9.2" />
+				</symbol>
+				<symbol id="i-zap" viewBox="0 0 24 24">
+					<path d="M13 2 4 13.5h7L10 22l9-11.5h-7L13 2z" />
+				</symbol>
+				<symbol id="i-book" viewBox="0 0 24 24">
+					<path d="M4 4.8A2.8 2.8 0 0 1 6.8 2H20v17H6.8A2.8 2.8 0 0 0 4 21.8z" />
+					<path d="M4 19a2.8 2.8 0 0 1 2.8-2.8H20" />
+				</symbol>
+				<symbol id="i-lock" viewBox="0 0 24 24">
+					<rect x="4" y="10.5" width="16" height="10.5" rx="2" />
+					<path d="M7.8 10.5V7a4.2 4.2 0 0 1 8.4 0v3.5" />
+				</symbol>
+				<symbol id="i-sliders" viewBox="0 0 24 24">
+					<path d="M4 21v-6M4 11V3M12 21v-9M12 8V3M20 21v-5M20 12V3" />
+					<path d="M1.5 15h5M9.5 8h5M17.5 16h5" />
+				</symbol>
+				<symbol id="i-github" viewBox="0 0 24 24">
+					<path
+						d="M9 19c-4.6 1.4-4.6-2.3-6.4-2.8M15 21v-3.6a3.1 3.1 0 0 0-.9-2.4c2.9-.3 6-1.4 6-6.4a5 5 0 0 0-1.4-3.5 4.6 4.6 0 0 0-.1-3.5s-1.1-.3-3.6 1.4a12.4 12.4 0 0 0-6.6 0C5.9 1.3 4.8 1.6 4.8 1.6a4.6 4.6 0 0 0-.1 3.5A5 5 0 0 0 3.3 8.6c0 5 3.1 6.1 6 6.4a3.1 3.1 0 0 0-.9 2.4V21"
+					/>
+				</symbol>
+				<symbol id="i-package" viewBox="0 0 24 24">
+					<path d="M20.5 7.7 12 3 3.5 7.7v8.6L12 21l8.5-4.7z" />
+					<path d="m3.7 7.8 8.3 4.5 8.3-4.5M12 12.3V21" />
+				</symbol>
+				<symbol id="i-pencil" viewBox="0 0 24 24">
+					<path d="M16.4 3.4a2.3 2.3 0 0 1 3.2 3.2L8 18.2l-4.2 1.2 1.2-4.2z" />
+				</symbol>
+				<symbol id="i-plus" viewBox="0 0 24 24">
+					<path d="M12 4.6v14.8M4.6 12h14.8" />
+				</symbol>
+				<symbol id="i-trash" viewBox="0 0 24 24">
+					<path d="M4 6.4h16M9.4 6.4V4.2h5.2v2.2" />
+					<path d="M6.2 6.4 7 20.2h10l.8-13.8" />
+				</symbol>
+				<symbol id="i-play" viewBox="0 0 24 24">
+					<path d="M6.5 4.3 19 12 6.5 19.7z" />
+				</symbol>
+				<symbol id="i-code" viewBox="0 0 24 24">
+					<path d="m8.4 7.5-5 4.5 5 4.5M15.6 7.5l5 4.5-5 4.5" />
+				</symbol>
+				<symbol id="i-bulb" viewBox="0 0 24 24">
+					<path d="M9.4 17.5a6.4 6.4 0 1 1 5.2 0" />
+					<path d="M9.4 17.5h5.2M10.2 20.7h3.6" />
+				</symbol>
+				<symbol id="i-layers" viewBox="0 0 24 24">
+					<path d="m12 3 8.5 4.6L12 12.2 3.5 7.6z" />
+					<path d="m3.5 12.4 8.5 4.6 8.5-4.6" />
+					<path d="m3.5 16.9 8.5 4.6 8.5-4.6" />
+				</symbol>
+				<symbol id="i-wrench" viewBox="0 0 24 24">
+					<path d="M15.4 3.4a5.4 5.4 0 0 0-6.6 6.9L3 16.1v4.5h4.5l5.8-5.8a5.4 5.4 0 0 0 6.9-6.6l-3.2 3.2-3-.7-.7-3z" />
+				</symbol>
+				<symbol id="i-gauge" viewBox="0 0 24 24">
+					<path d="M3.6 17.4a9.4 9.4 0 1 1 16.8 0" />
+					<path d="m12 13.6 4.2-4.6" />
+					<circle cx="12" cy="14.6" r="1.1" />
+				</symbol>
+				<symbol id="i-key" viewBox="0 0 24 24">
+					<circle cx="7.6" cy="14.4" r="4.1" />
+					<path d="m10.6 11.4 8.4-8.4M16.4 5.6l2.2 2.2M14 8l2.2 2.2" />
+				</symbol>
+				<symbol id="i-copy" viewBox="0 0 24 24">
+					<rect x="8.5" y="8.5" width="12" height="12" rx="2" />
+					<path d="M4.5 15.5A2 2 0 0 1 3.5 13.6V5.5a2 2 0 0 1 2-2h8.1a2 2 0 0 1 1.9 1.4" />
+				</symbol>
+				<symbol id="i-search" viewBox="0 0 24 24">
+					<circle cx="10.5" cy="10.5" r="6.5" />
+					<path d="m15.4 15.4 5.6 5.6" />
+				</symbol>
+				<symbol id="i-globe" viewBox="0 0 24 24">
+					<circle cx="12" cy="12" r="9" />
+					<path d="M3 12h18" />
+					<path d="M12 3a13.5 13.5 0 0 1 0 18 13.5 13.5 0 0 1 0-18z" />
+				</symbol>
+				<symbol id="i-chart" viewBox="0 0 24 24">
+					<path d="M3 20.5h18" />
+					<path d="M6 20.5v-6M11 20.5V6M16 20.5v-9M21 20.5v-4" />
+				</symbol>
+				<symbol id="i-star" viewBox="0 0 24 24">
+					<path d="m12 3 2.2 5.6L20 10.8l-5.8 2.2L12 18.6l-2.2-5.6L4 10.8l5.8-2.2z" />
+				</symbol>
+				<symbol id="i-coin" viewBox="0 0 24 24">
+					<circle cx="12" cy="12" r="8.5" />
+					<path d="M14.6 9.3A3 3 0 0 0 12 8c-1.5 0-2.7.9-2.7 2s1.2 1.8 2.7 2 2.7 1 2.7 2-1.2 2-2.7 2a3 3 0 0 1-2.6-1.3" />
+					<path d="M12 6.2v11.6" />
+				</symbol>
+				<symbol id="i-moon" viewBox="0 0 24 24">
+					<path d="M20.3 14.6A8.6 8.6 0 0 1 9.4 3.7a8.6 8.6 0 1 0 10.9 10.9z" />
+				</symbol>
+				<symbol id="i-target" viewBox="0 0 24 24">
+					<circle cx="12" cy="12" r="8.5" />
+					<circle cx="12" cy="12" r="4.4" />
+					<circle cx="12" cy="12" r="0.9" />
+				</symbol>
+				<symbol id="i-trending" viewBox="0 0 24 24">
+					<path d="m3 16.6 6-6 4 4 7.4-7.4" />
+					<path d="M14.6 7.2H21v6.4" />
+				</symbol>
+				<symbol id="i-palette" viewBox="0 0 24 24">
+					<path d="M12 3a9 9 0 0 0 0 18c1.4 0 2.1-.9 2.1-1.8 0-.5-.2-.9-.5-1.2a1.6 1.6 0 0 1 1.1-2.7h1.4A4.9 4.9 0 0 0 21 10.4C21 6.3 16.9 3 12 3z" />
+					<circle cx="7.6" cy="12.2" r="1" />
+					<circle cx="9.6" cy="8.2" r="1" />
+					<circle cx="14.4" cy="7.6" r="1" />
+				</symbol>
+				<symbol id="i-database" viewBox="0 0 24 24">
+					<ellipse cx="12" cy="5.5" rx="8" ry="3.2" />
+					<path d="M4 5.5v13c0 1.8 3.6 3.2 8 3.2s8-1.4 8-3.2v-13" />
+					<path d="M4 12c0 1.8 3.6 3.2 8 3.2s8-1.4 8-3.2" />
+				</symbol>
+				<symbol id="i-tag" viewBox="0 0 24 24">
+					<path d="M3 12.5V4a1 1 0 0 1 1-1h8.5L21 11.5 12.5 20 3 12.5z" />
+					<circle cx="7.6" cy="7.6" r="1.4" />
+				</symbol>
+			</defs>
+		</svg>
+
 		<!-- Navigation -->
 		<nav class="navbar">
 			<div class="nav-container">
 				<a href="javascript:void(0)" class="nav-brand">
-					<img
-						src="./logo-dark.png"
-						alt="ViewFlare Logo"
-						id="navbar-logo"
-						style="
-							height: 7vh;
-							vertical-align: middle;
-							margin-right: 0.5rem;
-						"
-					/>
-					<span>View Flare</span>
+					<svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
+						<circle cx="12" cy="12" r="4.1" fill="url(#flare-ramp)" />
+						<path
+							d="M12 2.4a9.6 9.6 0 0 1 0 19.2"
+							fill="none"
+							stroke="url(#flare-ramp)"
+							stroke-width="1.6"
+							stroke-linecap="round"
+							opacity="0.6"
+						/>
+						<path
+							d="M12 5.6a6.4 6.4 0 0 0 0 12.8"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="1.3"
+							stroke-linecap="round"
+							opacity="0.3"
+						/>
+					</svg>
+					<span>ViewFlare</span>
 				</a>
 				<div class="nav-links">
 					<div class="switch">
@@ -1130,38 +2097,50 @@
 						href="javascript:void(0)"
 						class="nav-link active"
 						onclick="showPage('home', event)"
-						>🏠 Home</a
+						><svg class="ico" aria-hidden="true">
+							<use href="#i-home" /></svg
+						>Home</a
 					>
 					<a
 						href="javascript:void(0)"
 						class="nav-link"
 						onclick="showPage('demo', event)"
-						>🚀 Demo</a
+						><svg class="ico" aria-hidden="true">
+							<use href="#i-zap" /></svg
+						>Demo</a
 					>
 					<a
 						href="javascript:void(0)"
 						class="nav-link"
 						onclick="showPage('docs', event)"
-						>📚 Docs</a
+						><svg class="ico" aria-hidden="true">
+							<use href="#i-book" /></svg
+						>Docs</a
 					>
 					<a
 						href="javascript:void(0)"
 						class="nav-link"
 						onclick="showAdminModal()"
-						>🔒 Admin</a
+						><svg class="ico" aria-hidden="true">
+							<use href="#i-lock" /></svg
+						>Admin</a
 					>
 					<a
 						href="javascript:void(0)"
 						class="nav-link"
 						onclick="showPage('setup', event)"
-						>⚙️ Setup</a
+						><svg class="ico" aria-hidden="true">
+							<use href="#i-sliders" /></svg
+						>Setup</a
 					>
 					<a
 						href="https://github.com/Life-Experimentalist/ViewFlare"
 						target="_blank"
 						rel="noopener noreferrer"
 						class="nav-link external"
-						>🐙 GitHub</a
+						><svg class="ico" aria-hidden="true">
+							<use href="#i-github" /></svg
+						>GitHub</a
 					>
 				</div>
 			</div>
@@ -1171,27 +2150,40 @@
 			<!-- HOME PAGE -->
 			<div id="home-page" class="page active">
 				<div class="hero">
-					<img
-						src="./logo-dark.png"
-						alt="ViewFlare"
-						id="hero-logo"
-						style="
-							width: 200px;
-							height: auto;
-							margin-bottom: 1.5rem;
-						"
-					/>
-					<h1>Professional View Counter</h1>
+					<div class="eyebrow">Cloudflare Workers + D1</div>
+					<h1>
+						Views, installs and downloads on one
+						<span class="flare">endpoint</span>.
+					</h1>
 					<p>
-						Advanced serverless analytics with enterprise-grade
-						admin management
+						ViewFlare counts page views and pulls install totals
+						from npm, PyPI, crates.io, VS&nbsp;Code and GitHub
+						releases. Read any of it back as JSON, or drop in a
+						badge. One URL, no SDK.
 					</p>
 					<div class="hero-badges">
-						<span class="badge">⚡ High Performance</span>
-						<span class="badge">🔒 Secure Admin</span>
-						<span class="badge">📊 Advanced Analytics</span>
-						<span class="badge">💰 Cost Optimized</span>
+						<span class="badge"
+							><svg class="ico" aria-hidden="true">
+								<use href="#i-zap" /></svg
+							>Edge runtime</span
+						>
+						<span class="badge"
+							><svg class="ico" aria-hidden="true">
+								<use href="#i-database" /></svg
+							>Cloudflare D1</span
+						>
+						<span class="badge"
+							><svg class="ico" aria-hidden="true">
+								<use href="#i-tag" /></svg
+							>Badges and JSON</span
+						>
+						<span class="badge"
+							><svg class="ico" aria-hidden="true">
+								<use href="#i-lock" /></svg
+							>Admin API</span
+						>
 					</div>
+
 
 					<div class="endpoint-card">
 						<div class="endpoint-status">
@@ -1216,7 +2208,7 @@
 								onclick="copyToClipboard(API_BASE)"
 								class="btn btn-secondary btn-sm"
 							>
-								📋 Copy Base URL
+								<svg class="ico" aria-hidden="true"><use href="#i-copy" /></svg>Copy Base URL
 							</button>
 							<button
 								type="button"
@@ -1228,7 +2220,7 @@
 								"
 								class="btn btn-secondary btn-sm"
 							>
-								🔎 Open Stats API
+								<svg class="ico" aria-hidden="true"><use href="#i-search" /></svg>Open Stats API
 							</button>
 							<button
 								type="button"
@@ -1240,7 +2232,7 @@
 								"
 								class="btn btn-secondary btn-sm"
 							>
-								🌐 Custom Domain
+								<svg class="ico" aria-hidden="true"><use href="#i-globe" /></svg>Custom Domain
 							</button>
 							<button
 								type="button"
@@ -1252,7 +2244,7 @@
 								"
 								class="btn btn-secondary btn-sm"
 							>
-								🐙 Repo
+								<svg class="ico" aria-hidden="true"><use href="#i-github" /></svg>Repo
 							</button>
 						</div>
 						<div id="domain-banner" class="domain-banner">
@@ -1263,7 +2255,7 @@
 
 				<!-- Live Global Stats -->
 				<div class="card">
-					<h2>📊 Global Statistics</h2>
+					<h2><svg class="ico" aria-hidden="true"><use href="#i-chart" /></svg>Global Statistics</h2>
 					<div class="stats-grid">
 						<div class="stat-item">
 							<div class="stat-number" id="global-total-views">
@@ -1297,10 +2289,10 @@
 
 				<!-- Key Features -->
 				<div class="card">
-					<h2>✨ Key Features</h2>
+					<h2><svg class="ico" aria-hidden="true"><use href="#i-star" /></svg>Key Features</h2>
 					<div class="feature-grid">
 						<div class="feature-card">
-							<div class="feature-icon">⚡</div>
+							<div class="feature-icon"><svg class="ico" aria-hidden="true"><use href="#i-zap" /></svg></div>
 							<h3>Ultra Fast</h3>
 							<p>
 								Optimized for minimal latency with intelligent
@@ -1308,7 +2300,7 @@
 							</p>
 						</div>
 						<div class="feature-card">
-							<div class="feature-icon">🔒</div>
+							<div class="feature-icon"><svg class="ico" aria-hidden="true"><use href="#i-lock" /></svg></div>
 							<h3>Secure Admin</h3>
 							<p>
 								Password-protected admin panel with
@@ -1317,7 +2309,7 @@
 							</p>
 						</div>
 						<div class="feature-card">
-							<div class="feature-icon">📊</div>
+							<div class="feature-icon"><svg class="ico" aria-hidden="true"><use href="#i-chart" /></svg></div>
 							<h3>Rich Analytics</h3>
 							<p>
 								Detailed view tracking, visitor analytics, and
@@ -1325,7 +2317,7 @@
 							</p>
 						</div>
 						<div class="feature-card">
-							<div class="feature-icon">💰</div>
+							<div class="feature-icon"><svg class="ico" aria-hidden="true"><use href="#i-coin" /></svg></div>
 							<h3>Cost Effective</h3>
 							<p>
 								Designed to stay within Cloudflare's free tier
@@ -1333,7 +2325,7 @@
 							</p>
 						</div>
 						<div class="feature-card">
-							<div class="feature-icon">🌙</div>
+							<div class="feature-icon"><svg class="ico" aria-hidden="true"><use href="#i-moon" /></svg></div>
 							<h3>Dark Mode</h3>
 							<p>
 								Beautiful light and dark themes with smooth
@@ -1341,7 +2333,7 @@
 							</p>
 						</div>
 						<div class="feature-card">
-							<div class="feature-icon">🎯</div>
+							<div class="feature-icon"><svg class="ico" aria-hidden="true"><use href="#i-target" /></svg></div>
 							<h3>Easy Integration</h3>
 							<p>
 								Simple one-line webhook integration with RESTful
@@ -1355,13 +2347,13 @@
 			<!-- DEMO PAGE -->
 			<div id="demo-page" class="page">
 				<div class="hero">
-					<h1>🚀 Live Demo</h1>
+					<h1>Live Demo</h1>
 					<p>Try out the view counter with real-time updates</p>
 				</div>
 
 				<!-- Quick Demo -->
 				<div class="card">
-					<h2>🎯 Quick Test</h2>
+					<h2><svg class="ico" aria-hidden="true"><use href="#i-target" /></svg>Quick Test</h2>
 					<div class="form-row">
 						<div class="form-group">
 							<label class="form-label" for="demo-project"
@@ -1380,7 +2372,7 @@
 								onclick="incrementDemo()"
 								class="btn btn-primary"
 							>
-								📈 Increment Views
+								<svg class="ico" aria-hidden="true"><use href="#i-trending" /></svg>Increment Views
 							</button>
 						</div>
 						<div class="form-group">
@@ -1388,7 +2380,7 @@
 								onclick="getDemoStats()"
 								class="btn btn-secondary"
 							>
-								📊 Get Stats
+								<svg class="ico" aria-hidden="true"><use href="#i-chart" /></svg>Get Stats
 							</button>
 						</div>
 					</div>
@@ -1415,7 +2407,7 @@
 
 				<!-- Badge Generator -->
 				<div class="card">
-					<h2>🎨 Badge Generator</h2>
+					<h2><svg class="ico" aria-hidden="true"><use href="#i-palette" /></svg>Badge Generator</h2>
 					<div class="form-row">
 						<div class="form-group">
 							<label class="form-label" for="badge-project"
@@ -1445,7 +2437,7 @@
 								onclick="updateBadgePreview()"
 								class="btn btn-primary"
 							>
-								🎨 Generate Badge
+								<svg class="ico" aria-hidden="true"><use href="#i-palette" /></svg>Generate Badge
 							</button>
 						</div>
 					</div>
@@ -1475,21 +2467,21 @@
 			<!-- DOCS PAGE -->
 			<div id="docs-page" class="page">
 				<div class="hero">
-					<h1>📚 Complete Documentation</h1>
+					<h1>Complete Documentation</h1>
 					<p>
 						Everything you need to integrate ViewFlare into your projects
 					</p>
 					<div class="hero-badges">
-						<span class="badge">🚀 Quick Start</span>
-						<span class="badge">📖 API Reference</span>
-						<span class="badge">💡 Examples</span>
-						<span class="badge">⚙️ Configuration</span>
+						<span class="badge"><svg class="ico" aria-hidden="true"><use href="#i-play" /></svg>Quick Start</span>
+						<span class="badge"><svg class="ico" aria-hidden="true"><use href="#i-book" /></svg>API Reference</span>
+						<span class="badge"><svg class="ico" aria-hidden="true"><use href="#i-bulb" /></svg>Examples</span>
+						<span class="badge"><svg class="ico" aria-hidden="true"><use href="#i-sliders" /></svg>Configuration</span>
 					</div>
 				</div>
 
 				<!-- Quick Start Guide -->
 				<div class="card">
-					<h2>🚀 Quick Start</h2>
+					<h2><svg class="ico" aria-hidden="true"><use href="#i-play" /></svg>Quick Start</h2>
 					<p>Get your view counter running in under 2 minutes:</p>
 
 					<h3>1. Basic Setup</h3>
@@ -1527,9 +2519,9 @@
 
 				<!-- Complete API Reference -->
 				<div class="card">
-					<h2>🔗 Complete API Reference</h2>
+					<h2><svg class="ico" aria-hidden="true"><use href="#i-code" /></svg>Complete API Reference</h2>
 
-					<h3>📈 POST /api/views/{project-name}</h3>
+					<h3>POST /api/views/{project-name}</h3>
 					<p>
 						<strong>Purpose:</strong> Increment view count for a project
 					</p>
@@ -1548,7 +2540,7 @@
 									<td><code>project-name</code></td>
 									<td>string</td>
 									<td>Unique project identifier (alphanumeric, hyphens, underscores, max 100 chars)</td>
-									<td><span class="success">✅ Yes</span></td>
+									<td><span class="success">Yes</span></td>
 								</tr>
 							</tbody>
 						</table>
@@ -1565,7 +2557,7 @@
     <span class="string">"timestamp"</span>: <span class="string">"2025-08-28T13:45:30Z"</span>
 }</div>
 
-					<h3>📊 GET /api/views/{project-name}</h3>
+					<h3>GET /api/views/{project-name}</h3>
 					<p>
 						<strong>Purpose:</strong> Get current statistics for a project
 					</p>
@@ -1592,7 +2584,7 @@
     <span class="string">"createdAt"</span>: <span class="keyword">null</span>
 }</div>
 
-					<h3>🎨 GET /api/views/{project-name}/badge</h3>
+					<h3>GET /api/views/{project-name}/badge</h3>
 					<p>
 						<strong>Purpose:</strong> Generate SVG badge with view count
 					</p>
@@ -1643,7 +2635,7 @@
 <span class="comment">// Response: SVG image (image/svg+xml)</span>
 <span class="comment">// Caching: Cached for 1 hour on Cloudflare Edge</span></div>
 
-					<h3>💊 GET /health</h3>
+					<h3>GET /health</h3>
 					<p><strong>Purpose:</strong> Health check endpoint</p>
 					<div class="code-block"><span class="comment">// Response (200 OK)</span>
 {
@@ -1657,7 +2649,7 @@
 
 				<!-- Replay Setup -->
 				<div class="card">
-					<h2>🧩 Multi-Instance Setup (No Interference)</h2>
+					<h2><svg class="ico" aria-hidden="true"><use href="#i-layers" /></svg>Multi-Instance Setup (No Interference)</h2>
 					<p>
 						You can replicate this project for your own domain and data, completely isolated from this instance.
 					</p>
@@ -1683,9 +2675,9 @@
 
 				<!-- Integration Examples -->
 				<div class="card">
-					<h2>⚡ Integration Examples</h2>
+					<h2><svg class="ico" aria-hidden="true"><use href="#i-zap" /></svg>Integration Examples</h2>
 
-					<h3>🌐 JavaScript (Browser)</h3>
+					<h3>JavaScript (Browser)</h3>
 					<div class="code-block"><span class="comment">// Modern async/await approach</span>
 <span class="keyword">async function</span> <span class="function">trackView</span>(projectName) {
     <span class="keyword">try</span> {
@@ -1720,7 +2712,7 @@
     <span class="function">displayViewCount</span>(<span class="string">'my-website'</span>);
 });</div>
 
-					<h3>🚀 Node.js (Server-side)</h3>
+					<h3>Node.js (Server-side)</h3>
 					<div class="code-block"><span class="comment">// Using fetch (Node.js 18+)</span>
 <span class="keyword">async function</span> <span class="function">trackServerView</span>(projectName) {
     <span class="keyword">try</span> {
@@ -1751,7 +2743,7 @@
     }
 }</div>
 
-					<h3>🐍 Python</h3>
+					<h3>Python</h3>
 					<div class="code-block"><span class="comment"># Using requests library</span>
 <span class="keyword">import</span> requests
 <span class="keyword">from</span> typing <span class="keyword">import</span> Dict, Optional
@@ -1788,7 +2780,7 @@ result = counter.track_view(<span class="string">"my-python-project"</span>)
 <span class="keyword">if</span> result.get(<span class="string">"success"</span>):
     print(f<span class="string">"📈 Total views: {result['totalViews']}"</span>)</div>
 
-					<h3>🦀 Rust</h3>
+					<h3>Rust</h3>
 					<div class="code-block"><span class="comment">// Add to Cargo.toml: reqwest = { version = "0.11", features = ["json"] }</span>
 <span class="keyword">use</span> reqwest;
 <span class="keyword">use</span> serde::{Deserialize, Serialize};
@@ -1814,9 +2806,9 @@ result = counter.track_view(<span class="string">"my-python-project"</span>)
 
 				<!-- Advanced Usage -->
 				<div class="card">
-					<h2>🎯 Advanced Usage</h2>
+					<h2><svg class="ico" aria-hidden="true"><use href="#i-target" /></svg>Advanced Usage</h2>
 
-					<h3>⚙️ Environment Configuration</h3>
+					<h3>Environment Configuration</h3>
 					<p>
 						Configure your ViewFlare instance with these environment variables:
 					</p>
@@ -1854,7 +2846,7 @@ result = counter.track_view(<span class="string">"my-python-project"</span>)
 						</table>
 					</div>
 
-					<h3>🏗️ Self-Hosting</h3>
+					<h3>Self-Hosting</h3>
 					<div class="code-block"><span class="comment"># Clone the repository</span>
 <span class="cmd">git clone</span> https://github.com/Life-Experimentalist/ViewFlare.git
 <span class="cmd">cd</span> ViewFlare
@@ -1872,7 +2864,7 @@ result = counter.track_view(<span class="string">"my-python-project"</span>)
 <span class="comment"># Deploy to Cloudflare Pages</span>
 <span class="cmd">npm run deploy</span></div>
 
-					<h3>📊 Rate Limiting &amp; Performance</h3>
+					<h3>Rate Limiting &amp; Performance</h3>
 					<div class="code-block"><span class="comment">// Implement client-side rate limiting</span>
 <span class="keyword">class</span> <span class="class">ViewTracker</span> {
     <span class="function">constructor</span>(cooldown = <span class="number">60000</span>) {
@@ -1894,7 +2886,7 @@ result = counter.track_view(<span class="string">"my-python-project"</span>)
     }
 }</div>
 
-					<h3>🔄 Batch Operations</h3>
+					<h3>Batch Operations</h3>
 					<div class="code-block"><span class="comment">// Track multiple projects efficiently</span>
 <span class="keyword">async function</span> <span class="function">trackMultiple</span>(projects) {
     <span class="keyword">const</span> promises = projects.<span class="method">map</span>(project => 
@@ -1908,9 +2900,9 @@ result = counter.track_view(<span class="string">"my-python-project"</span>)
 
 				<!-- Troubleshooting -->
 				<div class="card">
-					<h2>🔧 Troubleshooting</h2>
+					<h2><svg class="ico" aria-hidden="true"><use href="#i-wrench" /></svg>Troubleshooting</h2>
 
-					<h3>❌ Common Issues</h3>
+					<h3>Common Issues</h3>
 					<div class="table-container">
 						<table class="table">
 							<thead>
@@ -1945,7 +2937,7 @@ result = counter.track_view(<span class="string">"my-python-project"</span>)
 						</table>
 					</div>
 
-					<h3>🐛 Debugging</h3>
+					<h3>Debugging</h3>
 					<div class="code-block"><span class="comment">// Enable detailed logging</span>
 <span class="keyword">const</span> DEBUG = <span class="keyword">true</span>;
 <span class="keyword">async function</span> <span class="function">debugTrack</span>(projectName) {
@@ -1966,9 +2958,9 @@ result = counter.track_view(<span class="string">"my-python-project"</span>)
 
 				<!-- Performance & Limits -->
 				<div class="card">
-					<h2>⚡ Performance &amp; Limits</h2>
+					<h2><svg class="ico" aria-hidden="true"><use href="#i-gauge" /></svg>Performance &amp; Limits</h2>
 
-					<h3>📊 System Specifications</h3>
+					<h3>System Specifications</h3>
 					<div class="stats-grid">
 						<div class="stat-item">
 							<div class="stat-number">&lt; 100ms</div>
@@ -1988,7 +2980,7 @@ result = counter.track_view(<span class="string">"my-python-project"</span>)
 						</div>
 					</div>
 
-					<h3>💰 Cost Optimization</h3>
+					<h3>Cost Optimization</h3>
 					<p>
 						ViewFlare is designed to stay within Cloudflare's free tier limits:
 					</p>
@@ -1999,7 +2991,7 @@ result = counter.track_view(<span class="string">"my-python-project"</span>)
 						<li><strong>Analytics:</strong> Optional to save resources</li>
 					</ul>
 
-					<h3>🔒 Security Features</h3>
+					<h3>Security Features</h3>
 					<div class="code-block"><span class="comment"># Security headers automatically included</span>
 Access-Control-Allow-Origin: *
 Content-Security-Policy: default-src 'self'
@@ -2021,7 +3013,7 @@ GDPR compliant (no personal data stored)</div>
 					<h1>Self-Hosting Setup</h1>
 					<p>
 						Deploy your own ViewFlare in minutes. Each fork gets its
-						own isolated D1 database — completely separate from any
+						own isolated D1 database, completely separate from any
 						other instance.
 					</p>
 				</div>
@@ -2034,11 +3026,8 @@ GDPR compliant (no personal data stored)</div>
 					</div>
 					<div class="setup-step-body">
 						<p>Fork the repo on GitHub, then:</p>
-						<div class="code-block">
-							git clone
-							https://github.com/Life-Experimentalist/ViewFlare.git
-							cd ViewFlare
-						</div>
+						<pre class="code-block">git clone https://github.com/Life-Experimentalist/ViewFlare.git
+cd ViewFlare</pre>
 					</div>
 				</div>
 
@@ -2049,7 +3038,7 @@ GDPR compliant (no personal data stored)</div>
 						<h3>Install Dependencies</h3>
 					</div>
 					<div class="setup-step-body">
-						<div class="code-block">npm install</div>
+						<pre class="code-block">npm install</pre>
 					</div>
 				</div>
 
@@ -2060,9 +3049,7 @@ GDPR compliant (no personal data stored)</div>
 						<h3>Create D1 Database</h3>
 					</div>
 					<div class="setup-step-body">
-						<div class="code-block">
-							wrangler d1 create cflaircounter-db
-						</div>
+						<pre class="code-block">wrangler d1 create cflaircounter-db</pre>
 						<p>
 							Copy the output <code>database_id</code> and paste
 							it into <code>wrangler.toml</code>.
@@ -2077,13 +3064,15 @@ GDPR compliant (no personal data stored)</div>
 						<h3>Configure wrangler.toml</h3>
 					</div>
 					<div class="setup-step-body">
-						<div class="code-block">
-							[[d1_databases]] binding = "DB" database_name =
-							"cflaircounter-db" database_id =
-							"YOUR_DATABASE_ID_HERE" [vars] ADMIN_PASSWORD =
-							"your-secure-password-here" # Your deployment will
-							be at: YOUR_ORIGIN
-						</div>
+						<pre class="code-block">[[d1_databases]]
+binding = "DB"
+database_name = "cflaircounter-db"
+database_id = "YOUR_DATABASE_ID_HERE"
+
+[vars]
+ADMIN_PASSWORD = "your-secure-password-here"
+
+# Your deployment will be at: YOUR_ORIGIN</pre>
 					</div>
 				</div>
 
@@ -2094,7 +3083,7 @@ GDPR compliant (no personal data stored)</div>
 						<h3>Initialize Schema</h3>
 					</div>
 					<div class="setup-step-body">
-						<div class="code-block">npm run db:init</div>
+						<pre class="code-block">npm run db:init</pre>
 					</div>
 				</div>
 
@@ -2105,7 +3094,7 @@ GDPR compliant (no personal data stored)</div>
 						<h3>Deploy</h3>
 					</div>
 					<div class="setup-step-body">
-						<div class="code-block">npm run deploy</div>
+						<pre class="code-block">npm run deploy</pre>
 						<p>
 							After deploy, Cloudflare will show your Pages URL.
 						</p>
@@ -2132,7 +3121,7 @@ GDPR compliant (no personal data stored)</div>
 
 				<!-- Health Test Card -->
 				<div class="card" id="setup-health-card">
-					<h3>🧪 Test Your Deployment</h3>
+					<h3>Test Your Deployment</h3>
 					<p>After deploying, verify your instance is working:</p>
 					<button class="btn btn-primary" onclick="testSetupHealth()">
 						Run Health Check
@@ -2150,11 +3139,17 @@ GDPR compliant (no personal data stored)</div>
 			<div class="footer-container">
 				<div class="footer-brand">
 					<div class="footer-logo">
-						<img
-							src="./logo-dark.png"
-							alt="ViewFlare Logo"
-							id="footer-logo"
-						/>
+						<svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
+							<circle cx="12" cy="12" r="4.1" fill="url(#flare-ramp)" />
+							<path
+								d="M12 2.4a9.6 9.6 0 0 1 0 19.2"
+								fill="none"
+								stroke="url(#flare-ramp)"
+								stroke-width="1.6"
+								stroke-linecap="round"
+								opacity="0.6"
+							/>
+						</svg>
 						<span>ViewFlare</span>
 					</div>
 					<p class="footer-tagline">
@@ -2211,7 +3206,7 @@ GDPR compliant (no personal data stored)</div>
 		<div id="admin-modal" class="modal">
 			<div class="modal-content modal-login">
 				<div class="modal-header">
-					<h2 class="modal-title">🔒 Admin Panel</h2>
+					<h2 class="modal-title"><svg class="ico" aria-hidden="true"><use href="#i-lock" /></svg>Admin Panel</h2>
 					<button class="modal-close" onclick="hideAdminModal()">
 						✕
 					</button>
@@ -2241,7 +3236,7 @@ GDPR compliant (no personal data stored)</div>
 							class="btn btn-primary"
 							style="width: 100%"
 						>
-							🔑 Login
+							<svg class="ico" aria-hidden="true"><use href="#i-key" /></svg>Login
 						</button>
 					</form>
 				</div>
@@ -2258,25 +3253,25 @@ GDPR compliant (no personal data stored)</div>
 					</div>
 
 					<!-- Quick Actions -->
-					<h3>⚡ Quick Actions</h3>
+					<h3><svg class="ico" aria-hidden="true"><use href="#i-zap" /></svg>Quick Actions</h3>
 					<div class="form-row">
 						<button
 							onclick="showAddProjectModal()"
 							class="btn btn-primary"
 						>
-							➕ Add New Project
+							Add New Project
 						</button>
 						<button
 							onclick="refreshAdminData()"
 							class="btn btn-secondary"
 						>
-							🔄 Refresh Data
+							Refresh Data
 						</button>
 					</div>
 					<br />
 					<br />
 					<!-- Project Management -->
-					<h3>📊 Project Management</h3>
+					<h3><svg class="ico" aria-hidden="true"><use href="#i-chart" /></svg>Project Management</h3>
 					<div id="admin-projects">
 						<p>Loading projects...</p>
 					</div>
@@ -2289,7 +3284,7 @@ GDPR compliant (no personal data stored)</div>
 			<div class="modal-content">
 				<div class="modal-header">
 					<h2 class="modal-title" id="project-modal-title">
-						➕ Add New Project
+						Add New Project
 					</h2>
 					<button class="modal-close" onclick="hideProjectModal()">
 						✕
@@ -2307,7 +3302,7 @@ GDPR compliant (no personal data stored)</div>
 						pattern="[a-zA-Z0-9-_]+"
 						title="Only alphanumeric, hyphens, and underscores allowed"
 					/>
-					<small style="color: #666"
+					<small style="color: var(--text-muted)"
 						>Only alphanumeric characters, hyphens, and
 						underscores</small
 					>
@@ -2361,7 +3356,7 @@ GDPR compliant (no personal data stored)</div>
 						class="btn btn-primary"
 						id="save-project-btn"
 					>
-						💾 Save Project
+						Save Project
 					</button>
 				</div>
 			</div>
@@ -2371,7 +3366,7 @@ GDPR compliant (no personal data stored)</div>
 		<div id="badge-modal" class="modal">
 			<div class="modal-content" style="max-width: 800px">
 				<div class="modal-header">
-					<h2 class="modal-title">🎨 Badge & Links</h2>
+					<h2 class="modal-title"><svg class="ico" aria-hidden="true"><use href="#i-palette" /></svg>Badge &amp; Links</h2>
 					<button class="modal-close" onclick="hideBadgeModal()">
 						✕
 					</button>
@@ -2623,7 +3618,7 @@ GDPR compliant (no personal data stored)</div>
 			function initializeTheme() {
 				const themeToggle = document.getElementById("themeToggle");
 				const savedTheme =
-					localStorage.getItem("theme") === "dark" ? "dark" : "light";
+					localStorage.getItem("theme") === "light" ? "light" : "dark";
 
 				if (!themeToggle) {
 					applyTheme(savedTheme);
@@ -2732,18 +3727,18 @@ GDPR compliant (no personal data stored)</div>
 
 				if (currentHost === PRIMARY_DOMAIN) {
 					banner.classList.add("primary");
-					banner.innerHTML = `✅ You are on the primary custom domain <strong>${PRIMARY_DOMAIN}</strong>. Fallback remains available at <a href="${fallbackUrl}" target="_blank" rel="noopener noreferrer">${FALLBACK_DOMAIN}</a>.`;
+					banner.innerHTML = `You are on the primary custom domain <strong>${PRIMARY_DOMAIN}</strong>. Fallback remains available at <a href="${fallbackUrl}" target="_blank" rel="noopener noreferrer">${FALLBACK_DOMAIN}</a>.`;
 					return;
 				}
 
 				if (currentHost === FALLBACK_DOMAIN) {
 					banner.classList.add("fallback");
-					banner.innerHTML = `ℹ️ You are on the fallback Pages domain <strong>${FALLBACK_DOMAIN}</strong>. Preferred public domain is <a href="${primaryUrl}" target="_blank" rel="noopener noreferrer">${PRIMARY_DOMAIN}</a>.`;
+					banner.innerHTML = `You are on the fallback Pages domain <strong>${FALLBACK_DOMAIN}</strong>. Preferred public domain is <a href="${primaryUrl}" target="_blank" rel="noopener noreferrer">${PRIMARY_DOMAIN}</a>.`;
 					return;
 				}
 
 				banner.classList.add("selfhost");
-				banner.innerHTML = `🧩 Self-hosted domain detected (<strong>${currentHost}</strong>). This instance is isolated to your own deployment and data bindings.`;
+				banner.innerHTML = `Self-hosted domain detected (<strong>${currentHost}</strong>). This instance is isolated to your own deployment and data bindings.`;
 			}
 
 			// Page Management
@@ -2811,12 +3806,12 @@ GDPR compliant (no personal data stored)</div>
 					const res = await fetch(`${API_BASE}/health`);
 					const ms = Date.now() - start;
 					if (res.ok) {
-						resultDiv.innerHTML = `<span style="color:var(--success)">✅ Healthy — ${ms}ms</span>`;
+						resultDiv.innerHTML = `<span style="color:var(--success)">Healthy in ${ms}ms</span>`;
 					} else {
-						resultDiv.innerHTML = `<span style="color:var(--danger)">❌ Unhealthy (HTTP ${res.status})</span>`;
+						resultDiv.innerHTML = `<span style="color:var(--danger)">Unhealthy (HTTP ${res.status})</span>`;
 					}
 				} catch (e) {
-					resultDiv.innerHTML = `<span style="color:var(--danger)">❌ Unreachable: ${escapeHtml(e.message)}</span>`;
+					resultDiv.innerHTML = `<span style="color:var(--danger)">Unreachable: ${escapeHtml(e.message)}</span>`;
 				}
 			}
 
@@ -2914,7 +3909,7 @@ GDPR compliant (no personal data stored)</div>
 					.getElementById("demo-project")
 					.value.trim();
 				if (!project) {
-					showNotification("❌ Please enter a project name", "error");
+					showNotification("Please enter a project name", "error");
 					return;
 				}
 
@@ -2937,17 +3932,17 @@ GDPR compliant (no personal data stored)</div>
 						document.getElementById("demo-results").style.display =
 							"block";
 						showNotification(
-							`✅ View counted! Total: ${data.totalViews}`,
+							`View counted! Total: ${data.totalViews}`,
 							"success",
 						);
 					} else {
 						showNotification(
-							"❌ Error incrementing views",
+							"Error incrementing views",
 							"error",
 						);
 					}
 				} catch (error) {
-					showNotification("❌ Network error", "error");
+					showNotification("Network error", "error");
 				} finally {
 					setLoading(false);
 				}
@@ -2958,7 +3953,7 @@ GDPR compliant (no personal data stored)</div>
 					.getElementById("demo-project")
 					.value.trim();
 				if (!project) {
-					showNotification("❌ Please enter a project name", "error");
+					showNotification("Please enter a project name", "error");
 					return;
 				}
 
@@ -2978,14 +3973,14 @@ GDPR compliant (no personal data stored)</div>
 						document.getElementById("demo-results").style.display =
 							"block";
 						showNotification(
-							`📊 Stats loaded for ${project}`,
+							`Stats loaded for ${project}`,
 							"info",
 						);
 					} else {
-						showNotification("❌ Project not found", "error");
+						showNotification("Project not found", "error");
 					}
 				} catch (error) {
-					showNotification("❌ Network error", "error");
+					showNotification("Network error", "error");
 				} finally {
 					setLoading(false);
 				}
@@ -2998,7 +3993,7 @@ GDPR compliant (no personal data stored)</div>
 				const color = document.getElementById("badge-color").value;
 
 				if (!project) {
-					showNotification("❌ Please enter a project name", "error");
+					showNotification("Please enter a project name", "error");
 					return;
 				}
 
@@ -3047,7 +4042,7 @@ GDPR compliant (no personal data stored)</div>
 						});
 					});
 
-				showNotification("🎨 Badge updated!", "success");
+				showNotification("Badge updated!", "success");
 			}
 
 			// Admin Functions
@@ -3079,7 +4074,7 @@ GDPR compliant (no personal data stored)</div>
 				const password =
 					document.getElementById("admin-password").value;
 				if (!password) {
-					showNotification("❌ Please enter password", "error");
+					showNotification("Please enter password", "error");
 					return;
 				}
 
@@ -3115,12 +4110,12 @@ GDPR compliant (no personal data stored)</div>
 							"admin-dashboard",
 						).style.display = "block";
 						loadAdminData(data);
-						showNotification("✅ Admin access granted", "success");
+						showNotification("Admin access granted", "success");
 					} else {
-						showNotification("❌ Invalid password", "error");
+						showNotification("Invalid password", "error");
 					}
 				} catch (error) {
-					showNotification("❌ Authentication failed", "error");
+					showNotification("Authentication failed", "error");
 				} finally {
 					setLoading(false);
 				}
@@ -3169,7 +4164,7 @@ GDPR compliant (no personal data stored)</div>
 			function generateProjectsTable(projects) {
 				if (!projects.length) {
 					return `
-						<p style="text-align: center; color: #666; padding: 2rem;">
+						<p style="text-align: center; color: var(--text-muted); padding: 2rem;">
 							No projects found. Click "Add New Project" to get started!
 						</p>
 					`;
@@ -3227,14 +4222,14 @@ GDPR compliant (no personal data stored)</div>
 									data-project="${safeProjectName}"
 									class="btn btn-secondary"
 									style="padding: 0.25rem 0.5rem; font-size: 0.85rem; margin: 0 0.25rem;"
-									title="Get Badge &amp; Links">🎨</button>
+									aria-label="Get Badge and Links" title="Get Badge &amp; Links"><svg class="ico" aria-hidden="true"><use href="#i-palette" /></svg></button>
 								<button
 									data-action="installs"
 									data-project="${safeProjectName}"
 									data-row="${index}"
 									class="btn btn-secondary"
 									style="padding: 0.25rem 0.5rem; font-size: 0.85rem; margin: 0 0.25rem;"
-									title="Install counts">📦</button>
+									aria-label="Install counts" title="Install counts"><svg class="ico" aria-hidden="true"><use href="#i-package" /></svg></button>
 								<button
 									data-action="edit"
 									data-project="${safeProjectName}"
@@ -3243,19 +4238,19 @@ GDPR compliant (no personal data stored)</div>
 									data-description="${safeDescription}"
 									class="btn btn-secondary"
 									style="padding: 0.25rem 0.5rem; font-size: 0.85rem; margin: 0 0.25rem;"
-									title="Edit Project">✏️</button>
+									aria-label="Edit Project" title="Edit Project"><svg class="ico" aria-hidden="true"><use href="#i-pencil" /></svg></button>
 								<button
 									data-action="increment"
 									data-project="${safeProjectName}"
 									class="btn btn-secondary"
 									style="padding: 0.25rem 0.5rem; font-size: 0.85rem; margin: 0 0.25rem;"
-									title="Add View Count">➕</button>
+									aria-label="Add View Count" title="Add View Count"><svg class="ico" aria-hidden="true"><use href="#i-plus" /></svg></button>
 								<button
 									data-action="delete"
 									data-project="${safeProjectName}"
 									class="btn btn-danger btn-secondary"
 									style="padding: 0.25rem 0.5rem; font-size: 0.85rem; margin: 0 0.25rem;"
-									title="Delete Project">🗑️</button>
+									aria-label="Delete Project" title="Delete Project"><svg class="ico" aria-hidden="true"><use href="#i-trash" /></svg></button>
 							</td>
 						</tr>
 						<tr id="installs-row-${index}" hidden>
@@ -3277,7 +4272,7 @@ GDPR compliant (no personal data stored)</div>
 			function showAddProjectModal() {
 				currentEditProject = null;
 				document.getElementById("project-modal-title").textContent =
-					"➕ Add New Project";
+					"Add New Project";
 				const nameInput = document.getElementById("project-name");
 				nameInput.value = "";
 				nameInput.disabled = false;
@@ -3288,7 +4283,7 @@ GDPR compliant (no personal data stored)</div>
 				document.getElementById("project-unique").value = "0";
 				document.getElementById("project-unique").disabled = false;
 				document.getElementById("save-project-btn").textContent =
-					"💾 Save Project";
+					"Save Project";
 				document
 					.getElementById("project-modal")
 					.classList.add("active");
@@ -3304,7 +4299,7 @@ GDPR compliant (no personal data stored)</div>
 			function editProject(name, views, unique, description) {
 				currentEditProject = name;
 				document.getElementById("project-modal-title").textContent =
-					"✏️ Edit Project";
+					"Edit Project";
 				const nameInput = document.getElementById("project-name");
 				nameInput.value = name;
 				nameInput.disabled = false;
@@ -3316,7 +4311,7 @@ GDPR compliant (no personal data stored)</div>
 				document.getElementById("project-unique").value = unique;
 				document.getElementById("project-unique").disabled = false;
 				document.getElementById("save-project-btn").textContent =
-					"💾 Update Project";
+					"Update Project";
 				document
 					.getElementById("project-modal")
 					.classList.add("active");
@@ -3336,12 +4331,12 @@ GDPR compliant (no personal data stored)</div>
 					0;
 
 				if (!name) {
-					showNotification("❌ Project name is required", "error");
+					showNotification("Project name is required", "error");
 					return;
 				}
 
 				if (!/^[a-zA-Z0-9-_]+$/.test(name)) {
-					showNotification("❌ Invalid project name format", "error");
+					showNotification("Invalid project name format", "error");
 					return;
 				}
 
@@ -3372,14 +4367,14 @@ GDPR compliant (no personal data stored)</div>
 
 						if (data.success) {
 							showNotification(
-								`✅ Project "${name}" updated!`,
+								`Project "${name}" updated!`,
 								"success",
 							);
 							hideProjectModal();
 							refreshAdminData();
 						} else {
 							showNotification(
-								`❌ ${data.error || "Failed to update project"}`,
+								`${data.error || "Failed to update project"}`,
 								"error",
 							);
 						}
@@ -3393,20 +4388,20 @@ GDPR compliant (no personal data stored)</div>
 
 						if (data.success) {
 							showNotification(
-								`✅ Project "${name}" created!`,
+								`Project "${name}" created!`,
 								"success",
 							);
 							hideProjectModal();
 							refreshAdminData();
 						} else {
 							showNotification(
-								"❌ Failed to create project",
+								"Failed to create project",
 								"error",
 							);
 						}
 					}
 				} catch (error) {
-					showNotification("❌ Error saving project", "error");
+					showNotification("Error saving project", "error");
 				} finally {
 					setLoading(false);
 				}
@@ -3430,18 +4425,18 @@ GDPR compliant (no personal data stored)</div>
 
 					if (data.success) {
 						showNotification(
-							`✅ View added! Total: ${data.totalViews}`,
+							`View added! Total: ${data.totalViews}`,
 							"success",
 						);
 						refreshAdminData();
 					} else {
 						showNotification(
-							"❌ Failed to increment views",
+							"Failed to increment views",
 							"error",
 						);
 					}
 				} catch (error) {
-					showNotification("❌ Error incrementing views", "error");
+					showNotification("Error incrementing views", "error");
 				} finally {
 					setLoading(false);
 				}
@@ -3450,7 +4445,7 @@ GDPR compliant (no personal data stored)</div>
 			async function deleteProject(projectName) {
 				if (
 					!confirm(
-						`⚠️ Are you sure you want to delete "${projectName}"?\n\nThis will permanently remove all view data for this project.`,
+						`Are you sure you want to delete "${projectName}"?\n\nThis will permanently remove all view data for this project.`,
 					)
 				) {
 					return;
@@ -3475,14 +4470,14 @@ GDPR compliant (no personal data stored)</div>
 
 					if (data.success) {
 						showNotification(
-							`✅ Project "${projectName}" deleted successfully`,
+							`Project "${projectName}" deleted successfully`,
 							"success",
 						);
 						// Refresh the admin data to reflect changes
 						await refreshAdminData();
 					} else {
 						showNotification(
-							`❌ Failed to delete project: ${
+							`Failed to delete project: ${
 								data.error || "Unknown error"
 							}`,
 							"error",
@@ -3490,7 +4485,7 @@ GDPR compliant (no personal data stored)</div>
 					}
 				} catch (error) {
 					console.error("Delete project error:", error);
-					showNotification("❌ Error deleting project", "error");
+					showNotification("Error deleting project", "error");
 				} finally {
 					setLoading(false);
 				}
@@ -3514,12 +4509,12 @@ GDPR compliant (no personal data stored)</div>
 
 					if (data.success) {
 						loadAdminData(data);
-						showNotification("✅ Data refreshed", "success");
+						showNotification("Data refreshed", "success");
 					} else {
-						showNotification("❌ Failed to refresh data", "error");
+						showNotification("Failed to refresh data", "error");
 					}
 				} catch (error) {
-					showNotification("❌ Error refreshing data", "error");
+					showNotification("Error refreshing data", "error");
 				} finally {
 					setLoading(false);
 				}
@@ -3532,39 +4527,39 @@ GDPR compliant (no personal data stored)</div>
 
 				const content = `
 					<div style="margin-bottom: 1.5rem;">
-						<h3 style="margin-top: 0;">📊 API Endpoints</h3>
-						<div class="code-block" style="background: #f5f5f5; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+						<h3 style="margin-top: 0;">API Endpoints</h3>
+						<div class="code-block" style="background: var(--space-2); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
 							<div style="margin-bottom: 0.5rem;">
 								<strong>Track View (POST):</strong><br>
-								<code style="color: #2563eb;">${baseUrl}/api/views/${encodedProject}</code>
+								<code style="color: var(--ion);">${baseUrl}/api/views/${encodedProject}</code>
 								<button onclick="copyUrlBtn(this, '${baseUrl}/api/views/${encodedProject}')" class="copy-inline-btn" style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.75rem;">
 									<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy
 								</button>
 							</div>
 							<div style="margin-bottom: 0.5rem;">
 								<strong>Get Stats (GET):</strong><br>
-								<code style="color: #2563eb;">${baseUrl}/api/views/${encodedProject}</code>
+								<code style="color: var(--ion);">${baseUrl}/api/views/${encodedProject}</code>
 								<button onclick="copyUrlBtn(this, '${baseUrl}/api/views/${encodedProject}')" class="copy-inline-btn" style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.75rem;">
 									<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy
 								</button>
 							</div>
 							<div style="margin-bottom: 0.5rem;">
 								<strong>Install Badge (SVG):</strong><br>
-								<code style="color: #2563eb;">${baseUrl}/api/installs/${encodedProject}/badge</code>
+								<code style="color: var(--ion);">${baseUrl}/api/installs/${encodedProject}/badge</code>
 								<button onclick="copyUrlBtn(this, '${baseUrl}/api/installs/${encodedProject}/badge')" class="copy-inline-btn" style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.75rem;">
 									<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy
 								</button>
 							</div>
 							<div style="margin-bottom: 0.5rem;">
 								<strong>Install Badge (shields.io endpoint):</strong><br>
-								<code style="color: #2563eb;">${baseUrl}/api/installs/${encodedProject}/shields.json</code>
+								<code style="color: var(--ion);">${baseUrl}/api/installs/${encodedProject}/shields.json</code>
 								<button onclick="copyUrlBtn(this, '${baseUrl}/api/installs/${encodedProject}/shields.json')" class="copy-inline-btn" style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.75rem;">
 									<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy
 								</button>
 							</div>
 						</div>
 
-						<h3>🎨 Badge Variations</h3>
+						<h3>Badge Variations</h3>
 						<div style="display: grid; gap: 1rem;">
 							${generateBadgeVariation(projectName, "blue", "views")}
 							${generateBadgeVariation(projectName, "brightgreen", "views")}
@@ -3574,8 +4569,8 @@ GDPR compliant (no personal data stored)</div>
 							${generateBadgeVariation(projectName, "purple", "counter")}
 						</div>
 
-						<h3 style="margin-top: 1.5rem;">📝 Markdown Examples</h3>
-						<div class="code-block" style="background: #f5f5f5; padding: 1rem; border-radius: 8px;">
+						<h3 style="margin-top: 1.5rem;">Markdown Examples</h3>
+						<div class="code-block" style="background: var(--space-2); padding: 1rem; border-radius: 8px;">
 							<strong>README.md Badge:</strong><br>
 							<code>![Views](${baseUrl}/api/views/${encodedProject}/badge)</code>
 							<button onclick="copyUrlBtn(this, '![Views](${baseUrl}/api/views/${encodedProject}/badge)')" class="copy-inline-btn" style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.75rem;">
@@ -3589,8 +4584,8 @@ GDPR compliant (no personal data stored)</div>
 							</button>
 						</div>
 
-						<h3 style="margin-top: 1.5rem;">🌐 HTML Examples</h3>
-						<div class="code-block" style="background: #f5f5f5; padding: 1rem; border-radius: 8px;">
+						<h3 style="margin-top: 1.5rem;">HTML Examples</h3>
+						<div class="code-block" style="background: var(--space-2); padding: 1rem; border-radius: 8px;">
 							<strong>Simple Image:</strong><br>
 							<code>&lt;img src="${baseUrl}/api/views/${encodedProject}/badge" alt="Views"&gt;</code>
 							<button onclick="copyUrlBtn(this, '<img src=&quot;${baseUrl}/api/views/${encodedProject}/badge&quot; alt=&quot;Views&quot;>')" class="copy-inline-btn" style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.75rem;">
@@ -3620,10 +4615,10 @@ GDPR compliant (no personal data stored)</div>
 				const badgeUrl = `${baseUrl}/api/views/${encodedProject}/badge?color=${color}&label=${label}`;
 
 				return `
-					<div style="background: #f5f5f5; padding: 1rem; border-radius: 8px;">
+					<div style="background: var(--space-2); padding: 1rem; border-radius: 8px;">
 						<div style="margin-bottom: 0.5rem;">
 							<img src="${badgeUrl}" alt="${label} badge" style="vertical-align: middle;">
-							<span style="margin-left: 0.5rem; color: #666;">color=${color}, label=${label}</span>
+							<span style="margin-left: 0.5rem; color: var(--text-muted);">color=${color}, label=${label}</span>
 						</div>
 						<div style="display: flex; gap: 0.5rem;">
 							<input type="text" value="${badgeUrl}" readonly
@@ -3646,17 +4641,17 @@ GDPR compliant (no personal data stored)</div>
 				navigator.clipboard
 					.writeText(text)
 					.then(() => {
-						showNotification("✅ Copied to clipboard!", "success");
+						showNotification("Copied to clipboard!", "success");
 					})
 					.catch(() => {
-						showNotification("❌ Failed to copy", "error");
+						showNotification("Failed to copy", "error");
 					});
 			}
 
 			async function clearCache() {
 				// Note: /api/admin/cache endpoint not implemented
 				showNotification(
-					"⚠️ Cache clearing not yet implemented",
+					"Cache clearing not yet implemented",
 					"warning",
 				);
 				return;
@@ -3681,14 +4676,14 @@ GDPR compliant (no personal data stored)</div>
 
 					if (response.ok) {
 						showNotification(
-							"✅ Cache cleared successfully",
+							"Cache cleared successfully",
 							"success"
 						);
 					} else {
-						showNotification("❌ Failed to clear cache", "error");
+						showNotification("Failed to clear cache", "error");
 					}
 				} catch (error) {
-					showNotification("❌ Error clearing cache", "error");
+					showNotification("Error clearing cache", "error");
 				}
 				*/
 			}
@@ -3696,7 +4691,7 @@ GDPR compliant (no personal data stored)</div>
 			async function exportData() {
 				// Note: /api/admin/export endpoint not implemented
 				showNotification(
-					"⚠️ Data export not yet implemented",
+					"Data export not yet implemented",
 					"warning",
 				);
 				return;
@@ -3726,14 +4721,14 @@ GDPR compliant (no personal data stored)</div>
 						a.click();
 						window.URL.revokeObjectURL(url);
 						showNotification(
-							"✅ Data exported successfully",
+							"Data exported successfully",
 							"success"
 						);
 					} else {
-						showNotification("❌ Failed to export data", "error");
+						showNotification("Failed to export data", "error");
 					}
 				} catch (error) {
-					showNotification("❌ Error exporting data", "error");
+					showNotification("Error exporting data", "error");
 				}
 				*/
 			}
