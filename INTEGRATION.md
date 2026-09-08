@@ -563,11 +563,13 @@ curl "https://[DOMAIN]/api/metrics"
 
 - Counts are **all-time**. This endpoint has no date filter and no window
   parameter, so it is a lifetime total, not a recent one.
-- The 100 most frequent category/event pairs are returned, ranked by count
-  before they are grouped. An instance with more than 100 distinct pairs will
-  not see the rarest ones here.
+- The 100 highest-count category/event pairs are returned. An instance with
+  more than 100 distinct pairs will not see the rarest ones here.
 - `metadata` never appears in the rollup. It is stored, not aggregated. Read it
   out of D1 directly if you need it.
 - Both endpoints are rate limited per IP: 60 requests a minute by default,
-  configurable with `RATE_LIMIT_REQUESTS` and `RATE_LIMIT_WINDOW`. Over the
-  limit is a 429 carrying `Retry-After` and `X-RateLimit-*` headers.
+  configurable with `RATE_LIMIT_REQUESTS` (a count) and `RATE_LIMIT_WINDOW`
+  (milliseconds, so a minute is `60000`). Over the limit is a 429 carrying
+  `Retry-After` and `X-RateLimit-*` headers. The count is held in memory on
+  the Worker instance serving the request, so treat the limit as approximate
+  rather than a global guarantee.

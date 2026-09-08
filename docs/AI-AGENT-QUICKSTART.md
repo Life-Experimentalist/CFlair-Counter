@@ -201,15 +201,26 @@ Required repository secrets:
 ### JavaScript (browser or Node)
 
 ```javascript
-await fetch("https://<your-domain>/api/views/my-project", { method: "POST" });
+fetch("https://<your-domain>/api/views/my-project", {
+  method: "POST",
+  keepalive: true,
+}).catch(() => {});
 ```
 
 ### Python
 
 ```python
 import requests
-requests.post("https://<your-domain>/api/views/my-project", timeout=5)
+try:
+    requests.post("https://<your-domain>/api/views/my-project", timeout=5)
+except Exception:
+    pass
 ```
+
+Tracking is fire-and-forget: swallow the error so a failed call cannot break
+the page or the job it is measuring. `INTEGRATION.md` Goal 2 carries the same
+snippet for shell, Go and Rust, and Goal 6 covers `POST /api/events` for
+anything that is not a page view.
 
 ### README badge
 
