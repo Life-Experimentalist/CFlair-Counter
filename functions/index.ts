@@ -2422,6 +2422,728 @@ app.get("/api/installs/:projectName/history", async (c) => {
 	}
 });
 
+// ---------------------------------------------------------------------------
+// Computed metrics
+//
+// One number, derived from the numbers ViewFlare already holds:
+//   GET /api/compute/:project?expr=views.total%2Binstalls.total
+//
+// The formula lives in the query string, so nothing is stored and there is no
+// schema for it: a README badge carries its own formula in its URL.
+//
+// There is no eval in here. The text is tokenised and walked by a small
+// recursive descent parser that knows numbers, the identifiers resolved in
+// resolveComputeInputs, seven functions and five operators. Anything else is a
+// 400 that names what was not recognised.
+//
+// The never-invent rule from the install aggregator carries over: if any input
+// an expression reads is unavailable, the whole metric is unavailable. A
+// missing number never quietly becomes 0.
+// ---------------------------------------------------------------------------
+
+const COMPUTE_MAX_EXPRESSION = 200;
+const COMPUTE_MAX_DEPTH = 24;
+
+// Argument counts are checked at parse time so a typo is a 400 rather than a
+// surprise NaN.
+const COMPUTE_FUNCTIONS: Record<string, { min: number; max: number }> = {
+	min: { min: 1, max: 8 },
+	max: { min: 1, max: 8 },
+	abs: { min: 1, max: 1 },
+	round: { min: 1, max: 2 },
+	floor: { min: 1, max: 1 },
+	ceil: { min: 1, max: 1 },
+	pct: { min: 2, max: 2 },
+};
+
+type ComputeToken =
+	| { kind: "number"; value: number }
+	| { kind: "ident"; value: string }
+	| { kind: "op"; value: string };
+
+type ComputeNode =
+	| { kind: "number"; value: number }
+	| { kind: "var"; name: string }
+	| { kind: "unary"; op: string; operand: ComputeNode }
+	| { kind: "binary"; op: string; left: ComputeNode; right: ComputeNode }
+	| { kind: "call"; name: string; args: ComputeNode[] };
+
+// Thrown for anything the caller can fix by editing their expression, so the
+// routes can answer 400 with the message instead of a blank 500.
+const computeFail = (message: string): never => {
+	const error = new Error(message);
+	(error as any).computeError = true;
+	throw error;
+};
+
+const tokeniseExpression = (input: string): ComputeToken[] => {
+	const tokens: ComputeToken[] = [];
+	let i = 0;
+	while (i < input.length) {
+		const ch = input[i] as string;
+		if (ch === " " || ch === "\t" || ch === "\n") {
+			i += 1;
+			continue;
+		}
+		if (ch >= "0" && ch <= "9") {
+			let j = i;
+			while (j < input.length && /[0-9.]/.test(input[j] as string)) j += 1;
+			const raw = input.slice(i, j);
+			const value = Number(raw);
+			if (!Number.isFinite(value)) computeFail(`Not a number: "${raw}"`);
+			tokens.push({ kind: "number", value });
+			i = j;
+			continue;
+		}
+		if (/[A-Za-z_]/.test(ch)) {
+			let j = i;
+			while (j < input.length && /[A-Za-z0-9_.]/.test(input[j] as string)) {
+				j += 1;
+			}
+			tokens.push({ kind: "ident", value: input.slice(i, j) });
+			i = j;
+			continue;
+		}
+		if ("+-*/%(),".includes(ch)) {
+			tokens.push({ kind: "op", value: ch });
+			i += 1;
+			continue;
+		}
+		computeFail(`Unexpected character "${ch}" in the expression`);
+	}
+	return tokens;
+};
+
+type ComputeParser = { tokens: ComputeToken[]; pos: number };
+
+const peekToken = (p: ComputeParser): ComputeToken | null =>
+	p.pos < p.tokens.length ? (p.tokens[p.pos] as ComputeToken) : null;
+
+const expectOp = (p: ComputeParser, op: string) => {
+	const token = peekToken(p);
+	if (!token || token.kind !== "op" || token.value !== op) {
+		computeFail(`Expected "${op}" in the expression`);
+	}
+	p.pos += 1;
+};
+
+const parseExpression = (p: ComputeParser, depth: number): ComputeNode => {
+	if (depth > COMPUTE_MAX_DEPTH) {
+		computeFail("Expression is nested too deeply");
+	}
+	let left = parseTerm(p, depth);
+	for (;;) {
+		const token = peekToken(p);
+		if (!token || token.kind !== "op") break;
+		if (token.value !== "+" && token.value !== "-") break;
+		p.pos += 1;
+		const right = parseTerm(p, depth);
+		left = { kind: "binary", op: token.value, left, right };
+	}
+	return left;
+};
+
+const parseTerm = (p: ComputeParser, depth: number): ComputeNode => {
+	let left = parseUnary(p, depth);
+	for (;;) {
+		const token = peekToken(p);
+		if (!token || token.kind !== "op") break;
+		if (token.value !== "*" && token.value !== "/" && token.value !== "%") {
+			break;
+		}
+		p.pos += 1;
+		const right = parseUnary(p, depth);
+		left = { kind: "binary", op: token.value, left, right };
+	}
+	return left;
+};
+
+const parseUnary = (p: ComputeParser, depth: number): ComputeNode => {
+	const token = peekToken(p);
+	if (token && token.kind === "op" && (token.value === "-" || token.value === "+")) {
+		p.pos += 1;
+		return { kind: "unary", op: token.value, operand: parseUnary(p, depth) };
+	}
+	return parsePrimary(p, depth);
+};
+
+const parsePrimary = (p: ComputeParser, depth: number): ComputeNode => {
+	const token = peekToken(p);
+	if (!token) computeFail("Expression ended early");
+	const current = token as ComputeToken;
+
+	if (current.kind === "number") {
+		p.pos += 1;
+		return { kind: "number", value: current.value };
+	}
+
+	if (current.kind === "op" && current.value === "(") {
+		p.pos += 1;
+		const inner = parseExpression(p, depth + 1);
+		expectOp(p, ")");
+		return inner;
+	}
+
+	if (current.kind === "ident") {
+		p.pos += 1;
+		const next = peekToken(p);
+		if (next && next.kind === "op" && next.value === "(") {
+			const spec = COMPUTE_FUNCTIONS[current.value];
+			if (!spec) computeFail(`Unknown function "${current.value}"`);
+			const arity = spec as { min: number; max: number };
+			p.pos += 1;
+			const args: ComputeNode[] = [];
+			const closing = peekToken(p);
+			if (closing && closing.kind === "op" && closing.value === ")") {
+				p.pos += 1;
+			} else {
+				for (;;) {
+					args.push(parseExpression(p, depth + 1));
+					const sep = peekToken(p);
+					if (sep && sep.kind === "op" && sep.value === ",") {
+						p.pos += 1;
+						continue;
+					}
+					expectOp(p, ")");
+					break;
+				}
+			}
+			if (args.length < arity.min || args.length > arity.max) {
+				computeFail(
+					`"${current.value}" takes ${arity.min === arity.max ? arity.min : `${arity.min} to ${arity.max}`} argument(s), got ${args.length}`,
+				);
+			}
+			return { kind: "call", name: current.value, args };
+		}
+		return { kind: "var", name: current.value };
+	}
+
+	return computeFail(`Unexpected "${current.value}" in the expression`);
+};
+
+const parseComputeExpression = (raw: string): ComputeNode => {
+	const trimmed = raw.trim();
+	if (!trimmed) computeFail("No expression given. Pass ?expr=");
+	if (trimmed.length > COMPUTE_MAX_EXPRESSION) {
+		computeFail(`Expression is longer than ${COMPUTE_MAX_EXPRESSION} characters`);
+	}
+	const parser: ComputeParser = { tokens: tokeniseExpression(trimmed), pos: 0 };
+	const node = parseExpression(parser, 0);
+	const leftover = peekToken(parser);
+	if (leftover) {
+		// A "+" in a URL query string decodes to a space, so an unencoded
+		// formula arrives as two values with nothing between them. Say so
+		// rather than making the caller guess.
+		if (leftover.kind === "ident" || leftover.kind === "number") {
+			computeFail(
+				'Two values with no operator between them. A "+" in a URL means a space: write it as %2B.',
+			);
+		}
+		computeFail(`Unexpected "${leftover.value}" after the expression`);
+	}
+	return node;
+};
+
+const collectComputeVariables = (node: ComputeNode, into: Set<string>) => {
+	if (node.kind === "var") into.add(node.name);
+	else if (node.kind === "unary") collectComputeVariables(node.operand, into);
+	else if (node.kind === "binary") {
+		collectComputeVariables(node.left, into);
+		collectComputeVariables(node.right, into);
+	} else if (node.kind === "call") {
+		for (const arg of node.args) collectComputeVariables(arg, into);
+	}
+};
+
+const evaluateComputeNode = (
+	node: ComputeNode,
+	values: Map<string, number>,
+): number => {
+	switch (node.kind) {
+		case "number":
+			return node.value;
+		case "var": {
+			const value = values.get(node.name);
+			// Unavailable inputs are caught before evaluation, so this only
+			// guards against a resolver bug.
+			return value === undefined ? NaN : value;
+		}
+		case "unary": {
+			const operand = evaluateComputeNode(node.operand, values);
+			return node.op === "-" ? -operand : operand;
+		}
+		case "binary": {
+			const left = evaluateComputeNode(node.left, values);
+			const right = evaluateComputeNode(node.right, values);
+			if (node.op === "+") return left + right;
+			if (node.op === "-") return left - right;
+			if (node.op === "*") return left * right;
+			// Division and modulo by zero produce Infinity or NaN, which the
+			// caller sees as "unavailable" rather than a made up number.
+			if (node.op === "/") return left / right;
+			return left % right;
+		}
+		case "call": {
+			const args = node.args.map((arg) => evaluateComputeNode(arg, values));
+			const first = args[0] as number;
+			switch (node.name) {
+				case "min":
+					return Math.min(...args);
+				case "max":
+					return Math.max(...args);
+				case "abs":
+					return Math.abs(first);
+				case "floor":
+					return Math.floor(first);
+				case "ceil":
+					return Math.ceil(first);
+				case "round": {
+					const digitsArg = args.length > 1 ? (args[1] as number) : 0;
+					const digits = Math.min(6, Math.max(0, Math.floor(digitsArg)));
+					const factor = Math.pow(10, digits);
+					return Math.round(first * factor) / factor;
+				}
+				default: {
+					// pct(part, whole): the share of whole, as a percentage.
+					const whole = args[1] as number;
+					return whole === 0 ? NaN : (first / whole) * 100;
+				}
+			}
+		}
+	}
+};
+
+type ComputeInput = {
+	name: string;
+	value: number | null;
+	// Views and installs belong to the project in the URL. The event log has no
+	// project column, so event counts are instance wide and say so.
+	scope: "project" | "instance";
+	stale: boolean;
+	partial: boolean;
+	note?: string;
+};
+
+const resolveComputeInputs = async (
+	env: Bindings,
+	projectName: string,
+	names: string[],
+): Promise<{ inputs: ComputeInput[]; mixedWindows: boolean }> => {
+	const inputs: ComputeInput[] = [];
+	let mixedWindows = false;
+
+	// Only the families an expression actually mentions are fetched. An
+	// expression with no installs.* never calls out to the registries.
+	const wantsViews = names.some((name) => name.startsWith("views."));
+	const wantsInstalls = names.some((name) => name.startsWith("installs."));
+
+	let viewRow: any = null;
+	if (wantsViews) {
+		viewRow = await env.DB.prepare(
+			"SELECT view_count, unique_views FROM project_views WHERE project_name = ?",
+		)
+			.bind(projectName)
+			.first();
+	}
+
+	let configured = 0;
+	let installResults: InstallSourceResult[] = [];
+	let installSummary: { total: number | null; answered: number; mixedWindows: boolean } | null =
+		null;
+	if (wantsInstalls) {
+		const collected = await collectInstallCounts(env, projectName);
+		configured = collected.configured;
+		installResults = collected.results;
+		installSummary = summariseInstalls(installResults);
+		mixedWindows = installSummary.mixedWindows;
+	}
+
+	for (const name of names) {
+		const parts = name.split(".");
+
+		if (parts[0] === "views") {
+			if (parts.length !== 2 || (parts[1] !== "total" && parts[1] !== "unique")) {
+				computeFail(`Unknown variable "${name}". Try views.total or views.unique.`);
+			}
+			// An unseen project reads 0 here, matching GET /api/views/:project.
+			const value =
+				parts[1] === "total"
+					? Number(viewRow?.view_count) || 0
+					: Number(viewRow?.unique_views) || 0;
+			inputs.push({ name, value, scope: "project", stale: false, partial: false });
+			continue;
+		}
+
+		if (parts[0] === "installs") {
+			if (parts.length !== 2) {
+				computeFail(
+					`Unknown variable "${name}". Try installs.total or installs.<source>.`,
+				);
+			}
+			const which = parts[1] as string;
+
+			if (which === "total") {
+				const summary = installSummary as {
+					total: number | null;
+					answered: number;
+				};
+				inputs.push({
+					name,
+					value: configured === 0 ? null : summary.total,
+					scope: "project",
+					stale: installResults.some((r) => r.ok && r.stale),
+					partial: configured > 0 && summary.answered < configured,
+					note:
+						configured === 0
+							? "no install sources configured for this project"
+							: summary.answered < configured
+								? `${summary.answered} of ${configured} sources answered`
+								: undefined,
+				});
+				continue;
+			}
+
+			if (!INSTALL_SOURCES.includes(which as InstallSourceId)) {
+				computeFail(
+					`Unknown install source "${which}". Configured sources are ${INSTALL_SOURCES.join(", ")}.`,
+				);
+			}
+			const result = installResults.find((r) => r.source === which);
+			if (!result) {
+				inputs.push({
+					name,
+					value: null,
+					scope: "project",
+					stale: false,
+					partial: false,
+					note: "source not configured for this project",
+				});
+				continue;
+			}
+			inputs.push({
+				name,
+				value: result.ok && typeof result.count === "number" ? result.count : null,
+				scope: "project",
+				stale: result.stale,
+				partial: false,
+				note: result.ok ? undefined : result.error || "source did not answer",
+			});
+			continue;
+		}
+
+		if (parts[0] === "events") {
+			if (parts.length < 2 || parts.length > 3) {
+				computeFail(
+					`Unknown variable "${name}". Try events.<category> or events.<category>.<name>.`,
+				);
+			}
+			const category = parts[1] as string;
+			const eventName = parts.length === 3 ? (parts[2] as string) : null;
+			const row = eventName
+				? await env.DB.prepare(
+						"SELECT COUNT(*) as count FROM event_logs WHERE event_category = ? AND event_name = ?",
+					)
+						.bind(category, eventName)
+						.first()
+				: await env.DB.prepare(
+						"SELECT COUNT(*) as count FROM event_logs WHERE event_category = ?",
+					)
+						.bind(category)
+						.first();
+			// A count of zero is a real answer, not a missing one.
+			inputs.push({
+				name,
+				value: Number(row?.count) || 0,
+				scope: "instance",
+				stale: false,
+				partial: false,
+				note: "the event log is not project scoped",
+			});
+			continue;
+		}
+
+		computeFail(
+			`Unknown variable "${name}". Available: views.total, views.unique, installs.total, installs.<source>, events.<category>[.<name>].`,
+		);
+	}
+
+	return { inputs, mixedWindows };
+};
+
+// Badges have no room for twelve decimal places; two is enough for a
+// percentage or a ratio. Whole numbers keep the compact k/M/B form.
+const formatComputedValue = (value: number): string => {
+	if (Number.isInteger(value)) return formatCompactCount(value);
+	return String(Math.round(value * 100) / 100);
+};
+
+type ComputeResult = {
+	expression: string;
+	value: number | null;
+	formatted: string;
+	unavailable: boolean;
+	reason: string | null;
+	partial: boolean;
+	stale: boolean;
+	mixedWindows: boolean;
+	usesLiveCounters: boolean;
+	inputs: ComputeInput[];
+};
+
+const resolveComputeMetric = async (
+	env: Bindings,
+	projectName: string,
+	rawExpression: string,
+): Promise<ComputeResult> => {
+	const node = parseComputeExpression(rawExpression);
+	const referenced = new Set<string>();
+	collectComputeVariables(node, referenced);
+	const names = Array.from(referenced).sort();
+
+	const { inputs, mixedWindows } = await resolveComputeInputs(
+		env,
+		projectName,
+		names,
+	);
+
+	const partial = inputs.some((input) => input.partial);
+	const stale = inputs.some((input) => input.stale);
+	// Views and events are written on every request; registry counts move daily.
+	const usesLiveCounters = names.some(
+		(name) => name.startsWith("views.") || name.startsWith("events."),
+	);
+	const base = {
+		expression: rawExpression.trim(),
+		partial,
+		stale,
+		mixedWindows,
+		usesLiveCounters,
+		inputs,
+	};
+
+	// One unavailable input makes the whole metric unavailable. Substituting a
+	// zero would look like a real answer.
+	const missing = inputs.filter((input) => input.value === null);
+	if (missing.length > 0) {
+		return {
+			...base,
+			value: null,
+			formatted: "unavailable",
+			unavailable: true,
+			reason: `no value for ${missing.map((input) => input.name).join(", ")}`,
+		};
+	}
+
+	const values = new Map<string, number>();
+	for (const input of inputs) values.set(input.name, input.value as number);
+	const value = evaluateComputeNode(node, values);
+
+	// Divide by zero, pct of zero, overflow: report unavailable, never NaN.
+	if (!Number.isFinite(value)) {
+		return {
+			...base,
+			value: null,
+			formatted: "unavailable",
+			unavailable: true,
+			reason: "the expression does not produce a finite number",
+		};
+	}
+
+	return {
+		...base,
+		value,
+		formatted: formatComputedValue(value),
+		unavailable: false,
+		reason: null,
+	};
+};
+
+// A badge shows only the number, so the label carries the caveats, the same way
+// buildInstallLabel does for the installs badge.
+const buildComputeLabel = (base: string, result: ComputeResult): string => {
+	const parts: string[] = [];
+	if (result.partial) parts.push("partial");
+	if (result.stale) parts.push("stale");
+	if (result.mixedWindows) parts.push("mixed windows");
+	return parts.length > 0 ? `${base} (${parts.join(", ")})` : base;
+};
+
+// Views and events move on every request, so anything reading them is
+// re-checked quickly. Registry numbers move daily, so a complete answer that
+// only reads installs holds for an hour.
+const computeCacheSeconds = (result: ComputeResult): number => {
+	if (result.unavailable) return 300;
+	if (result.usesLiveCounters) return 300;
+	if (result.partial || result.stale) return 900;
+	return 3600;
+};
+
+app.get("/api/compute/:projectName", customRateLimiter, async (c) => {
+	const projectName = c.req.param("projectName");
+	if (!projectName || projectName.length > 100) {
+		return c.json({ success: false, error: "Invalid project name" }, 400);
+	}
+
+	await initDatabase(c.env.DB);
+
+	try {
+		const result = await resolveComputeMetric(
+			c.env,
+			projectName,
+			c.req.query("expr") || "",
+		);
+
+		c.header("Cache-Control", `public, max-age=${computeCacheSeconds(result)}`);
+		c.header("Access-Control-Allow-Origin", "*");
+		return c.json({
+			success: true,
+			project: projectName,
+			expression: result.expression,
+			value: result.value,
+			formatted: result.formatted,
+			unavailable: result.unavailable,
+			reason: result.reason,
+			partial: result.partial,
+			stale: result.stale,
+			mixedWindows: result.mixedWindows,
+			inputs: result.inputs,
+			timestamp: new Date().toISOString(),
+		});
+	} catch (error) {
+		if ((error as any)?.computeError) {
+			return c.json({ success: false, error: (error as Error).message }, 400);
+		}
+		console.error("Compute error:", error);
+		return c.json({ success: false, error: "Failed to compute metric" }, 500);
+	}
+});
+
+// SVG badge of the same number. No per-IP rate limit, for the same reason the
+// other badge routes have none: GitHub's camo proxy fetches from a small pool
+// of IPs, so limiting per IP would break the badge for everyone at once.
+app.get("/api/compute/:projectName/badge", async (c) => {
+	const projectName = c.req.param("projectName");
+	const styleParam = (c.req.query("style") || "flat").toLowerCase();
+	const style = BADGE_STYLES.includes(styleParam) ? styleParam : "flat";
+	const colorParam = c.req.query("color");
+	const labelParam = c.req.query("label");
+
+	if (!projectName || projectName.length > 100) {
+		return c.text("Invalid project name", 400);
+	}
+
+	await initDatabase(c.env.DB);
+
+	try {
+		let message = "";
+		let label = "";
+		let unavailable = false;
+		let cacheSeconds = 300;
+		try {
+			const result = await resolveComputeMetric(
+				c.env,
+				projectName,
+				c.req.query("expr") || "",
+			);
+			message = result.formatted;
+			unavailable = result.unavailable;
+			cacheSeconds = computeCacheSeconds(result);
+			label = buildComputeLabel(
+				labelParam ? labelParam.slice(0, 40) : "metric",
+				result,
+			);
+		} catch (error) {
+			if (!(error as any)?.computeError) throw error;
+			// A broken formula renders as a grey badge rather than a broken
+			// image in someone's README.
+			message = "invalid expression";
+			unavailable = true;
+			label = labelParam ? labelParam.slice(0, 40) : "metric";
+		}
+
+		const badgeColor = resolveBadgeColor(
+			(colorParam || (unavailable ? "lightgrey" : "blue")).toLowerCase(),
+		);
+		const svg = renderBadgeSvg(label, message, badgeColor, style);
+
+		c.header("Content-Type", "image/svg+xml");
+		c.header(
+			"Cache-Control",
+			`public, max-age=${cacheSeconds}, stale-while-revalidate=86400`,
+		);
+		c.header("Access-Control-Allow-Origin", "*");
+		return c.body(svg.trim());
+	} catch (error) {
+		console.error("Compute badge error:", error);
+		return c.text("Error generating badge", 500);
+	}
+});
+
+// shields.io endpoint-badge format: https://shields.io/badges/endpoint-badge
+app.get("/api/compute/:projectName/shields.json", async (c) => {
+	const projectName = c.req.param("projectName");
+	const colorParam = c.req.query("color");
+	const labelParam = c.req.query("label");
+
+	if (!projectName || projectName.length > 100) {
+		return c.json(
+			{
+				schemaVersion: 1,
+				label: "metric",
+				message: "invalid project",
+				color: "lightgrey",
+				isError: true,
+			},
+			400,
+		);
+	}
+
+	await initDatabase(c.env.DB);
+
+	try {
+		let result: ComputeResult | null = null;
+		try {
+			result = await resolveComputeMetric(
+				c.env,
+				projectName,
+				c.req.query("expr") || "",
+			);
+		} catch (error) {
+			if (!(error as any)?.computeError) throw error;
+		}
+
+		const cacheSeconds = result ? computeCacheSeconds(result) : 300;
+		const unavailable = result ? result.unavailable : true;
+		const base = labelParam ? labelParam.slice(0, 40) : "metric";
+
+		c.header(
+			"Cache-Control",
+			`public, max-age=${cacheSeconds}, stale-while-revalidate=86400`,
+		);
+		c.header("Access-Control-Allow-Origin", "*");
+		return c.json({
+			schemaVersion: 1,
+			label: result ? buildComputeLabel(base, result) : base,
+			message: result ? result.formatted : "invalid expression",
+			color: colorParam || (unavailable ? "lightgrey" : "blue"),
+			isError: unavailable,
+			cacheSeconds,
+		});
+	} catch (error) {
+		console.error("Compute shields.json error:", error);
+		return c.json(
+			{
+				schemaVersion: 1,
+				label: "metric",
+				message: "error",
+				color: "lightgrey",
+				isError: true,
+			},
+			500,
+		);
+	}
+});
+
 // Cloudflare Pages export format with static file handling
 export default {
 	async fetch(request: Request, env: any, ctx: any) {
@@ -2435,7 +3157,7 @@ export default {
 			(url.pathname === "/" ||
 				url.pathname === "/index.html" ||
 				url.pathname.match(
-					/\.(html|css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|json|webp)$/i,
+					/\.(html|css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|json|webp|txt|yaml)$/i,
 				))
 		) {
 			return env.ASSETS.fetch(request);
