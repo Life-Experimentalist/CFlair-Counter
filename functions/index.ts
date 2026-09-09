@@ -2805,7 +2805,7 @@ const resolveComputeInputs = async (
 
 			if (!INSTALL_SOURCES.includes(which as InstallSourceId)) {
 				computeFail(
-					`Unknown install source "${which}". Configured sources are ${INSTALL_SOURCES.join(", ")}.`,
+					`Unknown install source "${which}". Known sources are ${INSTALL_SOURCES.join(", ")}.`,
 				);
 			}
 			const result = installResults.find((r) => r.source === which);
