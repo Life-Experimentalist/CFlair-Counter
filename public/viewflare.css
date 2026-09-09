@@ -1,0 +1,929 @@
+/* ViewFlare design system.
+   One file, loaded by the landing page and by the admin console, so the two
+   never drift apart. Tokens first, then base, then components. */
+
+:root {
+	/* Ground. Four steps from near black to the panel fill. */
+	--space-0: #05060d;
+	--space-1: #0a0d18;
+	--space-2: #111524;
+	--space-3: #171c2e;
+
+	--line: rgba(150, 168, 214, 0.13);
+	--line-strong: rgba(150, 168, 214, 0.3);
+
+	--text-main: #e9edf9;
+	--text-muted: #8a92ac;
+
+	/* The flare is one temperature ramp read in order, not four flat colours. */
+	--flare-1: #ffc247;
+	--flare-2: #ff7a45;
+	--flare-3: #e0457b;
+	--flare-4: #9b5de5;
+	--ion: #5ad3f0;
+
+	--primary: #ff7a45;
+	--primary-dark: #e0457b;
+	--secondary: #9b5de5;
+	--accent-rgb: 255, 122, 69;
+
+	--success: #34d399;
+	--warning: #fbbf24;
+	--danger: #fb6f6f;
+	--info: #5ad3f0;
+
+	--card-bg: rgba(12, 16, 28, 0.72);
+	--navbar-bg: rgba(7, 9, 18, 0.72);
+
+	--radius-sm: 8px;
+	--radius-md: 12px;
+	--radius-lg: 16px;
+
+	--ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+	--font-display: "Space Grotesk", "Segoe UI", sans-serif;
+	--font-body: "IBM Plex Sans", "Segoe UI", sans-serif;
+	--font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+/* Light is a token swap and nothing else. Every rule below reads tokens, so
+   there is no second stylesheet to keep in step. */
+[data-theme="light"] {
+	--space-0: #f7f8fc;
+	--space-1: #ffffff;
+	--space-2: #f0f2f8;
+	--space-3: #e7eaf3;
+	--line: rgba(28, 35, 82, 0.12);
+	--line-strong: rgba(28, 35, 82, 0.26);
+	--text-main: #12172b;
+	--text-muted: #5b6480;
+	--primary: #d2461a;
+	--primary-dark: #b03763;
+	--accent-rgb: 210, 70, 26;
+	--ion: #1b7f9c;
+	--success: #0f8a5f;
+	--danger: #c2352f;
+	--card-bg: rgba(255, 255, 255, 0.78);
+	--navbar-bg: rgba(247, 248, 252, 0.82);
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+* {
+	margin: 0;
+	padding: 0;
+}
+
+html {
+	background: var(--space-0);
+	scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	html {
+		scroll-behavior: auto;
+	}
+}
+
+body {
+	position: relative;
+	z-index: 0;
+	min-height: 100vh;
+	background: var(--space-0);
+	color: var(--text-main);
+	font-family: var(--font-body);
+	font-size: 16px;
+	line-height: 1.6;
+	-webkit-font-smoothing: antialiased;
+}
+
+code,
+pre,
+kbd,
+samp {
+	font-family: var(--font-mono);
+}
+
+/* A class that sets display beats the user agent's [hidden] rule, so any
+   element toggled with el.hidden needs this to actually disappear. */
+[hidden] {
+	display: none !important;
+}
+
+/* Two fixed layers behind everything: the nebula, and a tiled starfield on
+   top of it. Both are painted once and never scroll, so there is no repaint
+   cost while scrolling and no background-attachment jank. */
+body::before,
+body::after {
+	content: "";
+	position: fixed;
+	inset: -15%;
+	z-index: -1;
+	pointer-events: none;
+}
+
+body::before {
+	background-image:
+		radial-gradient(circle at 30% 20%, rgba(155, 93, 229, 0.22), transparent 55%),
+		radial-gradient(circle at 78% 8%, rgba(224, 69, 123, 0.16), transparent 50%),
+		radial-gradient(circle at 12% 78%, rgba(90, 211, 240, 0.1), transparent 45%),
+		radial-gradient(circle at 92% 72%, rgba(255, 122, 69, 0.12), transparent 45%);
+}
+
+body::after {
+	background-image:
+		radial-gradient(1.6px 1.6px at 18% 24%, rgba(255, 255, 255, 0.95), transparent 60%),
+		radial-gradient(1.2px 1.2px at 72% 61%, rgba(200, 220, 255, 0.8), transparent 60%),
+		radial-gradient(1px 1px at 44% 82%, rgba(255, 236, 210, 0.75), transparent 60%),
+		radial-gradient(1px 1px at 88% 16%, rgba(255, 255, 255, 0.6), transparent 60%);
+	background-size:
+		320px 320px,
+		210px 210px,
+		470px 470px,
+		140px 140px;
+	opacity: 0.85;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	body::after {
+		animation: drift 240s linear infinite;
+	}
+}
+
+@keyframes drift {
+	to {
+		transform: translate3d(-320px, -210px, 0);
+	}
+}
+
+[data-theme="light"] body::before {
+	background-image:
+		radial-gradient(circle at 25% 12%, rgba(210, 70, 26, 0.07), transparent 50%),
+		radial-gradient(circle at 82% 78%, rgba(109, 53, 181, 0.06), transparent 45%);
+}
+
+[data-theme="light"] body::after {
+	display: none;
+}
+
+/* --- Primitives ------------------------------------------------------- */
+
+.ico {
+	width: 1em;
+	height: 1em;
+	flex: none;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 1.7;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+
+:focus-visible {
+	outline: 2px solid var(--primary);
+	outline-offset: 2px;
+	border-radius: 4px;
+}
+
+.visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
+.skip-link {
+	position: absolute;
+	left: 1rem;
+	top: -3rem;
+	z-index: 200;
+	padding: 0.7rem 1rem;
+	border-radius: var(--radius-sm);
+	background: var(--space-2);
+	border: 1px solid var(--line-strong);
+	color: var(--text-main);
+	text-decoration: none;
+	transition: top 0.2s var(--ease);
+}
+
+.skip-link:focus {
+	top: 1rem;
+}
+
+a {
+	color: var(--text-main);
+}
+
+.glass {
+	background: var(--card-bg);
+	backdrop-filter: blur(18px);
+	-webkit-backdrop-filter: blur(18px);
+	border: 1px solid var(--line);
+}
+
+.container {
+	max-width: 1180px;
+	margin: 0 auto;
+	padding: 3.5rem 2rem 4rem;
+}
+
+/* --- Navigation ------------------------------------------------------- */
+
+.navbar {
+	position: sticky;
+	top: 0;
+	z-index: 100;
+	border-bottom: 1px solid var(--line);
+	background: var(--navbar-bg);
+	backdrop-filter: blur(18px);
+	-webkit-backdrop-filter: blur(18px);
+}
+
+.nav-container {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	max-width: 1180px;
+	margin: 0 auto;
+	padding: 0.7rem 2rem;
+}
+
+.nav-brand {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.55rem;
+	font-family: var(--font-display);
+	font-size: 1.12rem;
+	font-weight: 600;
+	letter-spacing: -0.02em;
+	color: var(--text-main);
+	text-decoration: none;
+}
+
+.brand-mark {
+	width: 26px;
+	height: 26px;
+	flex: none;
+}
+
+.nav-links {
+	display: flex;
+	align-items: center;
+	gap: 0.15rem;
+	list-style: none;
+}
+
+.nav-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.45rem;
+	min-height: 44px;
+	padding: 0.45rem 0.7rem;
+	border-radius: var(--radius-sm);
+	color: var(--text-muted);
+	font-size: 0.88rem;
+	font-weight: 500;
+	text-decoration: none;
+	transition:
+		color 0.18s var(--ease),
+		background-color 0.18s var(--ease);
+}
+
+.nav-link .ico {
+	width: 15px;
+	height: 15px;
+	opacity: 0.75;
+}
+
+.nav-link:hover,
+.nav-link[aria-current="page"] {
+	color: var(--text-main);
+	background: rgba(var(--accent-rgb), 0.1);
+}
+
+.nav-link[aria-current="page"] .ico {
+	color: var(--primary);
+	opacity: 1;
+}
+
+/* --- Type ------------------------------------------------------------- */
+
+.eyebrow {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+	margin-bottom: 1.2rem;
+	color: var(--text-muted);
+	font-family: var(--font-mono);
+	font-size: 0.72rem;
+	font-weight: 500;
+	letter-spacing: 0.16em;
+	text-transform: uppercase;
+}
+
+.eyebrow::before {
+	content: "";
+	width: 22px;
+	height: 1px;
+	background: var(--primary);
+}
+
+h1,
+h2,
+h3,
+h4 {
+	font-family: var(--font-display);
+	letter-spacing: -0.025em;
+	line-height: 1.15;
+	text-wrap: balance;
+}
+
+.section-title {
+	font-size: clamp(1.5rem, 3vw, 2rem);
+	font-weight: 600;
+	margin-bottom: 0.6rem;
+}
+
+.section-lede {
+	color: var(--text-muted);
+	max-width: 38rem;
+	margin-bottom: 2rem;
+}
+
+/* The one gradient on the page, on the product name and nowhere else. */
+.flare {
+	background: linear-gradient(100deg, var(--flare-1), var(--flare-2) 45%, var(--flare-3));
+	-webkit-background-clip: text;
+	background-clip: text;
+	-webkit-text-fill-color: transparent;
+	color: transparent;
+}
+
+/* --- Buttons ---------------------------------------------------------- */
+
+.btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+	min-height: 44px;
+	padding: 0.7rem 1.25rem;
+	border: 1px solid transparent;
+	border-radius: var(--radius-sm);
+	font-family: inherit;
+	font-size: 0.9rem;
+	font-weight: 600;
+	line-height: 1;
+	text-decoration: none;
+	cursor: pointer;
+	transition:
+		transform 0.14s var(--ease),
+		background-color 0.18s var(--ease),
+		border-color 0.18s var(--ease),
+		color 0.18s var(--ease);
+}
+
+.btn .ico {
+	width: 16px;
+	height: 16px;
+}
+
+.btn:active {
+	transform: scale(0.97);
+}
+
+.btn[disabled],
+.btn[aria-busy="true"] {
+	opacity: 0.55;
+	cursor: not-allowed;
+}
+
+.btn-primary {
+	background: var(--primary);
+	color: #140803;
+	border-color: var(--primary);
+}
+
+.btn-primary:hover:not([disabled]) {
+	background: var(--flare-1);
+	border-color: var(--flare-1);
+}
+
+.btn-secondary {
+	background: transparent;
+	color: var(--text-main);
+	border-color: var(--line-strong);
+}
+
+.btn-secondary:hover:not([disabled]) {
+	border-color: var(--primary);
+	color: var(--primary);
+}
+
+.btn-ghost {
+	background: transparent;
+	color: var(--text-muted);
+	border-color: transparent;
+	padding: 0.5rem 0.7rem;
+}
+
+.btn-ghost:hover:not([disabled]) {
+	color: var(--text-main);
+	background: rgba(var(--accent-rgb), 0.1);
+}
+
+.btn-danger {
+	background: transparent;
+	color: var(--danger);
+	border-color: rgba(251, 111, 111, 0.4);
+}
+
+.btn-danger:hover:not([disabled]) {
+	background: rgba(251, 111, 111, 0.12);
+}
+
+.btn-sm {
+	min-height: 36px;
+	padding: 0.4rem 0.7rem;
+	font-size: 0.8rem;
+}
+
+.spinner {
+	width: 14px;
+	height: 14px;
+	border: 2px solid currentColor;
+	border-right-color: transparent;
+	border-radius: 50%;
+	animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+/* --- Surfaces --------------------------------------------------------- */
+
+.card {
+	padding: 1.75rem;
+	border: 1px solid var(--line);
+	border-radius: var(--radius-md);
+	background: var(--card-bg);
+}
+
+.card h2,
+.card h3 {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	font-size: 1.15rem;
+	font-weight: 600;
+	margin-bottom: 1rem;
+}
+
+.card h2 .ico,
+.card h3 .ico {
+	width: 18px;
+	height: 18px;
+	color: var(--primary);
+}
+
+.pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+	padding: 0.32rem 0.75rem;
+	border: 1px solid var(--line);
+	border-radius: 99px;
+	color: var(--text-muted);
+	font-family: var(--font-mono);
+	font-size: 0.73rem;
+	letter-spacing: 0.04em;
+	text-decoration: none;
+	transition:
+		border-color 0.18s var(--ease),
+		color 0.18s var(--ease);
+}
+
+.pill .ico {
+	width: 13px;
+	height: 13px;
+	color: var(--primary);
+}
+
+a.pill:hover {
+	border-color: var(--line-strong);
+	color: var(--text-main);
+}
+
+.dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--text-muted);
+	flex: none;
+}
+
+.dot.ok {
+	background: var(--success);
+	box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.16);
+}
+
+.dot.bad {
+	background: var(--danger);
+	box-shadow: 0 0 0 3px rgba(251, 111, 111, 0.16);
+}
+
+/* --- Numbers ---------------------------------------------------------- */
+
+.stat-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	gap: 1px;
+	border: 1px solid var(--line);
+	border-radius: var(--radius-md);
+	background: var(--line);
+	overflow: hidden;
+}
+
+.stat {
+	padding: 1.4rem 1.5rem;
+	background: var(--space-1);
+}
+
+.stat-value {
+	font-family: var(--font-display);
+	font-size: clamp(1.7rem, 3.4vw, 2.3rem);
+	font-weight: 600;
+	letter-spacing: -0.03em;
+	font-variant-numeric: tabular-nums;
+	line-height: 1.1;
+}
+
+.stat-label {
+	margin-top: 0.35rem;
+	color: var(--text-muted);
+	font-size: 0.78rem;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+/* --- Forms ------------------------------------------------------------ */
+
+.field {
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+	margin-bottom: 1rem;
+}
+
+.field label {
+	color: var(--text-muted);
+	font-size: 0.8rem;
+	font-weight: 500;
+	letter-spacing: 0.04em;
+}
+
+/* Also used on its own, under a card heading or beside a control. */
+.hint {
+	color: var(--text-muted);
+	font-size: 0.78rem;
+	line-height: 1.6;
+}
+
+.hint code {
+	color: var(--ion);
+}
+
+input[type="text"],
+input[type="password"],
+input[type="number"],
+select,
+textarea {
+	width: 100%;
+	min-height: 44px;
+	padding: 0.65rem 0.85rem;
+	border: 1px solid var(--line);
+	border-radius: var(--radius-sm);
+	background: var(--space-1);
+	color: var(--text-main);
+	font-family: inherit;
+	font-size: 0.92rem;
+	transition:
+		border-color 0.18s var(--ease),
+		box-shadow 0.18s var(--ease);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+	outline: none;
+	border-color: var(--primary);
+	box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.16);
+}
+
+.row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem;
+	align-items: flex-end;
+}
+
+.row > .field {
+	flex: 1 1 12rem;
+	margin-bottom: 0;
+}
+
+/* --- Code ------------------------------------------------------------- */
+
+.code {
+	position: relative;
+	padding: 1rem 3.2rem 1rem 1.1rem;
+	border: 1px solid var(--line);
+	border-radius: var(--radius-md);
+	background: var(--space-1);
+	color: var(--text-main);
+	font-family: var(--font-mono);
+	font-size: 0.82rem;
+	line-height: 1.7;
+	/* Wrap rather than scroll. A horizontal scrollbar inside a narrow card
+	   hides the end of the command, and the absolutely positioned copy
+	   button scrolls away with the content. */
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
+.code .c {
+	color: var(--text-muted);
+}
+
+.code .s {
+	color: var(--flare-1);
+}
+
+.code .k {
+	color: var(--ion);
+}
+
+.copy-btn {
+	position: absolute;
+	top: 0.5rem;
+	right: 0.5rem;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	min-height: 32px;
+	padding: 0.3rem 0.55rem;
+	border: 1px solid var(--line);
+	border-radius: var(--radius-sm);
+	background: var(--space-2);
+	color: var(--text-muted);
+	font-family: var(--font-body);
+	font-size: 0.72rem;
+	cursor: pointer;
+	transition:
+		color 0.18s var(--ease),
+		border-color 0.18s var(--ease);
+}
+
+.copy-btn:hover {
+	color: var(--text-main);
+	border-color: var(--line-strong);
+}
+
+.copy-btn .ico {
+	width: 13px;
+	height: 13px;
+}
+
+/* --- Tables ----------------------------------------------------------- */
+
+.table-wrap {
+	border: 1px solid var(--line);
+	border-radius: var(--radius-md);
+	overflow-x: auto;
+}
+
+table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 0.88rem;
+}
+
+th,
+td {
+	padding: 0.8rem 1rem;
+	text-align: left;
+	border-bottom: 1px solid var(--line);
+	white-space: nowrap;
+}
+
+th {
+	background: var(--space-2);
+	color: var(--text-muted);
+	font-size: 0.74rem;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+th[aria-sort] {
+	cursor: pointer;
+	user-select: none;
+}
+
+th[aria-sort="ascending"],
+th[aria-sort="descending"] {
+	color: var(--text-main);
+}
+
+tbody tr:last-child td {
+	border-bottom: 0;
+}
+
+tbody tr:hover td {
+	background: rgba(var(--accent-rgb), 0.05);
+}
+
+td.num {
+	font-variant-numeric: tabular-nums;
+	text-align: right;
+}
+
+/* --- Notification ----------------------------------------------------- */
+
+.toast {
+	position: fixed;
+	right: 1rem;
+	bottom: 1rem;
+	z-index: 300;
+	max-width: min(24rem, calc(100vw - 2rem));
+	padding: 0.85rem 1.1rem;
+	border: 1px solid var(--line-strong);
+	border-left-width: 3px;
+	border-radius: var(--radius-sm);
+	background: var(--space-2);
+	color: var(--text-main);
+	font-size: 0.88rem;
+	transform: translateY(0.6rem);
+	opacity: 0;
+	pointer-events: none;
+	transition:
+		opacity 0.2s var(--ease),
+		transform 0.2s var(--ease);
+}
+
+.toast.show {
+	opacity: 1;
+	transform: translateY(0);
+}
+
+.toast.success {
+	border-left-color: var(--success);
+}
+
+.toast.error {
+	border-left-color: var(--danger);
+}
+
+.toast.info {
+	border-left-color: var(--info);
+}
+
+/* --- Dialog ----------------------------------------------------------- */
+
+dialog {
+	/* The reset above zeroes the user agent's margin: auto, which is what
+	   centres a modal dialog. Put it back. */
+	margin: auto;
+	width: min(34rem, calc(100vw - 2rem));
+	max-height: calc(100vh - 4rem);
+	overflow-y: auto;
+	padding: 1.6rem;
+	border: 1px solid var(--line-strong);
+	border-radius: var(--radius-lg);
+	background: var(--space-2);
+	color: var(--text-main);
+}
+
+dialog::backdrop {
+	background: rgba(3, 4, 10, 0.72);
+	backdrop-filter: blur(4px);
+}
+
+.dialog-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	margin-bottom: 1.2rem;
+}
+
+.dialog-head h2 {
+	font-size: 1.1rem;
+	font-weight: 600;
+}
+
+.dialog-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 0.6rem;
+	margin-top: 1.4rem;
+}
+
+/* --- Footer ----------------------------------------------------------- */
+
+.footer {
+	border-top: 1px solid var(--line);
+	background: rgba(7, 9, 18, 0.5);
+}
+
+.footer-inner {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	max-width: 1180px;
+	margin: 0 auto;
+	padding: 1.6rem 2rem;
+	color: var(--text-muted);
+	font-size: 0.84rem;
+}
+
+.footer-inner nav {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 1.2rem;
+}
+
+.footer-inner a {
+	color: var(--text-muted);
+	text-decoration: none;
+	transition: color 0.18s var(--ease);
+}
+
+.footer-inner a:hover {
+	color: var(--text-main);
+}
+
+/* --- Entrance --------------------------------------------------------- */
+
+/* Sections start slightly low and transparent, and settle when scrolled
+   into view. Only transform and opacity, so it stays on the compositor. */
+@media (prefers-reduced-motion: no-preference) {
+	.reveal {
+		opacity: 0;
+		transform: translateY(14px);
+		transition:
+			opacity 0.5s var(--ease),
+			transform 0.5s var(--ease);
+	}
+
+	.reveal.in {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+/* --- Small screens ---------------------------------------------------- */
+
+@media (max-width: 760px) {
+	.container {
+		padding: 2.25rem 1.15rem 3rem;
+	}
+
+	.nav-container {
+		padding: 0.6rem 1.15rem;
+	}
+
+	.nav-link span {
+		display: none;
+	}
+
+	.nav-link {
+		padding: 0.45rem 0.6rem;
+	}
+
+	.nav-link .ico {
+		width: 18px;
+		height: 18px;
+	}
+
+	.footer-inner {
+		padding: 1.4rem 1.15rem;
+	}
+
+	.card {
+		padding: 1.25rem;
+	}
+}

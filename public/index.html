@@ -2,1930 +2,251 @@
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="darkreader-lock" />
-		<title>ViewFlare - Professional View Counter</title>
+
+		<title>ViewFlare - view counts, install counts, one computed number</title>
 		<meta
 			name="description"
-			content="Professional serverless view counter with advanced analytics and admin management."
+			content="A free serverless counter for views, installs and events, running on Cloudflare Pages and D1. Badges for any README, arithmetic across sources, and an API any agent can read."
 		/>
-		<!-- TODO(brand): logo.png and logo-dark.png are still the old
-		     CFlair-Counter art, which is why the header, hero and footer now draw
-		     an inline mark instead. These two files are still the favicon and the
-		     social card image. Replace them in place (same names, same paths)
-		     with the new ViewFlare mark once it exists - the prompts are in
-		     docs/BRAND-PROMPTS.md. No markup change is needed. -->
-		<link rel="icon" type="image/png" href="logo.png" />
-		<link rel="apple-touch-icon" href="logo.png" />
+
+		<!--
+			A fork deploying to its own domain has three absolute URLs to change:
+			the canonical below, og:url, and the <loc> in sitemap.xml. Everything
+			else on this page is origin-relative and follows the deployment.
+		-->
+		<link rel="canonical" href="https://counter.vkrishna04.me/" />
+
+		<meta property="og:type" content="website" />
+		<meta property="og:site_name" content="ViewFlare" />
+		<meta property="og:url" content="https://counter.vkrishna04.me/" />
 		<meta
 			property="og:title"
-			content="ViewFlare - Serverless View Analytics"
+			content="ViewFlare - view counts, install counts, one computed number"
 		/>
 		<meta
 			property="og:description"
-			content="Professional serverless view counter with real-time analytics and badge generation"
+			content="A free serverless counter for views, installs and events, running on Cloudflare Pages and D1."
 		/>
-		<meta property="og:image" content="/logo.png" />
-		<meta property="og:type" content="website" />
-		<meta name="twitter:card" content="summary_large_image" />
-		<meta name="twitter:title" content="ViewFlare" />
-		<meta name="twitter:description" content="Serverless View Analytics" />
-		<meta name="twitter:image" content="/logo.png" />
+		<meta name="twitter:card" content="summary" />
+		<!--
+			og:image and twitter:image are deliberately absent. The only art in
+			the repo is the old 1.3MB mark, and pointing a link preview at a file
+			that is wrong is worse than having no preview image. Add both tags
+			once public/og.png exists; docs/BRAND-PROMPTS.md prompt 4 makes it.
+		-->
+
+		<link rel="icon" type="image/png" href="/logo.png" />
+		<link rel="apple-touch-icon" href="/logo.png" />
+
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			rel="stylesheet"
+			href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+		/>
+		<link rel="stylesheet" href="/viewflare.css" />
 
 		<style>
-			@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap");
-
-			* {
-				margin: 0;
-				padding: 0;
-				box-sizing: border-box;
-			}
-
-			/* Dark is the real design here. The light theme below is kept
-			   functional and legible, not cosmic. */
-			:root {
-				--space-0: #05060d;
-				--space-1: #0a0d18;
-				--space-2: #111524;
-				--space-3: #171c2e;
-
-				--line: rgba(150, 168, 214, 0.13);
-				--line-strong: rgba(150, 168, 214, 0.3);
-
-				--text-main: #e9edf9;
-				--text-muted: #8a92ac;
-
-				/* The flare: an ember core cooling through rose into violet.
-				   --ion is the cold counterpart, used for links and figures. */
-				--flare-1: #ffc247;
-				--flare-2: #ff7a45;
-				--flare-3: #e0457b;
-				--flare-4: #9b5de5;
-				--ion: #5ad3f0;
-
-				--primary: #ff7a45;
-				--primary-dark: #e0457b;
-				--secondary: #9b5de5;
-				--accent-rgb: 255, 122, 69;
-
-				--success: #34d399;
-				--warning: #fbbf24;
-				--danger: #fb6f6f;
-				--info: #5ad3f0;
-
-				--bg-base: #05060d;
-				--bg-gradient-start: #05060d;
-				--bg-gradient-end: #0a0d18;
-
-				--card-bg: rgba(12, 16, 28, 0.72);
-				--card-border: var(--line);
-
-				--navbar-bg: rgba(7, 9, 18, 0.72);
-				--glass-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.04) inset;
-
-				--radius-sm: 8px;
-				--radius-md: 12px;
-				--radius-lg: 16px;
-				--transition: all 0.22s cubic-bezier(0.22, 1, 0.36, 1);
-
-				--font-display: "Space Grotesk", "Segoe UI", sans-serif;
-				--font-body: "IBM Plex Sans", "Segoe UI", sans-serif;
-				--font-mono: "JetBrains Mono", ui-monospace, monospace;
-			}
-
-			/* data-theme="dark" is the default set above, repeated here so the
-			   attribute selector wins over any light rule of equal weight. */
-			[data-theme="dark"] {
-				--space-0: #05060d;
-				--space-1: #0a0d18;
-				--space-2: #111524;
-				--space-3: #171c2e;
-				--line: rgba(150, 168, 214, 0.13);
-				--line-strong: rgba(150, 168, 214, 0.3);
-				--text-main: #e9edf9;
-				--text-muted: #8a92ac;
-				--primary: #ff7a45;
-				--primary-dark: #e0457b;
-				--secondary: #9b5de5;
-				--accent-rgb: 255, 122, 69;
-				--ion: #5ad3f0;
-				--bg-base: #05060d;
-				--card-bg: rgba(12, 16, 28, 0.72);
-				--navbar-bg: rgba(7, 9, 18, 0.72);
-			}
-
-			[data-theme="light"] {
-				--space-0: #fbfaf7;
-				--space-1: #ffffff;
-				--space-2: #f4f2ee;
-				--space-3: #eceae4;
-
-				--line: rgba(24, 28, 46, 0.11);
-				--line-strong: rgba(24, 28, 46, 0.26);
-
-				--text-main: #14161f;
-				--text-muted: #5c6278;
-
-				--flare-1: #c2760a;
-				--flare-2: #d2461a;
-				--flare-3: #b7245a;
-				--flare-4: #6d35b5;
-				--ion: #0a6f92;
-
-				--primary: #d2461a;
-				--primary-dark: #b7245a;
-				--secondary: #6d35b5;
-				--accent-rgb: 210, 70, 26;
-
-				--success: #0f8a5f;
-				--warning: #a9700a;
-				--danger: #c4302b;
-				--info: #0a6f92;
-
-				--bg-base: #fbfaf7;
-				--card-bg: #ffffff;
-				--card-border: var(--line);
-				--navbar-bg: rgba(255, 255, 255, 0.82);
-				--glass-shadow: 0 1px 2px rgba(20, 22, 31, 0.06);
-			}
-
-			html {
-				background: var(--space-0);
-			}
-
-			body {
-				position: relative;
-				z-index: 0;
-				color: var(--text-main);
-				background: var(--space-0);
-				font-family: var(--font-body);
-				font-size: 16px;
-				line-height: 1.6;
-				min-height: 100vh;
-				-webkit-font-smoothing: antialiased;
-			}
-
-			code,
-			pre,
-			kbd,
-			samp {
-				font-family: var(--font-mono);
-			}
-
-			/* Two fixed layers behind everything: a tiled starfield and the
-			   nebula it sits in. Both are painted, never scrolled, so there is
-			   no repaint cost on scroll and no background-attachment jank. */
-			body::before,
-			body::after {
-				content: "";
-				position: fixed;
-				inset: -15%;
-				z-index: -1;
-				pointer-events: none;
-			}
-
-			body::before {
-				background-image:
-					radial-gradient(
-						circle at 30% 20%,
-						rgba(155, 93, 229, 0.22),
-						transparent 55%
-					),
-					radial-gradient(
-						circle at 78% 8%,
-						rgba(224, 69, 123, 0.16),
-						transparent 50%
-					),
-					radial-gradient(
-						circle at 12% 78%,
-						rgba(90, 211, 240, 0.1),
-						transparent 45%
-					),
-					radial-gradient(
-						circle at 92% 72%,
-						rgba(255, 122, 69, 0.12),
-						transparent 45%
-					);
-			}
-
-			body::after {
-				background-image:
-					radial-gradient(
-						1.6px 1.6px at 18% 24%,
-						rgba(255, 255, 255, 0.95),
-						transparent 60%
-					),
-					radial-gradient(
-						1.2px 1.2px at 72% 61%,
-						rgba(200, 220, 255, 0.8),
-						transparent 60%
-					),
-					radial-gradient(
-						1px 1px at 44% 82%,
-						rgba(255, 236, 210, 0.75),
-						transparent 60%
-					),
-					radial-gradient(
-						1px 1px at 88% 16%,
-						rgba(255, 255, 255, 0.6),
-						transparent 60%
-					);
-				background-size:
-					320px 320px,
-					210px 210px,
-					470px 470px,
-					140px 140px;
-				opacity: 0.85;
-			}
-
-			@media (prefers-reduced-motion: no-preference) {
-				body::after {
-					animation: drift 240s linear infinite;
-				}
-			}
-
-			@keyframes drift {
-				to {
-					transform: translate3d(-320px, -210px, 0);
-				}
-			}
-
-			[data-theme="light"] body::before {
-				background-image:
-					radial-gradient(
-						circle at 25% 12%,
-						rgba(210, 70, 26, 0.07),
-						transparent 50%
-					),
-					radial-gradient(
-						circle at 82% 78%,
-						rgba(109, 53, 181, 0.06),
-						transparent 45%
-					);
-			}
-
-			[data-theme="light"] body::after {
-				display: none;
-			}
-
-			/* Glassmorphism Utilities */
-			.glass {
-				background: var(--card-bg);
-				backdrop-filter: blur(12px);
-				-webkit-backdrop-filter: blur(12px);
-				border: 1px solid var(--card-border);
-				box-shadow: var(--glass-shadow);
-			}
-
-			/* Navigation */
-			.navbar {
-				background: var(--navbar-bg);
-				backdrop-filter: blur(12px);
-				-webkit-backdrop-filter: blur(12px);
-				border: 1px solid var(--card-border);
-				border-radius: 99px;
-				position: sticky;
-				top: 1rem;
-				z-index: 100;
-				transition: var(--transition);
-				max-width: 1200px;
-				margin: 1rem auto 0;
-				width: calc(100% - 4rem);
-				box-shadow: var(--glass-shadow);
-			}
-
-			.nav-container {
-				max-width: 100%;
-				margin: 0;
-				padding: 0.5rem 1.5rem;
-				display: flex;
-				justify-content: space-between;
-				align-items: center;
-			}
-
-			.nav-brand {
-				font-size: 1.75rem;
-				font-weight: 800;
-				background: linear-gradient(
-					135deg,
-					var(--primary),
-					var(--secondary)
-				);
-				-webkit-background-clip: text;
-				-webkit-text-fill-color: transparent;
-				text-decoration: none;
-				letter-spacing: -0.5px;
-			}
-
-			.nav-links {
-				display: flex;
-				gap: 1.5rem;
-				align-items: center;
-			}
-
-			.nav-link {
-				color: var(--text-main);
-				text-decoration: none;
-				font-weight: 500;
-				padding: 0.5rem 1rem;
-				border-radius: 99px;
-				transition: var(--transition);
-				position: relative;
-			}
-
-			.nav-link:hover {
-				background: rgba(var(--accent-rgb), 0.1);
-				color: var(--primary);
-			}
-
-			.nav-link.active {
-				background: var(--primary);
-				color: white;
-				box-shadow: 0 4px 15px rgba(var(--accent-rgb), 0.4);
-			}
-
-			.nav-link.external {
-				border: 1px solid var(--primary);
-			}
-
-			/* Container & Layout */
-			.container {
-				max-width: 1200px;
-				margin: 0 auto;
-				padding: 3rem 2rem;
-			}
-
-			.page {
-				display: none;
-				animation: fadeIn 0.5s ease;
-			}
-
-			.page.active {
-				display: block;
-			}
-
-			@keyframes fadeIn {
-				from {
-					opacity: 0;
-					transform: translateY(10px);
-				}
-				to {
-					opacity: 1;
-					transform: translateY(0);
-				}
-			}
-
 			.hero {
-				text-align: center;
-				margin: 4rem 0 6rem;
-			}
-
-			.hero h1 {
-				font-size: 4rem;
-				font-weight: 800;
-				margin-bottom: 1.5rem;
-				line-height: 1.1;
-				background: linear-gradient(
-					135deg,
-					var(--text-main),
-					var(--primary)
-				);
-				-webkit-background-clip: text;
-				-webkit-text-fill-color: transparent;
-				letter-spacing: -1px;
-			}
-
-			.hero p {
-				font-size: 1.25rem;
-				color: var(--text-muted);
-				max-width: 600px;
-				margin: 0 auto 2rem;
-			}
-
-			.badge {
-				background: linear-gradient(
-					135deg,
-					var(--primary),
-					var(--primary-dark)
-				);
-				color: white;
-				padding: 0.5rem 1.25rem;
-				border-radius: 99px;
-				font-size: 0.9rem;
-				font-weight: 600;
-				box-shadow: 0 4px 15px rgba(var(--accent-rgb), 0.3);
-				display: inline-block;
-				margin: 0.5rem;
-				transition: var(--transition);
-			}
-
-			.badge:hover {
-				transform: translateY(-2px);
-				box-shadow: 0 6px 20px rgba(var(--accent-rgb), 0.4);
-			}
-
-			.endpoint-card {
-				background: var(--card-bg);
-				backdrop-filter: blur(12px);
-				border: 1px solid var(--card-border);
-				border-radius: var(--radius-lg);
-				padding: 1.5rem;
-				max-width: 800px;
-				margin: 2rem auto;
-				box-shadow: var(--glass-shadow);
-			}
-
-			.endpoint-status {
-				font-weight: 600;
-				display: flex;
-				align-items: center;
-				justify-content: center;
-				gap: 0.5rem;
-			}
-
-			.endpoint-dot {
-				width: 12px;
-				height: 12px;
-				border-radius: 50%;
-				background: var(--text-muted);
-				box-shadow: 0 0 10px var(--text-muted);
-			}
-
-			.endpoint-dot.ok {
-				background: var(--success);
-				box-shadow: 0 0 15px var(--success);
-			}
-
-			.quick-actions {
-				display: flex;
-				flex-wrap: wrap;
-				gap: 1rem;
-				justify-content: center;
-				margin-top: 1.5rem;
-			}
-
-			.btn {
-				padding: 0.75rem 1.5rem;
-				border-radius: var(--radius-md);
-				font-weight: 600;
-				font-size: 1rem;
-				cursor: pointer;
-				transition: var(--transition);
-				border: none;
-				display: inline-flex;
-				align-items: center;
-				justify-content: center;
-				gap: 0.5rem;
-			}
-
-			.btn-primary {
-				background: linear-gradient(
-					135deg,
-					var(--primary),
-					var(--secondary)
-				);
-				color: white;
-				box-shadow: 0 4px 15px rgba(var(--accent-rgb), 0.3);
-			}
-
-			.btn-primary:hover {
-				transform: translateY(-2px);
-				box-shadow: 0 8px 25px rgba(var(--accent-rgb), 0.5);
-			}
-
-			.btn-secondary {
-				background: rgba(var(--accent-rgb), 0.1);
-				color: var(--primary);
-				border: 1px solid rgba(var(--accent-rgb), 0.2);
-			}
-
-			.btn-secondary:hover {
-				background: rgba(var(--accent-rgb), 0.2);
-				transform: translateY(-2px);
-			}
-
-			.btn-sm {
-				padding: 0.5rem 1rem;
-				font-size: 0.9rem;
-				border-radius: 99px;
-			}
-
-			/* Cards */
-			.card {
-				background: var(--card-bg);
-				backdrop-filter: blur(12px);
-				-webkit-backdrop-filter: blur(12px);
-				border: 1px solid var(--card-border);
-				border-radius: var(--radius-lg);
-				padding: 2.5rem;
-				margin: 3rem 0;
-				box-shadow: var(--glass-shadow);
-				transition: var(--transition);
-			}
-
-			.card:hover {
-				transform: translateY(-5px);
-				border-color: rgba(var(--accent-rgb), 0.3);
-			}
-
-			.card h2 {
-				font-size: 2rem;
-				font-weight: 700;
-				margin-bottom: 2rem;
-				color: var(--text-main);
-				display: flex;
-				align-items: center;
-				gap: 0.75rem;
-			}
-
-			/* Stats Grid */
-			.stats-grid {
-				display: grid;
-				grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-				gap: 1.5rem;
-			}
-
-			.stat-item {
-				background: rgba(255, 255, 255, 0.03);
-				border: 1px solid var(--card-border);
-				padding: 2rem;
-				border-radius: var(--radius-md);
-				text-align: center;
-				transition: var(--transition);
-				position: relative;
-				overflow: hidden;
-			}
-
-			.stat-item::before {
-				content: "";
-				position: absolute;
-				top: 0;
-				left: 0;
-				right: 0;
-				height: 4px;
-				background: linear-gradient(
-					90deg,
-					var(--primary),
-					var(--secondary)
-				);
-				opacity: 0;
-				transition: var(--transition);
-			}
-
-			.stat-item:hover::before {
-				opacity: 1;
-			}
-
-			.stat-item:hover {
-				transform: translateY(-5px);
-				background: rgba(var(--accent-rgb), 0.05);
-			}
-
-			.stat-number {
-				font-size: 3.5rem;
-				font-weight: 800;
-				color: var(--primary);
-				line-height: 1;
-				margin-bottom: 0.5rem;
-				font-family: "JetBrains Mono", monospace;
-			}
-
-			.stat-label {
-				color: var(--text-muted);
-				font-weight: 500;
-				text-transform: uppercase;
-				letter-spacing: 1px;
-				font-size: 0.85rem;
-			}
-
-			/* Features Grid */
-			.feature-grid {
-				display: grid;
-				grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-				gap: 2rem;
-			}
-
-			.feature-card {
-				padding: 2rem;
-				border-radius: var(--radius-md);
-				background: rgba(255, 255, 255, 0.02);
-				border: 1px solid var(--card-border);
-				transition: var(--transition);
-			}
-
-			.feature-card:hover {
-				transform: translateY(-5px);
-				background: rgba(var(--accent-rgb), 0.05);
-				border-color: rgba(var(--accent-rgb), 0.3);
-			}
-
-			.feature-icon {
-				font-size: 2.5rem;
-				margin-bottom: 1rem;
-				display: inline-block;
-				padding: 1rem;
-				background: rgba(var(--accent-rgb), 0.1);
-				border-radius: var(--radius-md);
-			}
-
-			.feature-card h3 {
-				font-size: 1.25rem;
-				margin-bottom: 0.5rem;
-				color: var(--text-main);
-			}
-
-			.feature-card p {
-				color: var(--text-muted);
-			}
-
-			/* Forms */
-			.form-row {
-				display: flex;
-				gap: 1.5rem;
-				flex-wrap: wrap;
-				align-items: flex-end;
-			}
-
-			.form-group {
-				flex: 1;
-				min-width: 200px;
-			}
-
-			.form-label {
-				display: block;
-				margin-bottom: 0.5rem;
-				font-weight: 500;
-				color: var(--text-muted);
-			}
-
-			.form-input {
-				width: 100%;
-				padding: 0.75rem 1rem;
-				background: rgba(255, 255, 255, 0.05);
-				border: 1px solid var(--card-border);
-				border-radius: var(--radius-md);
-				color: var(--text-main);
-				font-size: 1rem;
-				transition: var(--transition);
-				outline: none;
-			}
-
-			.form-input:focus {
-				border-color: var(--primary);
-				box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.2);
-			}
-
-			/* Code Blocks */
-			.code-block {
-				background: #0f172a;
-				border-radius: var(--radius-md);
-				padding: 1.5rem;
-				color: #cbd5e1;
-				font-family: "JetBrains Mono", monospace;
-				font-size: 0.9rem;
-				line-height: 1.6;
-				overflow-x: auto;
-				border: 1px solid rgba(255, 255, 255, 0.08);
-				margin: 1rem 0;
-				position: relative;
-				white-space: pre;
-			}
-
-			.code-block .comment {
-				color: #64748b;
-				font-style: italic;
-			}
-			.code-block .string {
-				color: #a78bfa;
-			}
-			.code-block .keyword {
-				color: #f472b6;
-				font-weight: 600;
-			}
-			.code-block .method,
-			.code-block .function {
-				color: #60a5fa;
-			}
-			.code-block .number {
-				color: #fbbf24;
-			}
-			.code-block .cmd {
-				color: #38bdf8;
-				font-weight: 600;
-			}
-			.code-block .success {
-				color: #34d399;
-			}
-			.code-block .class {
-				color: #fb7185;
-			}
-
-			/* Styled Table Container */
-			.table-container {
-				width: 100%;
-				overflow-x: auto;
-				margin: 1.5rem 0;
-				border-radius: var(--radius-md);
-				border: 1px solid var(--card-border);
-				background: rgba(255, 255, 255, 0.01);
-				box-shadow: var(--glass-shadow);
-			}
-
-			.table {
-				width: 100%;
-				border-collapse: collapse;
-				text-align: left;
-				font-size: 0.95rem;
-			}
-
-			.table th {
-				background: rgba(var(--accent-rgb), 0.06);
-				color: var(--text-main);
-				font-weight: 700;
-				padding: 0.85rem 1.25rem;
-				font-size: 0.8rem;
-				text-transform: uppercase;
-				letter-spacing: 0.75px;
-				border-bottom: 2px solid var(--card-border);
-			}
-
-			.table td {
-				padding: 0.85rem 1.25rem;
-				border-bottom: 1px solid var(--card-border);
-				color: var(--text-muted);
-				font-weight: 400;
-			}
-
-			.table tr:last-child td {
-				border-bottom: none;
-			}
-
-			.table tr:hover td {
-				color: var(--text-main);
-				background: rgba(var(--accent-rgb), 0.03);
-			}
-
-			[data-theme="light"] .table tr:hover td {
-				background: rgba(var(--accent-rgb), 0.02);
-			}
-
-			/* Theme Switch */
-			.switch {
-				display: inline-block;
-				position: relative;
-				width: 60px;
-				height: 30px;
-			}
-			.switch__input {
-				clip: rect(1px, 1px, 1px, 1px);
-				clip-path: inset(50%);
-				height: 1px;
-				width: 1px;
-				margin: -1px;
-				overflow: hidden;
-				padding: 0;
-				position: absolute;
-			}
-			.switch__label {
-				position: absolute;
-				display: inline-block;
-				width: 120px;
-				height: 60px;
-				background-color: #2b2b2b;
-				border: 5px solid #5b5b5b;
-				border-radius: 9999px;
-				cursor: pointer;
-				transition: all 0.4s cubic-bezier(0.46, 0.03, 0.52, 0.96);
-				transform: scale(0.5);
-				transform-origin: top left;
-			}
-			.switch__indicator {
-				position: absolute;
-				top: 50%;
-				left: 50%;
-				transform: translate(-50%, -50%) translateX(-72%);
-				display: block;
-				width: 40px;
-				height: 40px;
-				background-color: #7b7b7b;
-				border-radius: 9999px;
-				box-shadow: 10px 0px 0 0 rgba(0, 0, 0, 0.2) inset;
-				transition: all 0.4s cubic-bezier(0.46, 0.03, 0.52, 0.96);
-			}
-			.switch__indicator::before,
-			.switch__indicator::after {
-				position: absolute;
-				content: "";
-				display: block;
-				background-color: #ffffff;
-				border-radius: 9999px;
-				transition: all 0.4s cubic-bezier(0.46, 0.03, 0.52, 0.96);
-			}
-			.switch__indicator::before {
-				top: 7px;
-				left: 7px;
-				width: 9px;
-				height: 9px;
-				background-color: #ffffff;
-				opacity: 0.6;
-			}
-			.switch__indicator::after {
-				bottom: 8px;
-				right: 6px;
-				width: 14px;
-				height: 14px;
-				background-color: #ffffff;
-				opacity: 0.8;
-			}
-			.switch__decoration {
-				position: absolute;
-				top: 65%;
-				left: 50%;
-				display: block;
-				width: 5px;
-				height: 5px;
-				background-color: #ffffff;
-				border-radius: 9999px;
-				animation: twinkle 0.8s infinite -0.6s;
-			}
-			.switch__decoration::before,
-			.switch__decoration::after {
-				position: absolute;
-				display: block;
-				content: "";
-				width: 5px;
-				height: 5px;
-				background-color: #ffffff;
-				border-radius: 9999px;
-			}
-			.switch__decoration::before {
-				top: -20px;
-				left: 10px;
-				opacity: 1;
-				animation: twinkle 0.6s infinite;
-			}
-			.switch__decoration::after {
-				top: -7px;
-				left: 30px;
-				animation: twinkle 0.6s infinite -0.2s;
-			}
-			@keyframes twinkle {
-				50% { opacity: 0.2; }
-			}
-			.switch__input:checked + .switch__label {
-				background-color: #8fb5f5;
-				border-color: #347cf8;
-			}
-			.switch__input:checked + .switch__label .switch__indicator {
-				background-color: #ecd21f;
-				box-shadow: none;
-				transform: translate(-50%, -50%) translateX(72%);
-			}
-			.switch__input:checked + .switch__label .switch__decoration {
-				top: 50%;
-				transform: translate(0%, -50%);
-				animation: cloud 8s linear infinite;
-				width: 20px;
-				height: 20px;
-			}
-			.switch__input:checked + .switch__label .switch__decoration::before {
-				width: 10px;
-				height: 10px;
-				top: auto;
-				bottom: 0;
-				left: -8px;
-				animation: none;
-			}
-			.switch__input:checked + .switch__label .switch__decoration::after {
-				width: 15px;
-				height: 15px;
-				top: auto;
-				bottom: 0;
-				left: 16px;
-				animation: none;
-			}
-			.switch__input:checked + .switch__label .switch__decoration,
-			.switch__input:checked + .switch__label .switch__decoration::before,
-			.switch__input:checked + .switch__label .switch__decoration::after {
-				border-radius: 9999px 9999px 0 0;
-			}
-			.switch__input:checked + .switch__label .switch__decoration::after {
-				border-bottom-right-radius: 9999px;
-			}
-			@keyframes cloud {
-				0% { transform: translate(0%, -50%); }
-				50% { transform: translate(-50%, -50%); }
-				100% { transform: translate(0%, -50%); }
-			}
-
-			/* Modals */
-			.modal {
-				display: none;
-				position: fixed;
-				top: 0;
-				left: 0;
-				right: 0;
-				bottom: 0;
-				background: rgba(0, 0, 0, 0.5);
-				backdrop-filter: blur(8px);
-				z-index: 1000;
-				align-items: center;
-				justify-content: center;
-			}
-
-			.modal.active {
-				display: flex;
-				animation: fadeIn 0.3s ease;
-			}
-
-			.modal-content,
-			.modal-login,
-			.modal-wide {
-				background: var(--bg-base);
-				border-radius: var(--radius-lg);
-				padding: 2.5rem;
-				width: 100%;
-				max-width: 500px;
-				border: 1px solid var(--card-border);
-				box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-			}
-
-			.modal-wide {
-				max-width: 900px;
-				max-height: 90vh;
-				overflow-y: auto;
-			}
-
-			.modal-header {
-				display: flex;
-				justify-content: space-between;
-				align-items: center;
-				margin-bottom: 2rem;
-			}
-
-			.modal-title {
-				font-size: 1.5rem;
-				font-weight: 700;
-			}
-
-			.modal-close {
-				background: none;
-				border: none;
-				font-size: 1.5rem;
-				color: var(--text-muted);
-				cursor: pointer;
-				transition: var(--transition);
-			}
-
-			.modal-close:hover {
-				color: var(--danger);
-				transform: rotate(90deg);
-			}
-
-			/* Badges on page */
-			#demo-badge {
-				border-radius: 4px;
-				box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-				transition: var(--transition);
-			}
-			#demo-badge:hover {
-				transform: scale(1.05);
-			}
-
-			/* Footer styling */
-			.footer {
-				margin-top: 4rem;
-				border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-				border-bottom: none;
-				padding: 4rem 2rem 2rem;
-				transition: var(--transition);
-				position: relative;
-				z-index: 10;
-			}
-
-			.footer-container {
-				max-width: 1200px;
-				margin: 0 auto;
-				display: grid;
-				grid-template-columns: 2fr 1fr 1fr;
-				gap: 3rem;
-				margin-bottom: 3rem;
-			}
-
-			.footer-brand {
-				display: flex;
-				flex-direction: column;
-				gap: 1.25rem;
-			}
-
-			.footer-logo {
-				display: flex;
-				align-items: center;
-				font-size: 1.75rem;
-				font-weight: 800;
-				background: linear-gradient(
-					135deg,
-					var(--primary),
-					var(--secondary)
-				);
-				-webkit-background-clip: text;
-				-webkit-text-fill-color: transparent;
-				letter-spacing: -0.5px;
-			}
-
-			.footer-logo img {
-				height: 5vh;
-				max-height: 40px;
-				vertical-align: middle;
-				margin-right: 0.75rem;
-			}
-
-			.footer-tagline {
-				color: var(--text-muted);
-				font-size: 1rem;
-				line-height: 1.6;
-				max-width: 360px;
-			}
-
-			.footer-links-group h4 {
-				font-size: 0.9rem;
-				font-weight: 700;
-				margin-bottom: 1.25rem;
-				color: var(--text-main);
-				text-transform: uppercase;
-				letter-spacing: 1px;
-			}
-
-			.footer-links {
-				display: flex;
-				flex-direction: column;
-				gap: 1rem;
-			}
-
-			.footer-links a {
-				color: var(--text-muted);
-				text-decoration: none;
-				font-size: 0.95rem;
-				font-weight: 500;
-				display: inline-flex;
-				align-items: center;
-				gap: 0.5rem;
-				transition: var(--transition);
-				width: fit-content;
-			}
-
-			.footer-links a:hover {
-				color: var(--primary);
-				transform: translateX(6px);
-			}
-
-			.footer-icon {
-				flex-shrink: 0;
-				transition: var(--transition);
-				opacity: 0.8;
-			}
-
-			.footer-links a:hover .footer-icon {
-				color: var(--primary);
-				opacity: 1;
-				transform: scale(1.1);
-			}
-
-			.footer-bottom {
-				max-width: 1200px;
-				margin: 0 auto;
-				padding-top: 2rem;
-				border-top: 1px solid var(--card-border);
-				text-align: center;
-				font-size: 0.9rem;
-				color: var(--text-muted);
-				display: flex;
-				justify-content: space-between;
-				align-items: center;
-				flex-wrap: wrap;
-				gap: 1.5rem;
-			}
-
-			.footer-bottom p {
-				font-weight: 400;
-			}
-
-			.footer-bottom-links {
-				display: flex;
-				gap: 2rem;
-			}
-
-			.footer-bottom-links a {
-				color: var(--text-muted);
-				text-decoration: none;
-				font-weight: 500;
-				transition: var(--transition);
-			}
-
-			.footer-bottom-links a:hover {
-				color: var(--primary);
-			}
-
-			/* Code block copy layout */
-			.code-block-wrapper {
-				position: relative;
-				margin: 1.5rem 0;
-			}
-			.code-block-wrapper .code-block {
-				margin: 0 !important;
-			}
-			.copy-code-btn {
-				position: absolute;
-				top: 0.75rem;
-				right: 0.75rem;
-				background: rgba(255, 255, 255, 0.08);
-				border: 1px solid rgba(255, 255, 255, 0.1);
-				backdrop-filter: blur(4px);
-				-webkit-backdrop-filter: blur(4px);
-				color: #cbd5e1;
-				padding: 0.35rem 0.75rem;
-				border-radius: 8px;
-				font-size: 0.75rem;
-				font-weight: 600;
-				cursor: pointer;
-				transition: var(--transition);
-				display: flex;
-				align-items: center;
-				gap: 0.35rem;
-				line-height: 1;
-				z-index: 5;
-			}
-			.copy-code-btn:hover {
-				background: var(--primary);
-				border-color: var(--primary);
-				color: white;
-				transform: translateY(-1px);
-				box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.3);
-			}
-			.copy-code-btn:active {
-				transform: translateY(0);
-			}
-
-			/* Inline copy button styling */
-			.copy-inline-btn {
-				background: rgba(var(--accent-rgb), 0.08);
-				border: 1px solid rgba(var(--accent-rgb), 0.15);
-				color: var(--primary);
-				padding: 0.35rem 0.75rem;
-				font-size: 0.8rem;
-				border-radius: 8px;
-				font-weight: 600;
-				cursor: pointer;
-				transition: var(--transition);
-				display: inline-flex;
-				align-items: center;
-				justify-content: center;
-				gap: 0.35rem;
-				vertical-align: middle;
-				text-decoration: none;
-			}
-			.copy-inline-btn:hover {
-				background: var(--primary);
-				color: white;
-				border-color: var(--primary);
-				transform: translateY(-1px);
-				box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.25);
-			}
-			.copy-inline-btn:active {
-				transform: translateY(0);
-			}
-			.copy-inline-btn svg {
-				flex-shrink: 0;
-			}
-
-			@media (max-width: 768px) {
-				.navbar {
-					width: calc(100% - 2rem);
-					margin: 0.75rem auto 0;
-					top: 0.75rem;
-					border-radius: 20px;
-				}
-				.nav-container {
-					padding: 0.5rem 1rem;
-					flex-direction: column;
-					gap: 1rem;
-				}
-				.nav-links {
-					flex-wrap: wrap;
-					justify-content: center;
-					gap: 0.75rem;
-				}
-				.footer-container {
-					grid-template-columns: 1fr;
-					gap: 2.5rem;
-				}
-				.footer-bottom {
-					flex-direction: column;
-					text-align: center;
-				}
-			}
-
-			/* ================================================================
-			   Deep-field overrides
-			   Everything above is the original component CSS. This block
-			   restates only the pieces the new palette and type scale change,
-			   rather than editing them in place, so the diff stays readable.
-			   ================================================================ */
-
-			.ico {
-				width: 1em;
-				height: 1em;
-				flex: none;
-				fill: none;
-				stroke: currentColor;
-				stroke-width: 1.7;
-				stroke-linecap: round;
-				stroke-linejoin: round;
-			}
-
-			:focus-visible {
-				outline: 2px solid var(--primary);
-				outline-offset: 2px;
-				border-radius: 4px;
-			}
-
-			.glass {
-				background: var(--card-bg);
-				backdrop-filter: blur(18px);
-				-webkit-backdrop-filter: blur(18px);
-				border: 1px solid var(--line);
-				box-shadow: none;
-			}
-
-			/* --- Navigation ------------------------------------------------ */
-
-			.navbar {
-				border-radius: 0;
-				max-width: none;
-				margin: 0;
-				top: 0;
-				border: 0;
-				border-bottom: 1px solid var(--line);
-				background: var(--navbar-bg);
-				backdrop-filter: blur(18px);
-				-webkit-backdrop-filter: blur(18px);
-				box-shadow: none;
-				padding: 0;
-			}
-
-			.nav-container {
-				max-width: 1180px;
-				margin: 0 auto;
-				padding: 0.85rem 2rem;
-			}
-
-			.nav-brand {
-				font-family: var(--font-display);
-				font-size: 1.12rem;
-				font-weight: 600;
-				letter-spacing: -0.02em;
-				color: var(--text-main);
-				background: none;
-				-webkit-text-fill-color: currentColor;
-				display: inline-flex;
-				align-items: center;
-				gap: 0.55rem;
-			}
-
-			.brand-mark {
-				width: 26px;
-				height: 26px;
-				flex: none;
-			}
-
-			.nav-links {
-				gap: 0.15rem;
-			}
-
-			.nav-link {
-				display: inline-flex;
-				align-items: center;
-				gap: 0.45rem;
-				font-size: 0.88rem;
-				font-weight: 500;
-				letter-spacing: 0.01em;
-				color: var(--text-muted);
-				background: none;
-				border-radius: var(--radius-sm);
-				padding: 0.45rem 0.7rem;
-			}
-
-			.nav-link .ico {
-				width: 15px;
-				height: 15px;
-				opacity: 0.75;
-			}
-
-			.nav-link:hover {
-				color: var(--text-main);
-				background: rgba(var(--accent-rgb), 0.08);
-				transform: none;
-			}
-
-			.nav-link.active {
-				color: var(--text-main);
-				background: rgba(var(--accent-rgb), 0.12);
-				box-shadow: none;
-			}
-
-			.nav-link.active .ico {
-				color: var(--primary);
-				opacity: 1;
-			}
-
-			/* --- Hero ------------------------------------------------------ */
-
-			.container {
-				max-width: 1180px;
-				padding: 3.5rem 2rem 4rem;
-			}
-
-			.hero {
-				text-align: left;
-				margin: 3rem 0 4.5rem;
 				max-width: 46rem;
-			}
-
-			.eyebrow {
-				display: inline-flex;
-				align-items: center;
-				gap: 0.5rem;
-				font-family: var(--font-mono);
-				font-size: 0.72rem;
-				font-weight: 500;
-				letter-spacing: 0.16em;
-				text-transform: uppercase;
-				color: var(--text-muted);
-				margin-bottom: 1.4rem;
-			}
-
-			.eyebrow::before {
-				content: "";
-				width: 22px;
-				height: 1px;
-				background: var(--primary);
+				margin: 3rem 0 3.5rem;
 			}
 
 			.hero h1 {
-				font-family: var(--font-display);
-				font-size: clamp(2.5rem, 6.4vw, 4.6rem);
+				font-size: clamp(2.4rem, 6.4vw, 4.4rem);
 				font-weight: 700;
 				line-height: 1.02;
 				letter-spacing: -0.045em;
-				color: var(--text-main);
-				background: none;
-				-webkit-text-fill-color: currentColor;
-				margin-bottom: 1.3rem;
-				text-wrap: balance;
+				margin-bottom: 1.25rem;
 			}
 
-			/* The only gradient on the page, on one word, where the product
-			   name actually is. */
-			.hero h1 .flare {
-				background: linear-gradient(
-					100deg,
-					var(--flare-1),
-					var(--flare-2) 45%,
-					var(--flare-3)
-				);
-				-webkit-background-clip: text;
-				background-clip: text;
-				-webkit-text-fill-color: transparent;
-				color: transparent;
-			}
-
-			.hero p {
-				font-size: 1.1rem;
+			.hero p.lede {
+				font-size: 1.08rem;
 				line-height: 1.65;
 				color: var(--text-muted);
 				max-width: 34rem;
-				margin: 0 0 2rem;
+				margin-bottom: 1.8rem;
 			}
 
-			.hero-badges {
+			.hero-actions {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.7rem;
+				margin-bottom: 1.6rem;
+			}
+
+			.pill-row {
 				display: flex;
 				flex-wrap: wrap;
 				gap: 0.5rem;
-				margin-bottom: 2.5rem;
 			}
 
-			.badge {
-				display: inline-flex;
-				align-items: center;
-				gap: 0.4rem;
-				background: transparent;
-				border: 1px solid var(--line);
-				border-radius: 99px;
-				color: var(--text-muted);
-				font-family: var(--font-mono);
-				font-size: 0.73rem;
-				font-weight: 400;
-				letter-spacing: 0.04em;
-				padding: 0.32rem 0.75rem;
-				box-shadow: none;
+			section {
+				margin-top: 4.5rem;
+				scroll-margin-top: 5rem;
 			}
 
-			.badge:hover {
-				transform: none;
-				border-color: var(--line-strong);
-				color: var(--text-main);
-				box-shadow: none;
+			.grid-2 {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+				gap: 1.25rem;
 			}
 
-			.badge .ico {
-				width: 13px;
-				height: 13px;
+			.grid-3 {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+				gap: 1.25rem;
+			}
+
+			.step {
+				position: relative;
+				padding-left: 2.6rem;
+			}
+
+			.step::before {
+				content: attr(data-step);
+				position: absolute;
+				left: 0;
+				top: 0;
+				width: 1.85rem;
+				height: 1.85rem;
+				display: grid;
+				place-items: center;
+				border: 1px solid var(--line-strong);
+				border-radius: 50%;
 				color: var(--primary);
+				font-family: var(--font-mono);
+				font-size: 0.8rem;
 			}
 
-			/* --- Surfaces -------------------------------------------------- */
-
-			.card,
-			.feature-card,
-			.stat-item,
-			.endpoint-card,
-			.table-container,
-			.code-block {
-				border-radius: var(--radius-md);
-			}
-
-			.card {
-				background: var(--card-bg);
-				border: 1px solid var(--line);
-				box-shadow: none;
-				padding: 2rem;
-				margin-bottom: 1.5rem;
-			}
-
-			.card:hover {
-				transform: none;
-				border-color: var(--line-strong);
-				box-shadow: none;
-			}
-
-			.card h2 {
-				font-family: var(--font-display);
-				font-size: 1.35rem;
+			.step h3 {
+				font-size: 1rem;
 				font-weight: 600;
-				letter-spacing: -0.02em;
-				color: var(--text-main);
-				margin-bottom: 1.25rem;
-				display: flex;
-				align-items: center;
-				gap: 0.6rem;
-			}
-
-			.card h2 .ico {
-				width: 18px;
-				height: 18px;
-				color: var(--primary);
-			}
-
-			.endpoint-card {
-				background: var(--space-1);
-				border: 1px solid var(--line);
-				box-shadow: none;
-				padding: 1.15rem 1.35rem;
-				display: inline-block;
-				text-align: left;
-			}
-
-			.endpoint-dot.ok {
-				background: var(--success);
-				box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.16);
-			}
-
-			.endpoint-dot.fail {
-				background: var(--danger);
-				box-shadow: 0 0 0 3px rgba(251, 111, 111, 0.16);
-			}
-
-			.stat-item {
-				background: var(--space-1);
-				border: 1px solid var(--line);
-				box-shadow: none;
-				padding: 1.6rem 1.4rem;
-				text-align: left;
-			}
-
-			.stat-item::before {
-				display: none;
-			}
-
-			.stat-item:hover {
-				transform: none;
-				border-color: var(--line-strong);
-			}
-
-			.stat-number {
-				font-family: var(--font-mono);
-				font-variant-numeric: tabular-nums;
-				font-size: clamp(1.8rem, 4vw, 2.6rem);
-				font-weight: 500;
-				letter-spacing: -0.03em;
-				color: var(--text-main);
-				background: none;
-				-webkit-text-fill-color: currentColor;
-				margin-bottom: 0.3rem;
-			}
-
-			.stat-label {
-				font-family: var(--font-mono);
-				font-size: 0.72rem;
-				font-weight: 400;
-				letter-spacing: 0.14em;
-				text-transform: uppercase;
-				color: var(--text-muted);
-			}
-
-			.feature-card {
-				background: var(--space-1);
-				border: 1px solid var(--line);
-				padding: 1.6rem;
-			}
-
-			.feature-card:hover {
-				transform: none;
-				border-color: var(--line-strong);
-				box-shadow: none;
-			}
-
-			.feature-icon {
-				display: inline-flex;
-				align-items: center;
-				justify-content: center;
-				width: 38px;
-				height: 38px;
-				border-radius: var(--radius-sm);
-				border: 1px solid var(--line);
-				background: rgba(var(--accent-rgb), 0.09);
-				color: var(--primary);
-				font-size: 0;
-				margin-bottom: 1.1rem;
-			}
-
-			.feature-icon .ico {
-				width: 19px;
-				height: 19px;
-			}
-
-			.feature-card h3 {
-				font-family: var(--font-display);
-				font-size: 1.02rem;
-				font-weight: 600;
-				letter-spacing: -0.01em;
-				color: var(--text-main);
 				margin-bottom: 0.45rem;
 			}
 
-			.feature-card p {
-				font-size: 0.92rem;
+			.step p {
 				color: var(--text-muted);
-			}
-
-			/* --- Controls -------------------------------------------------- */
-
-			.btn .ico {
-				width: 15px;
-				height: 15px;
-			}
-
-			.footer-logo .brand-mark {
-				width: 22px;
-				height: 22px;
-			}
-
-			.btn {
-				border-radius: var(--radius-sm);
-				font-family: var(--font-body);
 				font-size: 0.9rem;
-				font-weight: 500;
-				letter-spacing: 0;
-				cursor: pointer;
+				margin-bottom: 0.8rem;
 			}
 
-			.btn-primary {
-				background: linear-gradient(
-					100deg,
-					var(--flare-1),
-					var(--flare-2) 60%,
-					var(--flare-3)
-				);
-				color: #0a0710;
-				border: 0;
-				box-shadow: none;
-			}
-
-			.btn-primary:hover {
-				transform: none;
-				filter: brightness(1.08);
-				box-shadow: 0 0 24px rgba(var(--accent-rgb), 0.28);
-			}
-
-			.btn-secondary {
-				background: var(--space-2);
-				border: 1px solid var(--line);
-				color: var(--text-main);
-			}
-
-			.btn-secondary:hover {
-				background: var(--space-3);
-				border-color: var(--line-strong);
-				transform: none;
-			}
-
-			.form-label {
-				font-family: var(--font-mono);
-				font-size: 0.72rem;
-				font-weight: 400;
-				letter-spacing: 0.12em;
-				text-transform: uppercase;
-				color: var(--text-muted);
-			}
-
-			.form-input {
-				background: var(--space-1);
-				border: 1px solid var(--line);
-				border-radius: var(--radius-sm);
-				color: var(--text-main);
-				font-family: var(--font-body);
-			}
-
-			.form-input:focus {
-				border-color: var(--primary);
-				box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.16);
-			}
-
-			/* --- Data ------------------------------------------------------ */
-
-			.table-container {
-				background: var(--space-1);
-				border: 1px solid var(--line);
-			}
-
-			.table th {
-				background: var(--space-2);
-				border-bottom: 1px solid var(--line);
-				font-family: var(--font-mono);
-				font-size: 0.7rem;
-				font-weight: 500;
-				letter-spacing: 0.12em;
-				text-transform: uppercase;
-				color: var(--text-muted);
-			}
-
-			.table td {
-				border-bottom: 1px solid var(--line);
-				font-variant-numeric: tabular-nums;
-				color: var(--text-main);
-			}
-
-			.table tr:hover td,
-			[data-theme="light"] .table tr:hover td {
-				background: rgba(var(--accent-rgb), 0.06);
-			}
-
-			.code-block {
-				background: var(--space-2);
-				border: 1px solid var(--line);
-				font-family: var(--font-mono);
-				font-size: 0.85rem;
-				color: var(--text-main);
-			}
-
-			.code-block .k {
-				color: var(--flare-4);
-			}
-			.code-block .s {
-				color: var(--success);
-			}
-			.code-block .n {
-				color: var(--flare-1);
-			}
-			.code-block .c {
-				color: var(--text-muted);
-			}
-			.code-block .f {
-				color: var(--ion);
-			}
-
-			.copy-code-btn,
-			.copy-inline-btn {
-				background: var(--space-3);
-				border: 1px solid var(--line);
-				color: var(--text-muted);
-				border-radius: 6px;
-				cursor: pointer;
-			}
-
-			.copy-code-btn:hover,
-			.copy-inline-btn:hover {
-				color: var(--text-main);
-				border-color: var(--line-strong);
-			}
-
-			/* --- Modals ---------------------------------------------------- */
-
-			.modal {
-				background: rgba(3, 4, 10, 0.72);
-				backdrop-filter: blur(6px);
-				-webkit-backdrop-filter: blur(6px);
-			}
-
-			.modal-content {
-				background: var(--space-1);
-				border: 1px solid var(--line-strong);
-				border-radius: var(--radius-lg);
-				box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
-			}
-
-			.modal-title {
-				font-family: var(--font-display);
-				font-weight: 600;
-				letter-spacing: -0.02em;
-				background: none;
-				-webkit-text-fill-color: currentColor;
-				color: var(--text-main);
-			}
-
-			.modal-close {
-				color: var(--text-muted);
-				cursor: pointer;
-			}
-
-			.modal-close:hover {
-				color: var(--danger);
-				background: rgba(251, 111, 111, 0.1);
-			}
-
-			/* --- Footer ---------------------------------------------------- */
-
-			.footer {
-				background: transparent;
+			.result {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 2rem;
+				margin-top: 1.25rem;
+				padding-top: 1.25rem;
 				border-top: 1px solid var(--line);
-				box-shadow: none;
-				backdrop-filter: none;
-				-webkit-backdrop-filter: none;
-				border-radius: 0;
-				margin: 4rem 0 0;
-				max-width: none;
 			}
 
-			.footer a {
+			.result div span {
+				display: block;
+			}
+
+			.result .n {
+				font-family: var(--font-display);
+				font-size: 1.9rem;
+				font-weight: 600;
+				font-variant-numeric: tabular-nums;
+				letter-spacing: -0.02em;
+			}
+
+			.result .l {
 				color: var(--text-muted);
+				font-size: 0.76rem;
+				letter-spacing: 0.06em;
+				text-transform: uppercase;
 			}
 
-			.footer a:hover {
+			.badge-strip {
+				display: flex;
+				flex-wrap: wrap;
+				align-items: center;
+				gap: 0.9rem;
+				margin-top: 1.1rem;
+				min-height: 24px;
+			}
+
+			.badge-strip img {
+				height: 20px;
+			}
+
+			.feature h3 {
+				display: flex;
+				align-items: center;
+				gap: 0.55rem;
+				font-size: 0.98rem;
+				font-weight: 600;
+				margin-bottom: 0.5rem;
+			}
+
+			.feature h3 .ico {
+				width: 17px;
+				height: 17px;
 				color: var(--primary);
 			}
 
-			.footer h4 {
-				font-family: var(--font-display);
-				letter-spacing: -0.01em;
-				background: none;
-				-webkit-text-fill-color: currentColor;
-				color: var(--text-main);
+			.feature p {
+				color: var(--text-muted);
+				font-size: 0.9rem;
 			}
 
-			@media (prefers-reduced-motion: reduce) {
-				*,
-				*::before,
-				*::after {
-					animation-duration: 0.001ms !important;
-					animation-iteration-count: 1 !important;
-					transition-duration: 0.001ms !important;
-				}
-			}
-
-			@media (max-width: 768px) {
-				.nav-container {
-					padding: 0.7rem 1rem;
-				}
-
-				.container {
-					padding: 2rem 1.15rem 3rem;
-				}
-
-				.hero {
-					margin: 1.5rem 0 3rem;
-				}
-
-				.hero h1 {
-					font-size: clamp(2rem, 10vw, 2.9rem);
-				}
-
-				.hero p {
-					font-size: 1rem;
-				}
-
-				.endpoint-card {
-					display: block;
-				}
-			}
-
-			/* --- Sky, second pass ------------------------------------------ */
-
-			/* The nebula sat too bright and the cyan lobe turned the middle of
-			   the page teal. Fewer lobes, lower alpha, and a vignette so the
-			   edges fall back to near black. */
-			body::before {
-				background-image:
-					radial-gradient(
-						120% 85% at 50% 0%,
-						transparent 38%,
-						rgba(3, 4, 10, 0.62) 100%
-					),
-					radial-gradient(
-						circle at 24% 12%,
-						rgba(155, 93, 229, 0.15),
-						transparent 52%
-					),
-					radial-gradient(
-						circle at 82% 4%,
-						rgba(224, 69, 123, 0.1),
-						transparent 46%
-					),
-					radial-gradient(
-						circle at 90% 70%,
-						rgba(255, 122, 69, 0.07),
-						transparent 42%
-					);
-			}
-
-			body::after {
-				background-image:
-					radial-gradient(
-						1.9px 1.9px at 18% 24%,
-						rgba(255, 255, 255, 1),
-						transparent 58%
-					),
-					radial-gradient(
-						1.5px 1.5px at 72% 61%,
-						rgba(206, 223, 255, 0.92),
-						transparent 58%
-					),
-					radial-gradient(
-						1.4px 1.4px at 44% 82%,
-						rgba(255, 238, 214, 0.88),
-						transparent 58%
-					),
-					radial-gradient(
-						1.2px 1.2px at 88% 16%,
-						rgba(255, 255, 255, 0.78),
-						transparent 58%
-					),
-					radial-gradient(
-						1.1px 1.1px at 8% 58%,
-						rgba(255, 255, 255, 0.62),
-						transparent 58%
-					);
-				background-size:
-					320px 320px,
-					210px 210px,
-					470px 470px,
-					140px 140px,
-					265px 265px;
-				opacity: 1;
-			}
-
-			/* The footer wordmark was the only gradient text left, which read as
-			   a second brand next to the solid one in the header. */
-			.footer-logo {
-				font-family: var(--font-display);
-				font-size: 1.3rem;
+			.harness-table td:first-child {
 				font-weight: 600;
-				letter-spacing: -0.02em;
-				color: var(--text-main);
-				background: none;
-				-webkit-text-fill-color: currentColor;
-				gap: 0.55rem;
 			}
 
-			pre.code-block {
-				margin: 1rem 0;
-				tab-size: 2;
+			.harness-table code {
+				font-size: 0.8rem;
+				color: var(--ion);
+			}
+
+			.theme-toggle {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				width: 44px;
+				height: 44px;
+				border: 1px solid transparent;
+				border-radius: var(--radius-sm);
+				background: transparent;
+				color: var(--text-muted);
+				cursor: pointer;
+				transition:
+					color 0.18s var(--ease),
+					background-color 0.18s var(--ease);
+			}
+
+			.theme-toggle:hover {
+				color: var(--text-main);
+				background: rgba(var(--accent-rgb), 0.1);
+			}
+
+			.theme-toggle .ico {
+				width: 18px;
+				height: 18px;
+			}
+
+			.nav-right {
+				display: flex;
+				align-items: center;
+				gap: 0.3rem;
 			}
 		</style>
 	</head>
 	<body>
-		<!-- Icon sprite. One stroke width, one visual language, referenced
-		     with <use> so the paths are defined once. -->
+		<a class="skip-link" href="#main">Skip to content</a>
+
+		<!-- Icon sprite. One stroke width, one visual language, defined once and
+		     referenced with <use>. No emoji stands in for an icon anywhere. -->
 		<svg
 			aria-hidden="true"
 			focusable="false"
-			style="position: absolute; width: 0; height: 0; overflow: hidden"
+			style="position: absolute; width: 0; height: 0"
 		>
 			<defs>
-				<linearGradient id="flare-ramp" x1="0" y1="0" x2="1" y2="1">
-					<stop offset="0" stop-color="#ffc247" />
-					<stop offset="0.5" stop-color="#ff7a45" />
-					<stop offset="1" stop-color="#e0457b" />
-				</linearGradient>
 				<symbol id="i-home" viewBox="0 0 24 24">
 					<path d="M3 10.4 12 3l9 7.4" />
 					<path d="M5.5 9.2V21h13V9.2" />
@@ -1941,10 +262,6 @@
 					<rect x="4" y="10.5" width="16" height="10.5" rx="2" />
 					<path d="M7.8 10.5V7a4.2 4.2 0 0 1 8.4 0v3.5" />
 				</symbol>
-				<symbol id="i-sliders" viewBox="0 0 24 24">
-					<path d="M4 21v-6M4 11V3M12 21v-9M12 8V3M20 21v-5M20 12V3" />
-					<path d="M1.5 15h5M9.5 8h5M17.5 16h5" />
-				</symbol>
 				<symbol id="i-github" viewBox="0 0 24 24">
 					<path
 						d="M9 19c-4.6 1.4-4.6-2.3-6.4-2.8M15 21v-3.6a3.1 3.1 0 0 0-.9-2.4c2.9-.3 6-1.4 6-6.4a5 5 0 0 0-1.4-3.5 4.6 4.6 0 0 0-.1-3.5s-1.1-.3-3.6 1.4a12.4 12.4 0 0 0-6.6 0C5.9 1.3 4.8 1.6 4.8 1.6a4.6 4.6 0 0 0-.1 3.5A5 5 0 0 0 3.3 8.6c0 5 3.1 6.1 6 6.4a3.1 3.1 0 0 0-.9 2.4V21"
@@ -1954,2849 +271,793 @@
 					<path d="M20.5 7.7 12 3 3.5 7.7v8.6L12 21l8.5-4.7z" />
 					<path d="m3.7 7.8 8.3 4.5 8.3-4.5M12 12.3V21" />
 				</symbol>
-				<symbol id="i-pencil" viewBox="0 0 24 24">
-					<path d="M16.4 3.4a2.3 2.3 0 0 1 3.2 3.2L8 18.2l-4.2 1.2 1.2-4.2z" />
-				</symbol>
-				<symbol id="i-plus" viewBox="0 0 24 24">
-					<path d="M12 4.6v14.8M4.6 12h14.8" />
-				</symbol>
-				<symbol id="i-trash" viewBox="0 0 24 24">
-					<path d="M4 6.4h16M9.4 6.4V4.2h5.2v2.2" />
-					<path d="M6.2 6.4 7 20.2h10l.8-13.8" />
-				</symbol>
 				<symbol id="i-play" viewBox="0 0 24 24">
 					<path d="M6.5 4.3 19 12 6.5 19.7z" />
 				</symbol>
 				<symbol id="i-code" viewBox="0 0 24 24">
 					<path d="m8.4 7.5-5 4.5 5 4.5M15.6 7.5l5 4.5-5 4.5" />
 				</symbol>
-				<symbol id="i-bulb" viewBox="0 0 24 24">
-					<path d="M9.4 17.5a6.4 6.4 0 1 1 5.2 0" />
-					<path d="M9.4 17.5h5.2M10.2 20.7h3.6" />
-				</symbol>
 				<symbol id="i-layers" viewBox="0 0 24 24">
 					<path d="m12 3 8.5 4.6L12 12.2 3.5 7.6z" />
 					<path d="m3.5 12.4 8.5 4.6 8.5-4.6" />
 					<path d="m3.5 16.9 8.5 4.6 8.5-4.6" />
-				</symbol>
-				<symbol id="i-wrench" viewBox="0 0 24 24">
-					<path d="M15.4 3.4a5.4 5.4 0 0 0-6.6 6.9L3 16.1v4.5h4.5l5.8-5.8a5.4 5.4 0 0 0 6.9-6.6l-3.2 3.2-3-.7-.7-3z" />
 				</symbol>
 				<symbol id="i-gauge" viewBox="0 0 24 24">
 					<path d="M3.6 17.4a9.4 9.4 0 1 1 16.8 0" />
 					<path d="m12 13.6 4.2-4.6" />
 					<circle cx="12" cy="14.6" r="1.1" />
 				</symbol>
-				<symbol id="i-key" viewBox="0 0 24 24">
-					<circle cx="7.6" cy="14.4" r="4.1" />
-					<path d="m10.6 11.4 8.4-8.4M16.4 5.6l2.2 2.2M14 8l2.2 2.2" />
+				<symbol id="i-chart" viewBox="0 0 24 24">
+					<path d="M3 20.5h18" />
+					<path d="M6 20.5v-6M11 20.5V6M16 20.5v-9M21 20.5v-4" />
+				</symbol>
+				<symbol id="i-tag" viewBox="0 0 24 24">
+					<path d="M3 12.5V4a1 1 0 0 1 1-1h8.5L21 11.5 12.5 20 3 12.5z" />
+					<circle cx="7.6" cy="7.6" r="1.4" />
 				</symbol>
 				<symbol id="i-copy" viewBox="0 0 24 24">
 					<rect x="8.5" y="8.5" width="12" height="12" rx="2" />
-					<path d="M4.5 15.5A2 2 0 0 1 3.5 13.6V5.5a2 2 0 0 1 2-2h8.1a2 2 0 0 1 1.9 1.4" />
-				</symbol>
-				<symbol id="i-search" viewBox="0 0 24 24">
-					<circle cx="10.5" cy="10.5" r="6.5" />
-					<path d="m15.4 15.4 5.6 5.6" />
+					<path
+						d="M4.5 15.5A2 2 0 0 1 3.5 13.6V5.5a2 2 0 0 1 2-2h8.1a2 2 0 0 1 1.9 1.4"
+					/>
 				</symbol>
 				<symbol id="i-globe" viewBox="0 0 24 24">
 					<circle cx="12" cy="12" r="9" />
 					<path d="M3 12h18" />
 					<path d="M12 3a13.5 13.5 0 0 1 0 18 13.5 13.5 0 0 1 0-18z" />
 				</symbol>
-				<symbol id="i-chart" viewBox="0 0 24 24">
-					<path d="M3 20.5h18" />
-					<path d="M6 20.5v-6M11 20.5V6M16 20.5v-9M21 20.5v-4" />
+				<symbol id="i-bot" viewBox="0 0 24 24">
+					<rect x="3.5" y="7.5" width="17" height="12" rx="3" />
+					<path d="M12 3.5v4M8.5 13v1.6M15.5 13v1.6" />
 				</symbol>
-				<symbol id="i-star" viewBox="0 0 24 24">
-					<path d="m12 3 2.2 5.6L20 10.8l-5.8 2.2L12 18.6l-2.2-5.6L4 10.8l5.8-2.2z" />
-				</symbol>
-				<symbol id="i-coin" viewBox="0 0 24 24">
-					<circle cx="12" cy="12" r="8.5" />
-					<path d="M14.6 9.3A3 3 0 0 0 12 8c-1.5 0-2.7.9-2.7 2s1.2 1.8 2.7 2 2.7 1 2.7 2-1.2 2-2.7 2a3 3 0 0 1-2.6-1.3" />
-					<path d="M12 6.2v11.6" />
+				<symbol id="i-sum" viewBox="0 0 24 24">
+					<path d="M17.5 4.5H6.5l6 7.5-6 7.5h11" />
 				</symbol>
 				<symbol id="i-moon" viewBox="0 0 24 24">
 					<path d="M20.3 14.6A8.6 8.6 0 0 1 9.4 3.7a8.6 8.6 0 1 0 10.9 10.9z" />
 				</symbol>
-				<symbol id="i-target" viewBox="0 0 24 24">
-					<circle cx="12" cy="12" r="8.5" />
-					<circle cx="12" cy="12" r="4.4" />
-					<circle cx="12" cy="12" r="0.9" />
-				</symbol>
-				<symbol id="i-trending" viewBox="0 0 24 24">
-					<path d="m3 16.6 6-6 4 4 7.4-7.4" />
-					<path d="M14.6 7.2H21v6.4" />
-				</symbol>
-				<symbol id="i-palette" viewBox="0 0 24 24">
-					<path d="M12 3a9 9 0 0 0 0 18c1.4 0 2.1-.9 2.1-1.8 0-.5-.2-.9-.5-1.2a1.6 1.6 0 0 1 1.1-2.7h1.4A4.9 4.9 0 0 0 21 10.4C21 6.3 16.9 3 12 3z" />
-					<circle cx="7.6" cy="12.2" r="1" />
-					<circle cx="9.6" cy="8.2" r="1" />
-					<circle cx="14.4" cy="7.6" r="1" />
-				</symbol>
-				<symbol id="i-database" viewBox="0 0 24 24">
-					<ellipse cx="12" cy="5.5" rx="8" ry="3.2" />
-					<path d="M4 5.5v13c0 1.8 3.6 3.2 8 3.2s8-1.4 8-3.2v-13" />
-					<path d="M4 12c0 1.8 3.6 3.2 8 3.2s8-1.4 8-3.2" />
-				</symbol>
-				<symbol id="i-tag" viewBox="0 0 24 24">
-					<path d="M3 12.5V4a1 1 0 0 1 1-1h8.5L21 11.5 12.5 20 3 12.5z" />
-					<circle cx="7.6" cy="7.6" r="1.4" />
+				<symbol id="i-sun" viewBox="0 0 24 24">
+					<circle cx="12" cy="12" r="4.2" />
+					<path
+						d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.2 5.2l1.6 1.6M17.2 17.2l1.6 1.6M18.8 5.2l-1.6 1.6M6.8 17.2l-1.6 1.6"
+					/>
 				</symbol>
 			</defs>
 		</svg>
 
-		<!-- Navigation -->
-		<nav class="navbar">
+		<header class="navbar">
 			<div class="nav-container">
-				<a href="javascript:void(0)" class="nav-brand">
-					<svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
-						<circle cx="12" cy="12" r="4.1" fill="url(#flare-ramp)" />
-						<path
-							d="M12 2.4a9.6 9.6 0 0 1 0 19.2"
-							fill="none"
-							stroke="url(#flare-ramp)"
-							stroke-width="1.6"
-							stroke-linecap="round"
-							opacity="0.6"
+				<a class="nav-brand" href="/">
+					<svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+						<rect
+							x="1"
+							y="1"
+							width="30"
+							height="30"
+							rx="7"
+							fill="#111524"
+							stroke="rgba(150,168,214,0.25)"
 						/>
+						<rect x="8" y="19" width="3.4" height="6" rx="1" fill="#e9edf9" />
+						<rect x="14" y="15" width="3.4" height="10" rx="1" fill="#e9edf9" />
+						<rect x="20" y="11" width="3.4" height="14" rx="1" fill="#e9edf9" />
 						<path
-							d="M12 5.6a6.4 6.4 0 0 0 0 12.8"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="1.3"
-							stroke-linecap="round"
-							opacity="0.3"
+							d="M21.7 11.5c1.6-1.3 1.2-3.4.3-4.8 2.6 1 4.6 3.4 4.2 5.9-.3 1.7-1.7 2.7-3.2 2.6-1.4-.1-2.4-1.1-2.3-2.4 0-.6.4-1 1-1.3z"
+							fill="#ff9a3c"
 						/>
 					</svg>
-					<span>ViewFlare</span>
+					ViewFlare
 				</a>
-				<div class="nav-links">
-					<div class="switch">
-						<input
-							type="checkbox"
-							class="switch__input"
-							id="themeToggle"
-						/>
-						<label
-							aria-label="Toggle theme"
-							class="switch__label"
-							for="themeToggle"
-						>
-							<span
-								aria-hidden="true"
-								class="switch__indicator"
-							></span>
-							<span
-								aria-hidden="true"
-								class="switch__decoration"
-							></span>
-						</label>
-					</div>
-					<a
-						href="javascript:void(0)"
-						class="nav-link active"
-						onclick="showPage('home', event)"
-						><svg class="ico" aria-hidden="true">
-							<use href="#i-home" /></svg
-						>Home</a
+				<div class="nav-right">
+					<nav aria-label="Primary">
+						<ul class="nav-links">
+							<li>
+								<a class="nav-link" href="#try">
+									<svg class="ico" aria-hidden="true"><use href="#i-play" /></svg>
+									<span>Try it</span>
+								</a>
+							</li>
+							<li>
+								<a class="nav-link" href="#integrate">
+									<svg class="ico" aria-hidden="true"><use href="#i-code" /></svg>
+									<span>Integrate</span>
+								</a>
+							</li>
+							<li>
+								<a class="nav-link" href="#agents">
+									<svg class="ico" aria-hidden="true"><use href="#i-bot" /></svg>
+									<span>Agents</span>
+								</a>
+							</li>
+							<li>
+								<a class="nav-link" href="/admin/">
+									<svg class="ico" aria-hidden="true"><use href="#i-lock" /></svg>
+									<span>Console</span>
+								</a>
+							</li>
+						</ul>
+					</nav>
+					<button
+						class="theme-toggle"
+						id="theme-toggle"
+						type="button"
+						aria-label="Switch to light theme"
 					>
-					<a
-						href="javascript:void(0)"
-						class="nav-link"
-						onclick="showPage('demo', event)"
-						><svg class="ico" aria-hidden="true">
-							<use href="#i-zap" /></svg
-						>Demo</a
-					>
-					<a
-						href="javascript:void(0)"
-						class="nav-link"
-						onclick="showPage('docs', event)"
-						><svg class="ico" aria-hidden="true">
-							<use href="#i-book" /></svg
-						>Docs</a
-					>
-					<a
-						href="javascript:void(0)"
-						class="nav-link"
-						onclick="showAdminModal()"
-						><svg class="ico" aria-hidden="true">
-							<use href="#i-lock" /></svg
-						>Admin</a
-					>
-					<a
-						href="javascript:void(0)"
-						class="nav-link"
-						onclick="showPage('setup', event)"
-						><svg class="ico" aria-hidden="true">
-							<use href="#i-sliders" /></svg
-						>Setup</a
-					>
-					<a
-						href="https://github.com/Life-Experimentalist/ViewFlare"
-						target="_blank"
-						rel="noopener noreferrer"
-						class="nav-link external"
-						><svg class="ico" aria-hidden="true">
-							<use href="#i-github" /></svg
-						>GitHub</a
-					>
-				</div>
-			</div>
-		</nav>
-
-		<div class="container">
-			<!-- HOME PAGE -->
-			<div id="home-page" class="page active">
-				<div class="hero">
-					<div class="eyebrow">Cloudflare Workers + D1</div>
-					<h1>
-						Views, installs and downloads on one
-						<span class="flare">endpoint</span>.
-					</h1>
-					<p>
-						ViewFlare counts page views and pulls install totals
-						from npm, PyPI, crates.io, VS&nbsp;Code and GitHub
-						releases. Read any of it back as JSON, or drop in a
-						badge. One URL, no SDK.
-					</p>
-					<div class="hero-badges">
-						<span class="badge"
-							><svg class="ico" aria-hidden="true">
-								<use href="#i-zap" /></svg
-							>Edge runtime</span
-						>
-						<span class="badge"
-							><svg class="ico" aria-hidden="true">
-								<use href="#i-database" /></svg
-							>Cloudflare D1</span
-						>
-						<span class="badge"
-							><svg class="ico" aria-hidden="true">
-								<use href="#i-tag" /></svg
-							>Badges and JSON</span
-						>
-						<span class="badge"
-							><svg class="ico" aria-hidden="true">
-								<use href="#i-lock" /></svg
-							>Admin API</span
-						>
-					</div>
-
-
-					<div class="endpoint-card">
-						<div class="endpoint-status">
-							<span id="health-dot" class="endpoint-dot"></span>
-							<span id="health-text"
-								>API status: checking...</span
-							>
-						</div>
-						<div
-							style="
-								margin-top: 0.5rem;
-								font-size: 0.95rem;
-								opacity: 0.9;
-							"
-						>
-							Current endpoint:
-							<strong id="current-endpoint"></strong>
-						</div>
-						<div class="quick-actions">
-							<button
-								type="button"
-								onclick="copyToClipboard(API_BASE)"
-								class="btn btn-secondary btn-sm"
-							>
-								<svg class="ico" aria-hidden="true"><use href="#i-copy" /></svg>Copy Base URL
-							</button>
-							<button
-								type="button"
-								onclick="
-									window.open(
-										API_BASE + '/api/stats',
-										'_blank',
-									)
-								"
-								class="btn btn-secondary btn-sm"
-							>
-								<svg class="ico" aria-hidden="true"><use href="#i-search" /></svg>Open Stats API
-							</button>
-							<button
-								type="button"
-								onclick="
-									window.open(
-										'https://counter.vkrishna04.me',
-										'_blank',
-									)
-								"
-								class="btn btn-secondary btn-sm"
-							>
-								<svg class="ico" aria-hidden="true"><use href="#i-globe" /></svg>Custom Domain
-							</button>
-							<button
-								type="button"
-								onclick="
-									window.open(
-										'https://github.com/Life-Experimentalist/ViewFlare',
-										'_blank',
-									)
-								"
-								class="btn btn-secondary btn-sm"
-							>
-								<svg class="ico" aria-hidden="true"><use href="#i-github" /></svg>Repo
-							</button>
-						</div>
-						<div id="domain-banner" class="domain-banner">
-							Checking domain routing...
-						</div>
-					</div>
-				</div>
-
-				<!-- Live Global Stats -->
-				<div class="card">
-					<h2><svg class="ico" aria-hidden="true"><use href="#i-chart" /></svg>Global Statistics</h2>
-					<div class="stats-grid">
-						<div class="stat-item">
-							<div class="stat-number" id="global-total-views">
-								0
-							</div>
-							<div class="stat-label">Total Views</div>
-						</div>
-						<div class="stat-item">
-							<div class="stat-number" id="global-total-projects">
-								0
-							</div>
-							<div class="stat-label">Active Projects</div>
-						</div>
-						<div class="stat-item">
-							<div
-								class="stat-number"
-								id="global-unique-visitors"
-							>
-								0
-							</div>
-							<div class="stat-label">Unique Visitors</div>
-						</div>
-						<!-- <div class="stat-item">
-							<div class="stat-number" id="global-efficiency">
-								99.9%
-							</div>
-							<div class="stat-label">System Efficiency</div>
-						</div> -->
-					</div>
-				</div>
-
-				<!-- Key Features -->
-				<div class="card">
-					<h2><svg class="ico" aria-hidden="true"><use href="#i-star" /></svg>Key Features</h2>
-					<div class="feature-grid">
-						<div class="feature-card">
-							<div class="feature-icon"><svg class="ico" aria-hidden="true"><use href="#i-zap" /></svg></div>
-							<h3>Ultra Fast</h3>
-							<p>
-								Optimized for minimal latency with intelligent
-								caching and efficient database queries.
-							</p>
-						</div>
-						<div class="feature-card">
-							<div class="feature-icon"><svg class="ico" aria-hidden="true"><use href="#i-lock" /></svg></div>
-							<h3>Secure Admin</h3>
-							<p>
-								Password-protected admin panel with
-								environment-based configuration and role
-								management.
-							</p>
-						</div>
-						<div class="feature-card">
-							<div class="feature-icon"><svg class="ico" aria-hidden="true"><use href="#i-chart" /></svg></div>
-							<h3>Rich Analytics</h3>
-							<p>
-								Detailed view tracking, visitor analytics, and
-								comprehensive reporting dashboard.
-							</p>
-						</div>
-						<div class="feature-card">
-							<div class="feature-icon"><svg class="ico" aria-hidden="true"><use href="#i-coin" /></svg></div>
-							<h3>Cost Effective</h3>
-							<p>
-								Designed to stay within Cloudflare's free tier
-								with optional premium features.
-							</p>
-						</div>
-						<div class="feature-card">
-							<div class="feature-icon"><svg class="ico" aria-hidden="true"><use href="#i-moon" /></svg></div>
-							<h3>Dark Mode</h3>
-							<p>
-								Beautiful light and dark themes with smooth
-								transitions and persistent user preferences.
-							</p>
-						</div>
-						<div class="feature-card">
-							<div class="feature-icon"><svg class="ico" aria-hidden="true"><use href="#i-target" /></svg></div>
-							<h3>Easy Integration</h3>
-							<p>
-								Simple one-line webhook integration with RESTful
-								API and auto-generated badges for any project.
-							</p>
-						</div>
-					</div>
-				</div>
-			</div>
-
-			<!-- DEMO PAGE -->
-			<div id="demo-page" class="page">
-				<div class="hero">
-					<h1>Live Demo</h1>
-					<p>Try out the view counter with real-time updates</p>
-				</div>
-
-				<!-- Quick Demo -->
-				<div class="card">
-					<h2><svg class="ico" aria-hidden="true"><use href="#i-target" /></svg>Quick Test</h2>
-					<div class="form-row">
-						<div class="form-group">
-							<label class="form-label" for="demo-project"
-								>Project Name:</label
-							>
-							<input
-								type="text"
-								id="demo-project"
-								class="form-input"
-								value="demo-project"
-								placeholder="Enter project name"
-							/>
-						</div>
-						<div class="form-group">
-							<button
-								onclick="incrementDemo()"
-								class="btn btn-primary"
-							>
-								<svg class="ico" aria-hidden="true"><use href="#i-trending" /></svg>Increment Views
-							</button>
-						</div>
-						<div class="form-group">
-							<button
-								onclick="getDemoStats()"
-								class="btn btn-secondary"
-							>
-								<svg class="ico" aria-hidden="true"><use href="#i-chart" /></svg>Get Stats
-							</button>
-						</div>
-					</div>
-
-					<div
-						id="demo-results"
-						style="display: none; margin-top: 1.5rem"
-					>
-						<h3>Results:</h3>
-						<div class="stats-grid">
-							<div class="stat-item">
-								<div class="stat-number" id="demo-views">0</div>
-								<div class="stat-label">Total Views</div>
-							</div>
-							<div class="stat-item">
-								<div class="stat-number" id="demo-unique">
-									0
-								</div>
-								<div class="stat-label">Unique Views</div>
-							</div>
-						</div>
-					</div>
-				</div>
-
-				<!-- Badge Generator -->
-				<div class="card">
-					<h2><svg class="ico" aria-hidden="true"><use href="#i-palette" /></svg>Badge Generator</h2>
-					<div class="form-row">
-						<div class="form-group">
-							<label class="form-label" for="badge-project"
-								>Project:</label
-							>
-							<input
-								type="text"
-								id="badge-project"
-								class="form-input"
-								value="demo-project"
-							/>
-						</div>
-						<div class="form-group">
-							<label class="form-label" for="badge-color"
-								>Color:</label
-							>
-							<select id="badge-color" class="form-input">
-								<option value="blue">Blue</option>
-								<option value="green">Green</option>
-								<option value="red">Red</option>
-								<option value="orange">Orange</option>
-								<option value="purple">Purple</option>
-							</select>
-						</div>
-						<div class="form-group">
-							<button
-								onclick="updateBadgePreview()"
-								class="btn btn-primary"
-							>
-								<svg class="ico" aria-hidden="true"><use href="#i-palette" /></svg>Generate Badge
-							</button>
-						</div>
-					</div>
-
-					<div
-						id="badge-preview"
-						style="display: none; margin-top: 1.5rem"
-					>
-						<h3>Badge Preview:</h3>
-						<img
-							id="demo-badge"
-							style="margin: 1rem 0"
-							alt="Badge Preview"
-						/>
-						<div class="code-block">
-							<span class="comment">// Markdown</span><br />
-							![Views](https://your-domain.com/api/views/<span
-								id="badge-url-project"
-								>demo-project</span
-							>/badge?color=<span id="badge-url-color">blue</span
-							>)
-						</div>
-					</div>
-				</div>
-			</div>
-
-			<!-- DOCS PAGE -->
-			<div id="docs-page" class="page">
-				<div class="hero">
-					<h1>Complete Documentation</h1>
-					<p>
-						Everything you need to integrate ViewFlare into your projects
-					</p>
-					<div class="hero-badges">
-						<span class="badge"><svg class="ico" aria-hidden="true"><use href="#i-play" /></svg>Quick Start</span>
-						<span class="badge"><svg class="ico" aria-hidden="true"><use href="#i-book" /></svg>API Reference</span>
-						<span class="badge"><svg class="ico" aria-hidden="true"><use href="#i-bulb" /></svg>Examples</span>
-						<span class="badge"><svg class="ico" aria-hidden="true"><use href="#i-sliders" /></svg>Configuration</span>
-					</div>
-				</div>
-
-				<!-- Quick Start Guide -->
-				<div class="card">
-					<h2><svg class="ico" aria-hidden="true"><use href="#i-play" /></svg>Quick Start</h2>
-					<p>Get your view counter running in under 2 minutes:</p>
-
-					<h3>1. Basic Setup</h3>
-					<div class="code-block"><span class="comment">// Step 1: Track a view (POST request)</span>
-<span class="method">fetch</span>(<span class="string">'https://your-domain.com/api/views/my-project'</span>, {
-    <span class="keyword">method</span>: <span class="string">'POST'</span>
-})
-.<span class="method">then</span>(<span class="keyword">response</span> => <span class="keyword">response</span>.<span class="method">json</span>())
-.<span class="method">then</span>(<span class="keyword">data</span> => <span class="keyword">console</span>.<span class="method">log</span>(<span class="string">'✅ View tracked!'</span>, <span class="keyword">data</span>.totalViews));
-
-<span class="comment">// Step 2: Display view count (GET request)</span>
-<span class="method">fetch</span>(<span class="string">'https://your-domain.com/api/views/my-project'</span>)
-.<span class="method">then</span>(<span class="keyword">response</span> => <span class="keyword">response</span>.<span class="method">json</span>())
-.<span class="method">then</span>(<span class="keyword">data</span> => {
-    <span class="keyword">document</span>.<span class="method">getElementById</span>(<span class="string">'view-count'</span>).textContent = <span class="keyword">data</span>.totalViews;
-});</div>
-
-					<h3>2. Add to Your HTML</h3>
-					<div class="code-block"><span class="comment">&lt;!-- View counter display --&gt;</span>
-&lt;<span class="keyword">div</span>&gt;
-    &lt;<span class="keyword">span</span>&gt;Views: &lt;/<span class="keyword">span</span>&gt;
-    &lt;<span class="keyword">span</span> <span class="keyword">id</span>=<span class="string">"view-count"</span>&gt;Loading...&lt;/<span class="keyword">span</span>&gt;
-&lt;/<span class="keyword">div</span>&gt;
-
-<span class="comment">&lt;!-- Or use a badge --&gt;</span>
-&lt;<span class="keyword">img</span> <span class="keyword">src</span>=<span class="string">"https://your-domain.com/api/views/my-project/badge"</span> <span class="keyword">alt</span>=<span class="string">"View Count"</span> /&gt;</div>
-
-					<h3>3. GitHub README Integration</h3>
-					<div class="code-block"><span class="comment"># Add to your README.md</span>
-![Views](https://your-domain.com/api/views/my-repo/badge?color=blue&amp;label=views)
-
-<span class="comment"># With custom styling</span>
-[![Project Views](https://your-domain.com/api/views/my-repo/badge?color=brightgreen&amp;style=flat&amp;label=project%20views)](https://your-domain.com)</div>
-				</div>
-
-				<!-- Complete API Reference -->
-				<div class="card">
-					<h2><svg class="ico" aria-hidden="true"><use href="#i-code" /></svg>Complete API Reference</h2>
-
-					<h3>POST /api/views/{project-name}</h3>
-					<p>
-						<strong>Purpose:</strong> Increment view count for a project
-					</p>
-					<div class="table-container">
-						<table class="table">
-							<thead>
-								<tr>
-									<th>Parameter</th>
-									<th>Type</th>
-									<th>Description</th>
-									<th>Required</th>
-								</tr>
-							</thead>
-							<tbody>
-								<tr>
-									<td><code>project-name</code></td>
-									<td>string</td>
-									<td>Unique project identifier (alphanumeric, hyphens, underscores, max 100 chars)</td>
-									<td><span class="success">Yes</span></td>
-								</tr>
-							</tbody>
-						</table>
-					</div>
-					<div class="code-block"><span class="comment">// Request</span>
-<span class="keyword">POST</span> /api/views/my-awesome-project
-
-<span class="comment">// Response (200 OK)</span>
-{
-    <span class="string">"success"</span>: <span class="keyword">true</span>,
-    <span class="string">"projectName"</span>: <span class="string">"my-awesome-project"</span>,
-    <span class="string">"totalViews"</span>: <span class="number">1337</span>,
-    <span class="string">"uniqueViews"</span>: <span class="number">892</span>,
-    <span class="string">"timestamp"</span>: <span class="string">"2025-08-28T13:45:30Z"</span>
-}</div>
-
-					<h3>GET /api/views/{project-name}</h3>
-					<p>
-						<strong>Purpose:</strong> Get current statistics for a project
-					</p>
-					<div class="code-block"><span class="comment">// Request</span>
-<span class="keyword">GET</span> /api/views/my-awesome-project
-
-<span class="comment">// Response (200 OK)</span>
-{
-    <span class="string">"success"</span>: <span class="keyword">true</span>,
-    <span class="string">"projectName"</span>: <span class="string">"my-awesome-project"</span>,
-    <span class="string">"totalViews"</span>: <span class="number">1337</span>,
-    <span class="string">"uniqueViews"</span>: <span class="number">892</span>,
-    <span class="string">"description"</span>: <span class="keyword">null</span>,
-    <span class="string">"createdAt"</span>: <span class="string">"2025-08-01T10:30:00Z"</span>
-}
-
-<span class="comment">// Response for non-existent project (initializes automatically with 0 views)</span>
-{
-    <span class="string">"success"</span>: <span class="keyword">true</span>,
-    <span class="string">"projectName"</span>: <span class="string">"new-project"</span>,
-    <span class="string">"totalViews"</span>: <span class="number">0</span>,
-    <span class="string">"uniqueViews"</span>: <span class="number">0</span>,
-    <span class="string">"description"</span>: <span class="keyword">null</span>,
-    <span class="string">"createdAt"</span>: <span class="keyword">null</span>
-}</div>
-
-					<h3>GET /api/views/{project-name}/badge</h3>
-					<p>
-						<strong>Purpose:</strong> Generate SVG badge with view count
-					</p>
-					<div class="table-container">
-						<table class="table">
-							<thead>
-								<tr>
-									<th>Parameter</th>
-									<th>Type</th>
-									<th>Default</th>
-									<th>Options / Description</th>
-								</tr>
-							</thead>
-							<tbody>
-								<tr>
-									<td><code>color</code></td>
-									<td>string</td>
-									<td><code>blue</code></td>
-									<td><code>blue</code>, <code>green</code>, <code>red</code>, <code>orange</code>, <code>purple</code>, <code>brightgreen</code>, <code>yellow</code></td>
-								</tr>
-								<tr>
-									<td><code>label</code></td>
-									<td>string</td>
-									<td><code>views</code></td>
-									<td>Any custom text (URL encoded)</td>
-								</tr>
-								<tr>
-									<td><code>style</code></td>
-									<td>string</td>
-									<td><code>flat</code></td>
-									<td><code>flat</code>, <code>flat-square</code>, <code>for-the-badge</code></td>
-								</tr>
-								<tr>
-									<td><code>inc</code></td>
-									<td>boolean</td>
-									<td><code>false</code></td>
-									<td>Set to <code>true</code> to auto-track/increment views when the badge loads</td>
-								</tr>
-							</tbody>
-						</table>
-					</div>
-					<div class="code-block"><span class="comment">// Basic badge</span>
-<span class="keyword">GET</span> /api/views/my-project/badge
-
-<span class="comment">// Custom color, label, and auto-increment view tracker enabled</span>
-<span class="keyword">GET</span> /api/views/my-project/badge?color=brightgreen&amp;label=downloads&amp;inc=true
-
-<span class="comment">// Response: SVG image (image/svg+xml)</span>
-<span class="comment">// Caching: Cached for 1 hour on Cloudflare Edge</span></div>
-
-					<h3>GET /health</h3>
-					<p><strong>Purpose:</strong> Health check endpoint</p>
-					<div class="code-block"><span class="comment">// Response (200 OK)</span>
-{
-    <span class="string">"success"</span>: <span class="keyword">true</span>,
-    <span class="string">"status"</span>: <span class="string">"ok"</span>,
-    <span class="string">"timestamp"</span>: <span class="string">"2025-08-28T13:45:30Z"</span>,
-    <span class="string">"worker"</span>: <span class="string">"viewflare-api"</span>,
-    <span class="string">"version"</span>: <span class="string">"2.4.0"</span>
-}</div>
-				</div>
-
-				<!-- Replay Setup -->
-				<div class="card">
-					<h2><svg class="ico" aria-hidden="true"><use href="#i-layers" /></svg>Multi-Instance Setup (No Interference)</h2>
-					<p>
-						You can replicate this project for your own domain and data, completely isolated from this instance.
-					</p>
-					<div class="code-block"><span class="comment"># 1) Fork and Clone the repository</span>
-<span class="cmd">git clone</span> https://github.com/Life-Experimentalist/ViewFlare.git
-<span class="cmd">cd</span> ViewFlare
-
-<span class="comment"># 2) Create your own Cloudflare Pages project + D1 DB</span>
-<span class="comment"># Configure your database bindings and ID in wrangler.toml</span>
-
-<span class="comment"># 3) Use your own custom domain (recommended)</span>
-<span class="comment"># Example: counter.yourdomain.com</span>
-
-<span class="comment"># 4) Keep your secrets unique</span>
-<span class="comment"># Set ADMIN_PASSWORD, DB binding, and project endpoints</span>
-
-<span class="comment"># 5) API calls auto-bind to current origin</span>
-<span class="comment"># The client dashboard uses window.location.origin automatically</span></div>
-					<div style="margin-top: 1rem; padding: 1rem; border-radius: var(--radius-md); background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.2); color: var(--warning);">
-						<strong>Important:</strong> Do not hardcode <code>counter.vkrishna04.me</code> in your fork. Use your own domain and Cloudflare project settings to keep your data isolated.
-					</div>
-				</div>
-
-				<!-- Integration Examples -->
-				<div class="card">
-					<h2><svg class="ico" aria-hidden="true"><use href="#i-zap" /></svg>Integration Examples</h2>
-
-					<h3>JavaScript (Browser)</h3>
-					<div class="code-block"><span class="comment">// Modern async/await approach</span>
-<span class="keyword">async function</span> <span class="function">trackView</span>(projectName) {
-    <span class="keyword">try</span> {
-        <span class="keyword">const</span> response = <span class="keyword">await</span> <span class="method">fetch</span>(<span class="string">`/api/views/${projectName}`</span>, {
-            <span class="keyword">method</span>: <span class="string">'POST'</span>
-        });
-        <span class="keyword">const</span> data = <span class="keyword">await</span> response.<span class="method">json</span>();
-        <span class="keyword">if</span> (data.success) {
-            <span class="keyword">console</span>.<span class="method">log</span>(<span class="string">`📈 Views: ${data.totalViews}`</span>);
-            <span class="function">updateViewCounter</span>(data.totalViews);
-        }
-    } <span class="keyword">catch</span> (error) {
-        <span class="keyword">console</span>.<span class="method">error</span>(<span class="string">'❌ Failed to track view:'</span>, error);
-    }
-}
-
-<span class="comment">// Get and display current stats</span>
-<span class="keyword">async function</span> <span class="function">displayViewCount</span>(projectName) {
-    <span class="keyword">try</span> {
-        <span class="keyword">const</span> response = <span class="keyword">await</span> <span class="method">fetch</span>(<span class="string">`/api/views/${projectName}`</span>);
-        <span class="keyword">const</span> data = <span class="keyword">await</span> response.<span class="method">json</span>();
-        <span class="keyword">document</span>.<span class="method">getElementById</span>(<span class="string">'view-count'</span>).textContent = data.totalViews.<span class="method">toLocaleString</span>();
-        <span class="keyword">document</span>.<span class="method">getElementById</span>(<span class="string">'unique-count'</span>).textContent = data.uniqueViews.<span class="method">toLocaleString</span>();
-    } <span class="keyword">catch</span> (error) {
-        <span class="keyword">console</span>.<span class="method">error</span>(<span class="string">'❌ Failed to load stats:'</span>, error);
-    }
-}
-
-<span class="comment">// Auto-track when page loads</span>
-<span class="keyword">document</span>.<span class="method">addEventListener</span>(<span class="string">'DOMContentLoaded'</span>, () => {
-    <span class="function">trackView</span>(<span class="string">'my-website'</span>);
-    <span class="function">displayViewCount</span>(<span class="string">'my-website'</span>);
-});</div>
-
-					<h3>Node.js (Server-side)</h3>
-					<div class="code-block"><span class="comment">// Using fetch (Node.js 18+)</span>
-<span class="keyword">async function</span> <span class="function">trackServerView</span>(projectName) {
-    <span class="keyword">try</span> {
-        <span class="keyword">const</span> response = <span class="keyword">await</span> <span class="method">fetch</span>(<span class="string">`https://your-domain.com/api/views/${projectName}`</span>, {
-            <span class="keyword">method</span>: <span class="string">'POST'</span>,
-            <span class="keyword">headers</span>: { <span class="string">'User-Agent'</span>: <span class="string">'YourApp/1.0.0'</span> }
-        });
-        <span class="keyword">const</span> data = <span class="keyword">await</span> response.<span class="method">json</span>();
-        <span class="keyword">console</span>.<span class="method">log</span>(<span class="string">`✅ Tracked view for ${projectName}: ${data.totalViews} total`</span>);
-        <span class="keyword">return</span> data;
-    } <span class="keyword">catch</span> (error) {
-        <span class="keyword">console</span>.<span class="method">error</span>(<span class="string">'❌ Tracking failed:'</span>, error);
-        <span class="keyword">throw</span> error;
-    }
-}
-
-<span class="comment">// Using Axios</span>
-<span class="keyword">const</span> axios = <span class="method">require</span>(<span class="string">'axios'</span>);
-<span class="keyword">async function</span> <span class="function">getProjectStats</span>(projectName) {
-    <span class="keyword">try</span> {
-        <span class="keyword">const</span> { data } = <span class="keyword">await</span> axios.<span class="method">get</span>(<span class="string">`https://your-domain.com/api/views/${projectName}`</span>);
-        <span class="keyword">return</span> { views: data.totalViews, unique: data.uniqueViews, created: data.createdAt };
-    } <span class="keyword">catch</span> (error) {
-        <span class="keyword">if</span> (error.response?.status === <span class="number">404</span>) {
-            <span class="keyword">return</span> { views: <span class="number">0</span>, unique: <span class="number">0</span>, created: <span class="keyword">null</span> };
-        }
-        <span class="keyword">throw</span> error;
-    }
-}</div>
-
-					<h3>Python</h3>
-					<div class="code-block"><span class="comment"># Using requests library</span>
-<span class="keyword">import</span> requests
-<span class="keyword">from</span> typing <span class="keyword">import</span> Dict, Optional
-
-<span class="keyword">class</span> <span class="class">ViewCounter</span>:
-    <span class="keyword">def</span> <span class="function">__init__</span>(self, base_url: str):
-        self.base_url = base_url.rstrip(<span class="string">'/'</span>)
-
-    <span class="keyword">def</span> <span class="function">track_view</span>(self, project_name: str) -> Dict:
-        <span class="string">"""Track a view for the given project."""</span>
-        url = f<span class="string">"{self.base_url}/api/views/{project_name}"</span>
-        <span class="keyword">try</span>:
-            response = requests.post(url, timeout=<span class="number">5</span>)
-            response.raise_for_status()
-            <span class="keyword">return</span> response.json()
-        <span class="keyword">except</span> requests.RequestException <span class="keyword">as</span> e:
-            print(f<span class="string">"❌ Failed to track view: {e}"</span>)
-            <span class="keyword">return</span> {<span class="string">"success"</span>: <span class="keyword">False</span>, <span class="string">"error"</span>: str(e)}
-
-    <span class="keyword">def</span> <span class="function">get_stats</span>(self, project_name: str) -> Dict:
-        <span class="string">"""Get current statistics for a project."""</span>
-        url = f<span class="string">"{self.base_url}/api/views/{project_name}"</span>
-        <span class="keyword">try</span>:
-            response = requests.get(url, timeout=<span class="number">5</span>)
-            response.raise_for_status()
-            <span class="keyword">return</span> response.json()
-        <span class="keyword">except</span> requests.RequestException <span class="keyword">as</span> e:
-            print(f<span class="string">"❌ Failed to get stats: {e}"</span>)
-            <span class="keyword">return</span> {<span class="string">"success"</span>: <span class="keyword">False</span>, <span class="string">"error"</span>: str(e)}
-
-<span class="comment"># Usage</span>
-counter = <span class="class">ViewCounter</span>(<span class="string">"https://your-domain.com"</span>)
-result = counter.track_view(<span class="string">"my-python-project"</span>)
-<span class="keyword">if</span> result.get(<span class="string">"success"</span>):
-    print(f<span class="string">"📈 Total views: {result['totalViews']}"</span>)</div>
-
-					<h3>Rust</h3>
-					<div class="code-block"><span class="comment">// Add to Cargo.toml: reqwest = { version = "0.11", features = ["json"] }</span>
-<span class="keyword">use</span> reqwest;
-<span class="keyword">use</span> serde::{Deserialize, Serialize};
-
-#[derive(Debug, Deserialize)]
-<span class="keyword">struct</span> <span class="class">ViewResponse</span> {
-    success: bool,
-    #[serde(rename = <span class="string">"totalViews"</span>)]
-    total_views: u32,
-    #[serde(rename = <span class="string">"uniqueViews"</span>)]
-    unique_views: u32,
-    #[serde(rename = <span class="string">"projectName"</span>)]
-    project_name: String,
-}
-
-<span class="keyword">async fn</span> <span class="function">track_view</span>(project_name: &amp;str) -> Result&lt;<span class="class">ViewResponse</span>, reqwest::Error&gt; {
-    <span class="keyword">let</span> url = format!(<span class="string">"https://your-domain.com/api/views/{}"</span>, project_name);
-    <span class="keyword">let</span> client = reqwest::Client::new();
-    <span class="keyword">let</span> response = client.post(&amp;url).send().<span class="keyword">await</span>?.json::&lt;<span class="class">ViewResponse</span>&gt;().<span class="keyword">await</span>?;
-    Ok(response)
-}</div>
-				</div>
-
-				<!-- Advanced Usage -->
-				<div class="card">
-					<h2><svg class="ico" aria-hidden="true"><use href="#i-target" /></svg>Advanced Usage</h2>
-
-					<h3>Environment Configuration</h3>
-					<p>
-						Configure your ViewFlare instance with these environment variables:
-					</p>
-					<div class="table-container">
-						<table class="table">
-							<thead>
-								<tr>
-									<th>Variable</th>
-									<th>Default</th>
-									<th>Description</th>
-								</tr>
-							</thead>
-							<tbody>
-								<tr>
-									<td><code>ADMIN_PASSWORD</code></td>
-									<td><code>admin123</code></td>
-									<td>Password for admin panel access</td>
-								</tr>
-								<tr>
-									<td><code>ENABLE_ADMIN</code></td>
-									<td><code>true</code></td>
-									<td>Enable/disable admin functionality</td>
-								</tr>
-								<tr>
-									<td><code>ENABLE_ANALYTICS</code></td>
-									<td><code>false</code></td>
-									<td>Enable detailed visitor tracking (uses more DB queries)</td>
-								</tr>
-								<tr>
-									<td><code>MAX_PROJECTS</code></td>
-									<td><code>100</code></td>
-									<td>Maximum number of projects to prevent abuse</td>
-								</tr>
-							</tbody>
-						</table>
-					</div>
-
-					<h3>Self-Hosting</h3>
-					<div class="code-block"><span class="comment"># Clone the repository</span>
-<span class="cmd">git clone</span> https://github.com/Life-Experimentalist/ViewFlare.git
-<span class="cmd">cd</span> ViewFlare
-
-<span class="comment"># Install dependencies</span>
-<span class="cmd">npm install</span>
-
-<span class="comment"># Set up environment variables</span>
-<span class="cmd">cp</span> .env.example .env
-
-<span class="comment"># Create Cloudflare D1 database</span>
-<span class="cmd">npm run db:create</span>
-<span class="cmd">npm run db:init</span>
-
-<span class="comment"># Deploy to Cloudflare Pages</span>
-<span class="cmd">npm run deploy</span></div>
-
-					<h3>Rate Limiting &amp; Performance</h3>
-					<div class="code-block"><span class="comment">// Implement client-side rate limiting</span>
-<span class="keyword">class</span> <span class="class">ViewTracker</span> {
-    <span class="function">constructor</span>(cooldown = <span class="number">60000</span>) {
-        this.cooldown = cooldown;
-        this.lastTrack = <span class="keyword">new</span> <span class="class">Map</span>();
-    }
-    <span class="keyword">async</span> <span class="function">track</span>(projectName) {
-        <span class="keyword">const</span> now = <span class="class">Date</span>.<span class="method">now</span>();
-        <span class="keyword">const</span> last = this.lastTrack.<span class="method">get</span>(projectName) || <span class="number">0</span>;
-        <span class="keyword">if</span> (now - last &lt; this.cooldown) {
-            <span class="keyword">console</span>.<span class="method">log</span>(<span class="string">'⏱️ Cooldown active, skipping track'</span>);
-            <span class="keyword">return</span> this.<span class="method">getStats</span>(projectName);
-        }
-        this.lastTrack.<span class="method">set</span>(projectName, now);
-        <span class="keyword">return</span> this.<span class="method">trackView</span>(projectName);
-    }
-    <span class="keyword">async</span> <span class="function">trackView</span>(projectName) {
-        <span class="comment">// HTTP POST implementation</span>
-    }
-}</div>
-
-					<h3>Batch Operations</h3>
-					<div class="code-block"><span class="comment">// Track multiple projects efficiently</span>
-<span class="keyword">async function</span> <span class="function">trackMultiple</span>(projects) {
-    <span class="keyword">const</span> promises = projects.<span class="method">map</span>(project => 
-        <span class="method">fetch</span>(<span class="string">`/api/views/${project}`</span>, { method: <span class="string">'POST'</span> })
-        .<span class="method">then</span>(r => r.<span class="method">json</span>())
-        .<span class="method">catch</span>(err => ({ success: <span class="keyword">false</span>, project, error: err.message }))
-    );
-    <span class="keyword">return</span> <span class="keyword">await</span> <span class="class">Promise</span>.<span class="method">all</span>(promises);
-}</div>
-				</div>
-
-				<!-- Troubleshooting -->
-				<div class="card">
-					<h2><svg class="ico" aria-hidden="true"><use href="#i-wrench" /></svg>Troubleshooting</h2>
-
-					<h3>Common Issues</h3>
-					<div class="table-container">
-						<table class="table">
-							<thead>
-								<tr>
-									<th>Issue</th>
-									<th>Cause</th>
-									<th>Solution</th>
-								</tr>
-							</thead>
-							<tbody>
-								<tr>
-									<td>CORS Error</td>
-									<td>Cross-origin request blocked</td>
-									<td>Use server-side tracking or proxy requests</td>
-								</tr>
-								<tr>
-									<td>404 Not Found</td>
-									<td>Project name contains invalid characters</td>
-									<td>Use alphanumeric characters, hyphens, underscores only</td>
-								</tr>
-								<tr>
-									<td>Admin Access Denied</td>
-									<td>Wrong password or admin disabled</td>
-									<td>Check ADMIN_PASSWORD environment variable</td>
-								</tr>
-								<tr>
-									<td>High Response Times</td>
-									<td>Database not optimized</td>
-									<td>Ensure D1 database is properly initialized</td>
-								</tr>
-							</tbody>
-						</table>
-					</div>
-
-					<h3>Debugging</h3>
-					<div class="code-block"><span class="comment">// Enable detailed logging</span>
-<span class="keyword">const</span> DEBUG = <span class="keyword">true</span>;
-<span class="keyword">async function</span> <span class="function">debugTrack</span>(projectName) {
-    <span class="keyword">if</span> (DEBUG) <span class="keyword">console</span>.<span class="method">log</span>(<span class="string">`🔍 Tracking view for: ${projectName}`</span>);
-    <span class="keyword">try</span> {
-        <span class="keyword">const</span> start = performance.<span class="method">now</span>();
-        <span class="keyword">const</span> response = <span class="keyword">await</span> <span class="method">fetch</span>(<span class="string">`/api/views/${projectName}`</span>, { method: <span class="string">'POST'</span> });
-        <span class="keyword">const</span> duration = performance.<span class="method">now</span>() - start;
-        <span class="keyword">if</span> (DEBUG) <span class="keyword">console</span>.<span class="method">log</span>(<span class="string">`⏱️ Request took: ${duration.toFixed(2)}ms`</span>);
-        <span class="keyword">const</span> data = <span class="keyword">await</span> response.<span class="method">json</span>();
-        <span class="keyword">return</span> data;
-    } <span class="keyword">catch</span> (error) {
-        <span class="keyword">if</span> (DEBUG) <span class="keyword">console</span>.<span class="method">error</span>(<span class="string">'❌ Error:'</span>, error);
-        <span class="keyword">throw</span> error;
-    }
-}</div>
-				</div>
-
-				<!-- Performance & Limits -->
-				<div class="card">
-					<h2><svg class="ico" aria-hidden="true"><use href="#i-gauge" /></svg>Performance &amp; Limits</h2>
-
-					<h3>System Specifications</h3>
-					<div class="stats-grid">
-						<div class="stat-item">
-							<div class="stat-number">&lt; 100ms</div>
-							<div class="stat-label">Average Response Time</div>
-						</div>
-						<div class="stat-item">
-							<div class="stat-number">1000+</div>
-							<div class="stat-label">RPS Capacity</div>
-						</div>
-						<div class="stat-item">
-							<div class="stat-number">99.9%</div>
-							<div class="stat-label">Uptime</div>
-						</div>
-						<div class="stat-item">
-							<div class="stat-number">1 Hour</div>
-							<div class="stat-label">Badge Cache</div>
-						</div>
-					</div>
-
-					<h3>Cost Optimization</h3>
-					<p>
-						ViewFlare is designed to stay within Cloudflare's free tier limits:
-					</p>
-					<ul style="margin: 1rem 0; padding-left: 2rem; line-height: 1.8;">
-						<li><strong>Database:</strong> Optimized queries (1-3 per request)</li>
-						<li><strong>Functions:</strong> Minimal compute time</li>
-						<li><strong>Caching:</strong> 1-hour badge cache reduces load</li>
-						<li><strong>Analytics:</strong> Optional to save resources</li>
-					</ul>
-
-					<h3>Security Features</h3>
-					<div class="code-block"><span class="comment"># Security headers automatically included</span>
-Access-Control-Allow-Origin: *
-Content-Security-Policy: default-src 'self'
-X-Content-Type-Options: nosniff
-
-<span class="comment"># Rate limiting built-in</span>
-Max requests per IP: 60/minute (webhook)
-Project name validation: Alphanumeric + hyphens/underscores (max 100 chars)
-
-<span class="comment"># Privacy-friendly visitor tracking</span>
-IP address hashing: SHA-256 with salt
-GDPR compliant (no personal data stored)</div>
-				</div>
-			</div>
-
-			<!-- SETUP PAGE -->
-			<div id="setup-page" class="page">
-				<div class="hero">
-					<h1>Self-Hosting Setup</h1>
-					<p>
-						Deploy your own ViewFlare in minutes. Each fork gets its
-						own isolated D1 database, completely separate from any
-						other instance.
-					</p>
-				</div>
-
-				<!-- Step 1 -->
-				<div class="card setup-step">
-					<div class="setup-step-header">
-						<span class="step-number">1</span>
-						<h3>Fork &amp; Clone</h3>
-					</div>
-					<div class="setup-step-body">
-						<p>Fork the repo on GitHub, then:</p>
-						<pre class="code-block">git clone https://github.com/Life-Experimentalist/ViewFlare.git
-cd ViewFlare</pre>
-					</div>
-				</div>
-
-				<!-- Step 2 -->
-				<div class="card setup-step">
-					<div class="setup-step-header">
-						<span class="step-number">2</span>
-						<h3>Install Dependencies</h3>
-					</div>
-					<div class="setup-step-body">
-						<pre class="code-block">npm install</pre>
-					</div>
-				</div>
-
-				<!-- Step 3 -->
-				<div class="card setup-step">
-					<div class="setup-step-header">
-						<span class="step-number">3</span>
-						<h3>Create D1 Database</h3>
-					</div>
-					<div class="setup-step-body">
-						<pre class="code-block">wrangler d1 create cflaircounter-db</pre>
-						<p>
-							Copy the output <code>database_id</code> and paste
-							it into <code>wrangler.toml</code>.
-						</p>
-					</div>
-				</div>
-
-				<!-- Step 4 -->
-				<div class="card setup-step">
-					<div class="setup-step-header">
-						<span class="step-number">4</span>
-						<h3>Configure wrangler.toml</h3>
-					</div>
-					<div class="setup-step-body">
-						<pre class="code-block">[[d1_databases]]
-binding = "DB"
-database_name = "cflaircounter-db"
-database_id = "YOUR_DATABASE_ID_HERE"
-
-[vars]
-ADMIN_PASSWORD = "your-secure-password-here"
-
-# Your deployment will be at: YOUR_ORIGIN</pre>
-					</div>
-				</div>
-
-				<!-- Step 5 -->
-				<div class="card setup-step">
-					<div class="setup-step-header">
-						<span class="step-number">5</span>
-						<h3>Initialize Schema</h3>
-					</div>
-					<div class="setup-step-body">
-						<pre class="code-block">npm run db:init</pre>
-					</div>
-				</div>
-
-				<!-- Step 6 -->
-				<div class="card setup-step">
-					<div class="setup-step-header">
-						<span class="step-number">6</span>
-						<h3>Deploy</h3>
-					</div>
-					<div class="setup-step-body">
-						<pre class="code-block">npm run deploy</pre>
-						<p>
-							After deploy, Cloudflare will show your Pages URL.
-						</p>
-					</div>
-				</div>
-
-				<!-- Step 7 -->
-				<div class="card setup-step">
-					<div class="setup-step-header">
-						<span class="step-number">7</span>
-						<h3>Custom Domain (Optional)</h3>
-					</div>
-					<div class="setup-step-body">
-						<p>
-							In your Cloudflare dashboard: Pages → your project →
-							Custom domains → Add domain.
-						</p>
-						<p>
-							For external DNS, add a CNAME record pointing to
-							your Pages subdomain (e.g. yourproject.pages.dev).
-						</p>
-					</div>
-				</div>
-
-				<!-- Health Test Card -->
-				<div class="card" id="setup-health-card">
-					<h3>Test Your Deployment</h3>
-					<p>After deploying, verify your instance is working:</p>
-					<button class="btn btn-primary" onclick="testSetupHealth()">
-						Run Health Check
+						<svg class="ico" aria-hidden="true"><use href="#i-sun" id="theme-icon" /></svg>
 					</button>
-					<div
-						id="setup-health-result"
-						style="margin-top: 1rem"
-					></div>
 				</div>
 			</div>
-		</div>
+		</header>
 
-		<!-- Footer -->
-		<footer class="footer glass">
-			<div class="footer-container">
-				<div class="footer-brand">
-					<div class="footer-logo">
-						<svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
-							<circle cx="12" cy="12" r="4.1" fill="url(#flare-ramp)" />
-							<path
-								d="M12 2.4a9.6 9.6 0 0 1 0 19.2"
-								fill="none"
-								stroke="url(#flare-ramp)"
-								stroke-width="1.6"
-								stroke-linecap="round"
-								opacity="0.6"
-							/>
-						</svg>
-						<span>ViewFlare</span>
-					</div>
-					<p class="footer-tagline">
-						Modern, secure, and AI-friendly serverless view analytics powered by Cloudflare Pages & D1.
-					</p>
+		<main class="container" id="main">
+			<div class="hero">
+				<p class="eyebrow">Serverless, free tier, no account</p>
+				<h1>
+					Every number your projects earn, in
+					<span class="flare">one place</span>.
+				</h1>
+				<p class="lede">
+					Count page views, pull install totals from six registries, log
+					events, then do arithmetic across all of it and get a single
+					number back as JSON or as a badge. One Cloudflare Worker and one
+					D1 database. Nothing to run.
+				</p>
+				<div class="hero-actions">
+					<a class="btn btn-primary" href="#try">
+						<svg class="ico" aria-hidden="true"><use href="#i-play" /></svg>
+						Try it right here
+					</a>
+					<a
+						class="btn btn-secondary"
+						href="https://github.com/Life-Experimentalist/ViewFlare"
+					>
+						<svg class="ico" aria-hidden="true"><use href="#i-github" /></svg>
+						Source and docs
+					</a>
 				</div>
-				<div class="footer-links-group">
-					<h4>Created By</h4>
-					<div class="footer-links">
-						<a
-							href="https://github.com/VKrishna04"
-							target="_blank"
-							rel="noopener noreferrer"
-						>
-							<svg class="footer-icon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.9-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.52 2.34 1.07 2.91.83.1-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2z"/></svg>
-							VKrishna04
-						</a>
-						<a
-							href="https://github.com/Life-Experimentalist"
-							target="_blank"
-							rel="noopener noreferrer"
-						>
-							<svg class="footer-icon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.9-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.52 2.34 1.07 2.91.83.1-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2z"/></svg>
-							Life-Experimentalist
-						</a>
-					</div>
-				</div>
-				<div class="footer-links-group">
-					<h4>Developer Website</h4>
-					<div class="footer-links">
-						<a
-							href="https://vkrishna04.me"
-							target="_blank"
-							rel="noopener noreferrer"
-						>
-							<svg class="footer-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
-							vkrishna04.me
-						</a>
-					</div>
+				<div class="pill-row">
+					<span class="pill" id="health-pill">
+						<span class="dot" id="health-dot"></span>
+						<span id="health-text">Checking this instance</span>
+					</span>
+					<a class="pill" href="/openapi.yaml">
+						<svg class="ico" aria-hidden="true"><use href="#i-book" /></svg>
+						openapi.yaml
+					</a>
+					<a class="pill" href="/llms.txt">
+						<svg class="ico" aria-hidden="true"><use href="#i-bot" /></svg>
+						llms.txt
+					</a>
 				</div>
 			</div>
-			<div class="footer-bottom">
-				<p>
-					&copy; 2026 ViewFlare. Made with 💖 by VKrishna04 & Life-Experimentalist. Licensed under Apache-2.0.
+
+			<section class="reveal" aria-labelledby="live-h">
+				<h2 class="section-title" id="live-h">Live on this instance</h2>
+				<p class="section-lede">
+					Read straight from the deployment you are looking at. A figure
+					that cannot be fetched says so rather than showing a zero.
 				</p>
-				<div class="footer-bottom-links">
-					<a href="https://github.com/Life-Experimentalist/ViewFlare" target="_blank" rel="noopener noreferrer">GitHub Repo</a>
-					<a href="https://github.com/Life-Experimentalist/ViewFlare/blob/main/LICENSE.md" target="_blank" rel="noopener noreferrer">License</a>
+				<div class="stat-grid">
+					<div class="stat">
+						<div class="stat-value" id="s-views">unavailable</div>
+						<div class="stat-label">Views counted</div>
+					</div>
+					<div class="stat">
+						<div class="stat-value" id="s-projects">unavailable</div>
+						<div class="stat-label">Projects tracked</div>
+					</div>
+					<div class="stat" id="s-unique-wrap" hidden>
+						<div class="stat-value" id="s-unique">unavailable</div>
+						<div class="stat-label">Unique visitors</div>
+					</div>
 				</div>
+			</section>
+
+			<section class="reveal" id="try" aria-labelledby="try-h">
+				<h2 class="section-title" id="try-h">Try it</h2>
+				<p class="section-lede">
+					Pick any name. It is created the first time it is counted, so
+					there is nothing to register.
+				</p>
+
+				<div class="grid-2">
+					<div class="card">
+						<h3>
+							<svg class="ico" aria-hidden="true"><use href="#i-chart" /></svg>
+							Count and read
+						</h3>
+						<div class="row">
+							<div class="field">
+								<label for="demo-project">Project name</label>
+								<input type="text" id="demo-project" value="demo" />
+							</div>
+						</div>
+						<div class="hero-actions" style="margin: 1rem 0 0">
+							<button class="btn btn-primary" id="btn-count">
+								<svg class="ico" aria-hidden="true"><use href="#i-zap" /></svg>
+								Count a view
+							</button>
+							<button class="btn btn-secondary" id="btn-read">
+								<svg class="ico" aria-hidden="true"><use href="#i-gauge" /></svg>
+								Read stats
+							</button>
+						</div>
+						<div class="result" id="demo-result" hidden>
+							<div>
+								<span class="n" id="demo-total">unavailable</span>
+								<span class="l">Total views</span>
+							</div>
+							<div>
+								<span class="n" id="demo-unique">unavailable</span>
+								<span class="l">Unique</span>
+							</div>
+						</div>
+						<div class="badge-strip" id="badge-strip"></div>
+					</div>
+
+					<div class="card">
+						<h3>
+							<svg class="ico" aria-hidden="true"><use href="#i-sum" /></svg>
+							Compute one number
+						</h3>
+						<p class="hint" style="margin-bottom: 1rem">
+							Arithmetic over views, installs and events. Variables are
+							<code>views.total</code>, <code>views.unique</code>,
+							<code>installs.total</code>, <code>installs.SOURCE</code> and
+							<code>events.CATEGORY</code>. A missing input makes the whole
+							metric unavailable, never a zero.
+						</p>
+						<div class="field">
+							<label for="expr">Expression</label>
+							<input
+								type="text"
+								id="expr"
+								value="round(pct(views.unique,views.total),1)"
+							/>
+							<span class="hint"
+								>A <code>+</code> in a URL decodes to a space, so write it as
+								<code>%2B</code>.</span
+							>
+						</div>
+						<button class="btn btn-primary" id="btn-compute">
+							<svg class="ico" aria-hidden="true"><use href="#i-sum" /></svg>
+							Evaluate
+						</button>
+						<div class="result" id="compute-result" hidden>
+							<div>
+								<span class="n" id="compute-value">unavailable</span>
+								<span class="l" id="compute-label">Result</span>
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section class="reveal" id="integrate" aria-labelledby="int-h">
+				<h2 class="section-title" id="int-h">Three steps to wire it in</h2>
+				<p class="section-lede">
+					Tracking is fire and forget. Swallow the error and use a short
+					timeout, so a counter that is down cannot break the page it is
+					measuring.
+				</p>
+
+				<div class="grid-3">
+					<div class="card step" data-step="1">
+						<h3>Count the view</h3>
+						<p>One POST. The project is created on first use.</p>
+						<div class="code" data-copy>curl -X POST <span class="s">"https://counter.vkrishna04.me/api/views/my-project"</span></div>
+					</div>
+
+					<div class="card step" data-step="2">
+						<h3>Show the badge</h3>
+						<p>
+							Drop it in a README. <code>&amp;inc=true</code> counts the view
+							as the image loads.
+						</p>
+						<div class="code" data-copy>![Views](https://counter.vkrishna04.me/api/views/my-project/badge?inc=true)</div>
+					</div>
+
+					<div class="card step" data-step="3">
+						<h3>Read it back</h3>
+						<p>
+							JSON for one project, or up to 50 at once with
+							<code>?names=a,b,c</code>.
+						</p>
+						<div class="code" data-copy>curl <span class="s">"https://counter.vkrishna04.me/api/views/my-project"</span></div>
+					</div>
+				</div>
+
+				<div class="card" style="margin-top: 1.25rem">
+					<h3>
+						<svg class="ico" aria-hidden="true"><use href="#i-layers" /></svg>
+						Names can be a hierarchy
+					</h3>
+					<p class="hint" style="margin-bottom: 1rem">
+						A dot makes a name a path. <code>acme.api.docs</code> sits under
+						<code>acme.api</code>, which sits under <code>acme</code>. Nothing
+						about storage changes, so every flat name keeps working. Rollup is
+						opt in on every route that offers it.
+					</p>
+					<div class="code" data-copy><span class="c"># one page</span>
+curl -X POST <span class="s">"$BASE/api/views/acme.docs.getting-started"</span>
+
+<span class="c"># the whole tree, with the per-project breakdown in members</span>
+curl <span class="s">"$BASE/api/views/acme?rollup=1"</span>
+
+<span class="c"># and the badge for that sum</span>
+<span class="s">"$BASE/api/views/acme/badge?rollup=1&amp;label=acme"</span></div>
+				</div>
+			</section>
+
+			<section class="reveal" id="agents" aria-labelledby="agents-h">
+				<h2 class="section-title" id="agents-h">Built for agents to install</h2>
+				<p class="section-lede">
+					Every deployment serves its own contract. Point an agent at
+					<code>/llms.txt</code> for the short version or
+					<code>/openapi.yaml</code> for all of it, and it has what it needs
+					with no plugin at all.
+				</p>
+
+				<div class="table-wrap harness-table">
+					<table>
+						<caption class="visually-hidden">
+							Where each agent harness reads its instructions
+						</caption>
+						<thead>
+							<tr>
+								<th scope="col">Harness</th>
+								<th scope="col">File it reads</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td>Claude Code</td>
+								<td><code>/plugin marketplace add Life-Experimentalist/ViewFlare</code></td>
+							</tr>
+							<tr>
+								<td>Codex, Cursor, Windsurf, Antigravity</td>
+								<td><code>AGENTS.md</code></td>
+							</tr>
+							<tr>
+								<td>GitHub Copilot</td>
+								<td><code>.github/copilot-instructions.md</code></td>
+							</tr>
+							<tr>
+								<td>Amazon Kiro</td>
+								<td><code>.kiro/steering/viewflare.md</code></td>
+							</tr>
+							<tr>
+								<td>Anything else with a fetch tool</td>
+								<td><code>/llms.txt</code></td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+
+				<p class="hint" style="margin-top: 0.9rem">
+					The repo ships all of these under <code>integrations/agents/</code>,
+					each one a copy-in file that points at the same contract. Install
+					instructions are in the README.
+				</p>
+			</section>
+
+			<section class="reveal" aria-labelledby="what-h">
+				<h2 class="section-title" id="what-h">What it counts</h2>
+				<div class="grid-3">
+					<div class="card feature">
+						<h3>
+							<svg class="ico" aria-hidden="true"><use href="#i-chart" /></svg>
+							Views
+						</h3>
+						<p>
+							Total and unique per project, plus a daily series. Unique
+							counting is opt in, so an instance can run with no visitor
+							tracking at all.
+						</p>
+					</div>
+					<div class="card feature">
+						<h3>
+							<svg class="ico" aria-hidden="true"><use href="#i-package" /></svg>
+							Installs
+						</h3>
+						<p>
+							VS Code Marketplace, Open VSX, PyPI, npm, crates.io and GitHub
+							releases, aggregated with the per-source breakdown kept. A
+							cumulative count added to a rolling window is labelled as
+							mixed, not passed off as one figure.
+						</p>
+					</div>
+					<div class="card feature">
+						<h3>
+							<svg class="ico" aria-hidden="true"><use href="#i-zap" /></svg>
+							Events
+						</h3>
+						<p>
+							Anything that is not a page view: a build, a CLI run, a
+							failure. Category and name, with free-form metadata.
+						</p>
+					</div>
+					<div class="card feature">
+						<h3>
+							<svg class="ico" aria-hidden="true"><use href="#i-sum" /></svg>
+							Computed metrics
+						</h3>
+						<p>
+							Add, divide, take a percentage or a max across any of the
+							above, and get one number as JSON, an SVG badge or a
+							shields.io endpoint.
+						</p>
+					</div>
+					<div class="card feature">
+						<h3>
+							<svg class="ico" aria-hidden="true"><use href="#i-gauge" /></svg>
+							Built for the free tier
+						</h3>
+						<p>
+							Unauthenticated reads are cached at the edge, the schema runs
+							once per isolate, and five write routes are rate limited per
+							IP.
+						</p>
+					</div>
+					<div class="card feature">
+						<h3>
+							<svg class="ico" aria-hidden="true"><use href="#i-globe" /></svg>
+							Yours to host
+						</h3>
+						<p>
+							Apache 2.0, one Worker and one D1 database. Deploy it to your
+							own Cloudflare account and the counts are yours.
+						</p>
+					</div>
+				</div>
+			</section>
+		</main>
+
+		<footer class="footer">
+			<div class="footer-inner">
+				<p>ViewFlare, Apache 2.0. Self-host it and the numbers are yours.</p>
+				<nav aria-label="Footer">
+					<a href="https://github.com/Life-Experimentalist/ViewFlare">GitHub</a>
+					<a href="/openapi.yaml">API spec</a>
+					<a href="/llms.txt">llms.txt</a>
+					<a href="/health">Health</a>
+					<a href="/admin/">Console</a>
+				</nav>
 			</div>
 		</footer>
 
-		<!-- Admin Modal -->
-		<div id="admin-modal" class="modal">
-			<div class="modal-content modal-login">
-				<div class="modal-header">
-					<h2 class="modal-title"><svg class="ico" aria-hidden="true"><use href="#i-lock" /></svg>Admin Panel</h2>
-					<button class="modal-close" onclick="hideAdminModal()">
-						✕
-					</button>
-				</div>
+		<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-				<div id="admin-login">
-					<form
-						onsubmit="
-							adminLogin(event);
-							return false;
-						"
-					>
-						<div class="form-group">
-							<label class="form-label" for="admin-password"
-								>Admin Password:</label
-							>
-							<input
-								type="password"
-								id="admin-password"
-								class="form-input"
-								placeholder="Enter admin password"
-								autocomplete="current-password"
-							/>
-						</div>
-						<button
-							type="submit"
-							class="btn btn-primary"
-							style="width: 100%"
-						>
-							<svg class="ico" aria-hidden="true"><use href="#i-key" /></svg>Login
-						</button>
-					</form>
-				</div>
-				<div id="admin-dashboard" style="display: none">
-					<div class="stats-grid">
-						<div class="stat-item">
-							<div class="stat-number" id="admin-requests">0</div>
-							<div class="stat-label">Total Views</div>
-						</div>
-						<div class="stat-item">
-							<div class="stat-number" id="admin-db-ops">0</div>
-							<div class="stat-label">Total Projects</div>
-						</div>
-					</div>
-
-					<!-- Quick Actions -->
-					<h3><svg class="ico" aria-hidden="true"><use href="#i-zap" /></svg>Quick Actions</h3>
-					<div class="form-row">
-						<button
-							onclick="showAddProjectModal()"
-							class="btn btn-primary"
-						>
-							Add New Project
-						</button>
-						<button
-							onclick="refreshAdminData()"
-							class="btn btn-secondary"
-						>
-							Refresh Data
-						</button>
-					</div>
-					<br />
-					<br />
-					<!-- Project Management -->
-					<h3><svg class="ico" aria-hidden="true"><use href="#i-chart" /></svg>Project Management</h3>
-					<div id="admin-projects">
-						<p>Loading projects...</p>
-					</div>
-				</div>
-			</div>
-		</div>
-
-		<!-- Add/Edit Project Modal -->
-		<div id="project-modal" class="modal">
-			<div class="modal-content">
-				<div class="modal-header">
-					<h2 class="modal-title" id="project-modal-title">
-						Add New Project
-					</h2>
-					<button class="modal-close" onclick="hideProjectModal()">
-						✕
-					</button>
-				</div>
-				<div class="form-group">
-					<label class="form-label" for="project-name"
-						>Project Name *</label
-					>
-					<input
-						type="text"
-						id="project-name"
-						class="form-input"
-						placeholder="e.g., my-awesome-project"
-						pattern="[a-zA-Z0-9-_]+"
-						title="Only alphanumeric, hyphens, and underscores allowed"
-					/>
-					<small style="color: var(--text-muted)"
-						>Only alphanumeric characters, hyphens, and
-						underscores</small
-					>
-				</div>
-				<div class="form-group">
-					<label class="form-label" for="project-description"
-						>Description</label
-					>
-					<input
-						type="text"
-						id="project-description"
-						class="form-input"
-						placeholder="Brief description of your project"
-					/>
-				</div>
-				<div class="form-group">
-					<label class="form-label" for="project-views"
-						>View Count</label
-					>
-					<input
-						type="number"
-						id="project-views"
-						class="form-input"
-						value="0"
-						min="0"
-						placeholder="0"
-					/>
-				</div>
-				<div class="form-group">
-					<label class="form-label" for="project-unique"
-						>Unique Views</label
-					>
-					<input
-						type="number"
-						id="project-unique"
-						class="form-input"
-						value="0"
-						min="0"
-						placeholder="0"
-					/>
-				</div>
-				<div class="form-row">
-					<button
-						onclick="hideProjectModal()"
-						class="btn btn-secondary"
-					>
-						Cancel
-					</button>
-					<button
-						onclick="saveProject()"
-						class="btn btn-primary"
-						id="save-project-btn"
-					>
-						Save Project
-					</button>
-				</div>
-			</div>
-		</div>
-
-		<!-- Badge Links Modal -->
-		<div id="badge-modal" class="modal">
-			<div class="modal-content" style="max-width: 800px">
-				<div class="modal-header">
-					<h2 class="modal-title"><svg class="ico" aria-hidden="true"><use href="#i-palette" /></svg>Badge &amp; Links</h2>
-					<button class="modal-close" onclick="hideBadgeModal()">
-						✕
-					</button>
-				</div>
-				<div id="badge-links-content">
-					<!-- Dynamic content -->
-				</div>
-			</div>
-		</div>
-
-		<!-- Notification -->
-		<div id="notification" class="notification"></div>
+		<script type="application/ld+json">
+			{
+				"@context": "https://schema.org",
+				"@type": "SoftwareApplication",
+				"name": "ViewFlare",
+				"applicationCategory": "DeveloperApplication",
+				"operatingSystem": "Any",
+				"url": "https://counter.vkrishna04.me/",
+				"description": "A free serverless counter for views, installs and events, running on Cloudflare Pages and D1. Badges, computed metrics and an API any agent can read.",
+				"license": "https://www.apache.org/licenses/LICENSE-2.0",
+				"offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+				"codeRepository": "https://github.com/Life-Experimentalist/ViewFlare"
+			}
+		</script>
 
 		<script>
-			const API_BASE = window.location.origin;
-			const PRIMARY_DOMAIN = "counter.vkrishna04.me";
-			const FALLBACK_DOMAIN = "viewflare.pages.dev";
-			let currentPage = "home";
-			let adminPassword = "";
-			let currentEditProject = null;
-			let activeTheme = "light";
-			let adminProjectsData = [];
-			let sortColumn = "view_count";
-			let sortAscending = false;
+			(function () {
+				"use strict";
 
-			function escapeHtml(str) {
-				if (str == null) return "";
-				return String(str)
-					.replace(/&/g, "&amp;")
-					.replace(/</g, "&lt;")
-					.replace(/>/g, "&gt;")
-					.replace(/"/g, "&quot;")
-					.replace(/'/g, "&#39;");
-			}
+				var API = window.location.origin;
+				var reduced = window.matchMedia(
+					"(prefers-reduced-motion: reduce)",
+				).matches;
 
-			// Initialize app
-			document.addEventListener("DOMContentLoaded", function () {
-				// Clean up URL hash if present
-				if (window.location.hash) {
-					history.replaceState(null, null, window.location.pathname);
+				/* --- small helpers ----------------------------------------- */
+
+				function $(id) {
+					return document.getElementById(id);
 				}
 
-				// Initialize theme
-				initializeTheme();
-				document.getElementById("current-endpoint").textContent =
-					API_BASE;
-				renderDomainBanner();
-				checkApiHealth();
+				var toastEl = $("toast");
+				var toastTimer = null;
 
-				loadGlobalStats();
-				setInterval(loadGlobalStats, 30000); // Update every 30 seconds
-				setInterval(checkApiHealth, 60000);
-				setupAdminTableListener();
-				setupCodeBlockCopyButtons();
-			});
-
-			function setupAdminTableListener() {
-				document
-					.getElementById("admin-projects")
-					.addEventListener("click", function (e) {
-						const btn = e.target.closest("[data-action]");
-						if (!btn) return;
-
-						const action = btn.dataset.action;
-						const project = btn.dataset.project;
-
-						if (action === "badge") {
-							showBadgeLinks(project);
-						} else if (action === "edit") {
-							const views = Number(btn.dataset.views);
-							const unique = Number(btn.dataset.unique);
-							const description = btn.dataset.description || "";
-							editProject(project, views, unique, description);
-						} else if (action === "increment") {
-							incrementProjectViews(project);
-						} else if (action === "installs") {
-							toggleInstallDetails(btn, project);
-						} else if (action === "delete") {
-							deleteProject(project);
-						}
-					});
-			}
-
-			// Install counts sit beside the view count and are never folded into
-			// it. Each registry measures a different thing over a different
-			// window, so the per-source breakdown is always shown with the total.
-			async function toggleInstallDetails(btn, projectName) {
-				const row = document.getElementById(
-					`installs-row-${btn.dataset.row}`,
-				);
-				if (!row) return;
-
-				if (!row.hidden) {
-					row.hidden = true;
-					return;
-				}
-				row.hidden = false;
-				if (row.dataset.loaded === "true") return;
-
-				const cell = row.firstElementChild;
-				cell.innerHTML = `<div style="padding: 0.75rem 1rem; color: var(--text-muted);">Loading install counts...</div>`;
-
-				try {
-					const response = await fetch(
-						`${API_BASE}/api/installs/${encodeURIComponent(projectName)}`,
-					);
-					const data = await response.json().catch(() => null);
-					cell.innerHTML = renderInstallDetails(
-						projectName,
-						response.status,
-						data,
-					);
-					row.dataset.loaded = "true";
-				} catch (error) {
-					// Left unloaded on purpose, so collapsing and reopening retries.
-					const message = error && error.message ? error.message : error;
-					cell.innerHTML = `<div style="padding: 0.75rem 1rem; color: var(--danger);">Could not reach the installs endpoint. ${escapeHtml(String(message))}</div>`;
-				}
-			}
-
-			const INSTALL_WINDOW_TEXT = {
-				"all-time": "all-time",
-				last_month: "last month",
-			};
-
-			function renderInstallDetails(projectName, status, data) {
-				// A project with no sources is a normal state, not an error, so it
-				// is answered inline rather than as a toast.
-				if (status === 404) {
-					return `
-						<div style="padding: 0.75rem 1rem;">
-							<strong>No install sources configured.</strong>
-							<div style="margin-top: 0.4rem; color: var(--text-muted); font-size: 0.85rem;">
-								Configure them with
-								<code>PUT ${API_BASE}/api/admin/installs/${escapeHtml(projectName)}</code>
-								and a body like
-								<code>{"sources": {"npm": "package-name", "crates": "crate-name"}}</code>
-							</div>
-						</div>
-					`;
-				}
-				if (!data || data.success !== true) {
-					const detail =
-						data && data.error ? data.error : `HTTP ${status}`;
-					return `<div style="padding: 0.75rem 1rem; color: var(--danger);">Could not load install counts. ${escapeHtml(String(detail))}</div>`;
+				function toast(message, kind) {
+					toastEl.textContent = message;
+					toastEl.className = "toast show " + (kind || "info");
+					clearTimeout(toastTimer);
+					toastTimer = setTimeout(function () {
+						toastEl.className = "toast " + (kind || "info");
+					}, 3500);
 				}
 
-				const rows = (data.sources || [])
-					.map((source) => {
-						const windowText =
-							INSTALL_WINDOW_TEXT[source.window] || source.window;
+				function busy(button, on) {
+					button.disabled = on;
+					button.setAttribute("aria-busy", on ? "true" : "false");
+				}
 
-						// A source that failed shows its upstream error where the
-						// number would go, and a cached figure that has gone stale
-						// is labelled as such. Neither is presented as fresh.
-						let value;
-						if (
-							source.count === null ||
-							source.count === undefined
-						) {
-							value = `<span style="color: var(--danger);">${escapeHtml(String(source.error || "unavailable"))}</span>`;
-						} else if (source.stale) {
-							value = `${Number(source.count).toLocaleString()} <span title="${escapeHtml(String(source.error || "last refresh failed"))}" style="color: var(--warning); font-size: 0.8rem;">(stale)</span>`;
-						} else {
-							value = Number(source.count).toLocaleString();
-						}
-
-						const fetched = source.fetchedAt
-							? new Date(source.fetchedAt).toLocaleString()
-							: "not yet fetched";
-
-						return `
-							<tr>
-								<td>${escapeHtml(String(source.label || source.source))}</td>
-								<td><code>${escapeHtml(String(source.id || ""))}</code></td>
-								<td style="text-align: right;">${value}</td>
-								<td>${escapeHtml(String(source.measures || ""))}, ${escapeHtml(String(windowText))}</td>
-								<td>${escapeHtml(fetched)}</td>
-							</tr>
-						`;
-					})
-					.join("");
-
-				return `
-					<div style="padding: 0.75rem 1rem;">
-						<div style="display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap;">
-							<strong style="font-size: 1.15rem;">${Number(data.total || 0).toLocaleString()}</strong>
-							<span style="color: var(--text-muted);">${escapeHtml(String(data.totalLabel || ""))}</span>
-						</div>
-						<div style="color: var(--text-muted); font-size: 0.8rem; margin: 0.25rem 0 0.6rem;">
-							${escapeHtml(String(data.coverage || ""))}
-						</div>
-						<div style="overflow-x: auto;">
-							<table class="table" style="margin: 0;">
-								<thead>
-									<tr>
-										<th>Source</th>
-										<th>Id</th>
-										<th style="text-align: right;">Count</th>
-										<th>Measures</th>
-										<th>Fetched</th>
-									</tr>
-								</thead>
-								<tbody>${rows}</tbody>
-							</table>
-						</div>
-					</div>
-				`;
-			}
-
-			function setupCodeBlockCopyButtons(root = document) {
-				root.querySelectorAll(".code-block").forEach((block) => {
-					if (
-						block.parentElement.classList.contains(
-							"code-block-wrapper",
-						)
-					)
+				// A number that could not be read is reported as unavailable. It is
+				// never rounded down to a zero that looks like real data.
+				function show(el, value) {
+					if (typeof value !== "number" || !isFinite(value)) {
+						el.textContent = "unavailable";
 						return;
-
-					const wrapper = document.createElement("div");
-					wrapper.className = "code-block-wrapper";
-					block.parentNode.insertBefore(wrapper, block);
-					wrapper.appendChild(block);
-
-					const btn = document.createElement("button");
-					btn.className = "copy-code-btn";
-					btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> <span>Copy</span>`;
-					btn.onclick = () => {
-						copyToClipboard(block.textContent.trim());
-						btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; stroke: var(--success);"><polyline points="20 6 9 17 4 12"></polyline></svg> <span style="color: #34d399;">Copied</span>`;
-						setTimeout(() => {
-							btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> <span>Copy</span>`;
-						}, 2000);
-					};
-					wrapper.appendChild(btn);
-				});
-			}
-
-			function copyUrlBtn(btn, text) {
-				copyToClipboard(text);
-				const originalInner = btn.innerHTML;
-				btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; stroke: var(--success);"><polyline points="20 6 9 17 4 12"></polyline></svg> <span style="color: #34d399;">Copied</span>`;
-				setTimeout(() => {
-					btn.innerHTML = originalInner;
-				}, 2000);
-			}
-
-			// Theme Management
-			function initializeTheme() {
-				const themeToggle = document.getElementById("themeToggle");
-				const savedTheme =
-					localStorage.getItem("theme") === "light" ? "light" : "dark";
-
-				if (!themeToggle) {
-					applyTheme(savedTheme);
-					return;
-				}
-
-				applyTheme(savedTheme);
-				themeToggle.checked = savedTheme === "light";
-
-				// Listen for theme changes
-				themeToggle.addEventListener("change", function () {
-					applyTheme(this.checked ? "light" : "dark");
-				});
-			}
-
-			function applyTheme(theme) {
-				const normalizedTheme = theme === "dark" ? "dark" : "light";
-				activeTheme = normalizedTheme;
-
-				try {
-					document.documentElement.setAttribute(
-						"data-theme",
-						normalizedTheme,
-					);
-					localStorage.setItem("theme", normalizedTheme);
-					updateLogos(normalizedTheme === "dark");
-				} catch (error) {
-					console.warn("Theme apply fallback:", error);
-					document.documentElement.setAttribute(
-						"data-theme",
-						"light",
-					);
-					localStorage.setItem("theme", "light");
-					updateLogos(false);
-				}
-			}
-
-			// Update logos based on theme
-			function updateLogos(isDark) {
-				const navbarLogo = document.getElementById("navbar-logo");
-				const heroLogo = document.getElementById("hero-logo");
-				const logoSrc = isDark ? "./logo-dark.png" : "./logo.png";
-				const fallbackSrc = "./logo.png";
-
-				if (navbarLogo) {
-					navbarLogo.onerror = () => {
-						navbarLogo.onerror = null;
-						navbarLogo.src = fallbackSrc;
-					};
-					navbarLogo.src = logoSrc;
-				}
-				if (heroLogo) {
-					heroLogo.onerror = () => {
-						heroLogo.onerror = null;
-						heroLogo.src = fallbackSrc;
-					};
-					heroLogo.src = logoSrc;
-				}
-				const footerLogo = document.getElementById("footer-logo");
-				if (footerLogo) {
-					footerLogo.onerror = () => {
-						footerLogo.onerror = null;
-						footerLogo.src = fallbackSrc;
-					};
-					footerLogo.src = logoSrc;
-				}
-			}
-
-			async function checkApiHealth() {
-				const dot = document.getElementById("health-dot");
-				const text = document.getElementById("health-text");
-
-				if (!dot || !text) return;
-
-				try {
-					const response = await fetch(`${API_BASE}/health`, {
-						method: "GET",
-						headers: { Accept: "application/json" },
-					});
-
-					if (!response.ok) {
-						throw new Error(
-							`Health check failed with ${response.status}`,
-						);
 					}
-
-					dot.classList.remove("fail");
-					dot.classList.add("ok");
-					text.textContent = "API status: online";
-				} catch (error) {
-					dot.classList.remove("ok");
-					dot.classList.add("fail");
-					text.textContent = "API status: unavailable";
-				}
-			}
-
-			function renderDomainBanner() {
-				const banner = document.getElementById("domain-banner");
-				if (!banner) return;
-
-				const currentHost = window.location.hostname.toLowerCase();
-				const primaryUrl = `https://${PRIMARY_DOMAIN}`;
-				const fallbackUrl = `https://${FALLBACK_DOMAIN}`;
-
-				banner.classList.remove("primary", "fallback", "selfhost");
-
-				if (currentHost === PRIMARY_DOMAIN) {
-					banner.classList.add("primary");
-					banner.innerHTML = `You are on the primary custom domain <strong>${PRIMARY_DOMAIN}</strong>. Fallback remains available at <a href="${fallbackUrl}" target="_blank" rel="noopener noreferrer">${FALLBACK_DOMAIN}</a>.`;
-					return;
-				}
-
-				if (currentHost === FALLBACK_DOMAIN) {
-					banner.classList.add("fallback");
-					banner.innerHTML = `You are on the fallback Pages domain <strong>${FALLBACK_DOMAIN}</strong>. Preferred public domain is <a href="${primaryUrl}" target="_blank" rel="noopener noreferrer">${PRIMARY_DOMAIN}</a>.`;
-					return;
-				}
-
-				banner.classList.add("selfhost");
-				banner.innerHTML = `Self-hosted domain detected (<strong>${currentHost}</strong>). This instance is isolated to your own deployment and data bindings.`;
-			}
-
-			// Page Management
-			function showPage(pageId, event) {
-				// Prevent default link behavior
-				if (event) {
-					event.preventDefault();
-				}
-
-				// Hide all pages
-				document.querySelectorAll(".page").forEach((page) => {
-					page.classList.remove("active");
-				});
-
-				// Show selected page
-				document
-					.getElementById(pageId + "-page")
-					.classList.add("active");
-
-				// Update navigation
-				document.querySelectorAll(".nav-link").forEach((link) => {
-					link.classList.remove("active");
-				});
-				if (event && event.target) {
-					event.target.classList.add("active");
-				}
-
-				currentPage = pageId;
-
-				if (pageId === "setup") {
-					initSetupPage();
-				}
-
-				// Update URL without hash
-				if (history.replaceState) {
-					history.replaceState(null, null, window.location.pathname);
-				}
-			}
-
-			// Setup Page
-			function initSetupPage() {
-				const origin = window.location.origin;
-				document
-					.querySelectorAll(
-						"#setup-page .setup-step-body .code-block",
-					)
-					.forEach((block) => {
-						if (block.textContent.includes("YOUR_ORIGIN")) {
-							block.textContent = block.textContent.replace(
-								/YOUR_ORIGIN/g,
-								origin,
-							);
-						}
-					});
-			}
-
-			async function testSetupHealth() {
-				const resultDiv = document.getElementById(
-					"setup-health-result",
-				);
-				resultDiv.innerHTML =
-					'<span style="opacity:0.7">Checking...</span>';
-				const start = Date.now();
-				try {
-					const res = await fetch(`${API_BASE}/health`);
-					const ms = Date.now() - start;
-					if (res.ok) {
-						resultDiv.innerHTML = `<span style="color:var(--success)">Healthy in ${ms}ms</span>`;
-					} else {
-						resultDiv.innerHTML = `<span style="color:var(--danger)">Unhealthy (HTTP ${res.status})</span>`;
+					if (reduced) {
+						el.textContent = value.toLocaleString();
+						return;
 					}
-				} catch (e) {
-					resultDiv.innerHTML = `<span style="color:var(--danger)">Unreachable: ${escapeHtml(e.message)}</span>`;
+					countUp(el, value);
 				}
-			}
 
-			// Global Stats Loading
-			async function loadGlobalStats() {
-				try {
-					const response = await fetch(`${API_BASE}/api/stats`);
+				function countUp(el, target) {
+					var start = performance.now();
+					var from = 0;
+					function frame(now) {
+						var t = Math.min(1, (now - start) / 700);
+						var eased = 1 - Math.pow(1 - t, 3);
+						el.textContent = Math.round(
+							from + (target - from) * eased,
+						).toLocaleString();
+						if (t < 1) requestAnimationFrame(frame);
+					}
+					requestAnimationFrame(frame);
+				}
 
-					if (!response.ok) {
-						// Try to get error message from response
-						const contentType =
-							response.headers.get("content-type");
-						if (
-							contentType &&
-							contentType.includes("application/json")
-						) {
-							const errorData = await response.json();
-							throw new Error(
-								`HTTP ${response.status}: ${errorData.error || response.statusText}`,
-							);
-						} else if (response.status === 404) {
-							// Response is HTML (404 page), not JSON
-							throw new Error(
-								`API endpoint not found (HTTP ${response.status}). The /api/stats endpoint may not be deployed.`,
-							);
-						} else {
-							// Attempt to extract text error message, fallback to status text
-							let errorText = await response.text();
-							// Sanitize/truncate errorText to avoid exposing raw HTML
-							if (typeof errorText === "string") {
-								errorText = errorText
-									.replace(/<[^>]*>?/gm, "")
-									.substring(0, 200);
+				function json(path, options) {
+					return fetch(API + path, options).then(function (res) {
+						return res.json().then(function (data) {
+							if (!res.ok && !data.error) {
+								throw new Error("Request failed with status " + res.status);
 							}
-							const fallbackMsg =
-								errorText && errorText.trim().length > 0
-									? errorText
-									: response.statusText || "Unknown error";
-							throw new Error(
-								`HTTP ${response.status}: ${fallbackMsg}`,
-							);
-						}
-					}
-
-					const data = await response.json();
-
-					if (data.success) {
-						// Update total views
-						document.getElementById(
-							"global-total-views",
-						).textContent =
-							data.statistics.totalViews.toLocaleString();
-
-						// Update total projects
-						document.getElementById(
-							"global-total-projects",
-						).textContent =
-							data.statistics.totalProjects.toLocaleString();
-
-						// Update unique visitors (hide if analytics disabled)
-						const uniqueVisitorsElement = document.getElementById(
-							"global-unique-visitors",
-						);
-						const uniqueVisitorsContainer =
-							uniqueVisitorsElement.closest(".stat-item");
-
-						if (
-							data.statistics.analyticsEnabled &&
-							data.statistics.uniqueViews !== null
-						) {
-							uniqueVisitorsElement.textContent =
-								data.statistics.uniqueViews.toLocaleString();
-							uniqueVisitorsContainer.style.display = "";
-						} else {
-							uniqueVisitorsContainer.style.display = "none";
-						}
-					}
-				} catch (error) {
-					console.error("Error loading global stats:", error);
-					// Set fallback values on error
-					document.getElementById("global-total-views").textContent =
-						"—";
-					document.getElementById(
-						"global-total-projects",
-					).textContent = "—";
-					document.getElementById(
-						"global-unique-visitors",
-					).textContent = "—";
-				}
-			}
-
-			// Demo Functions
-			async function incrementDemo() {
-				const project = document
-					.getElementById("demo-project")
-					.value.trim();
-				if (!project) {
-					showNotification("Please enter a project name", "error");
-					return;
-				}
-
-				setLoading(true);
-
-				try {
-					const response = await fetch(
-						`${API_BASE}/api/views/${encodeURIComponent(project)}`,
-						{
-							method: "POST",
-						},
-					);
-					const data = await response.json();
-
-					if (data.success) {
-						document.getElementById("demo-views").textContent =
-							data.totalViews;
-						document.getElementById("demo-unique").textContent =
-							data.uniqueViews || "0";
-						document.getElementById("demo-results").style.display =
-							"block";
-						showNotification(
-							`View counted! Total: ${data.totalViews}`,
-							"success",
-						);
-					} else {
-						showNotification(
-							"Error incrementing views",
-							"error",
-						);
-					}
-				} catch (error) {
-					showNotification("Network error", "error");
-				} finally {
-					setLoading(false);
-				}
-			}
-
-			async function getDemoStats() {
-				const project = document
-					.getElementById("demo-project")
-					.value.trim();
-				if (!project) {
-					showNotification("Please enter a project name", "error");
-					return;
-				}
-
-				setLoading(true);
-
-				try {
-					const response = await fetch(
-						`${API_BASE}/api/views/${encodeURIComponent(project)}`,
-					);
-					const data = await response.json();
-
-					if (data.success) {
-						document.getElementById("demo-views").textContent =
-							data.totalViews;
-						document.getElementById("demo-unique").textContent =
-							data.uniqueViews || "0";
-						document.getElementById("demo-results").style.display =
-							"block";
-						showNotification(
-							`Stats loaded for ${project}`,
-							"info",
-						);
-					} else {
-						showNotification("Project not found", "error");
-					}
-				} catch (error) {
-					showNotification("Network error", "error");
-				} finally {
-					setLoading(false);
-				}
-			}
-
-			function updateBadgePreview() {
-				const project = document
-					.getElementById("badge-project")
-					.value.trim();
-				const color = document.getElementById("badge-color").value;
-
-				if (!project) {
-					showNotification("Please enter a project name", "error");
-					return;
-				}
-
-				const styles = ["flat", "flat-square", "for-the-badge"];
-				const previewContainer =
-					document.getElementById("badge-preview");
-
-				const rows = styles
-					.map((style) => {
-						const url = `${API_BASE}/api/views/${encodeURIComponent(project)}/badge?color=${encodeURIComponent(color)}&style=${encodeURIComponent(style)}`;
-						const safeUrl = escapeHtml(url);
-						const previewUrl = safeUrl; // No longer increments by default
-						return `
-						<div style="display:flex;align-items:center;gap:1rem;padding:0.75rem 0;border-bottom:1px solid var(--card-border);">
-							<img src="${previewUrl}" alt="${escapeHtml(style)} badge" style="min-width:80px;" />
-							<span style="flex:1;font-size:0.85rem;font-family:monospace;word-break:break-all;opacity:0.8;">${safeUrl}</span>
-							<button data-copy-url="${url}" class="copy-inline-btn btn-sm" aria-label="Copy Badge URL">
-								<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-							</button>
-						</div>
-					`;
-					})
-					.join("");
-
-				const markdownExample = `
-					<div class="code-block" style="margin-top: 1.5rem;">
-						<span class="comment">// Markdown Example (add &inc=true to auto-track views)</span><br />
-						![Views](${API_BASE}/api/views/${escapeHtml(project)}/badge?color=${escapeHtml(color)}&amp;inc=true)
-					</div>
-				`;
-
-				previewContainer.innerHTML = `<h3>Badge Preview:</h3>${rows}${markdownExample}`;
-				previewContainer.style.display = "block";
-
-				// Wire up copy buttons in the preview
-				previewContainer
-					.querySelectorAll("[data-copy-url]")
-					.forEach((btn) => {
-						btn.addEventListener("click", () => {
-							copyToClipboard(btn.dataset.copyUrl);
-							const originalInner = btn.innerHTML;
-							btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; stroke: var(--success);"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
-							setTimeout(() => {
-								btn.innerHTML = originalInner;
-							}, 2000);
+							return data;
 						});
 					});
-
-				showNotification("Badge updated!", "success");
-			}
-
-			// Admin Functions
-			function showAdminModal() {
-				document.getElementById("admin-modal").classList.add("active");
-			}
-
-			function hideAdminModal() {
-				document
-					.getElementById("admin-modal")
-					.classList.remove("active");
-				document.getElementById("admin-login").style.display = "block";
-				document.getElementById("admin-dashboard").style.display =
-					"none";
-				document.getElementById("admin-password").value = "";
-				// Revert modal sizing back to login mode for next open
-				const modalContent = document.querySelector(
-					"#admin-modal .modal-content",
-				);
-				if (modalContent) {
-					modalContent.classList.remove("modal-wide");
-					modalContent.classList.add("modal-login");
-				}
-			}
-
-			async function adminLogin(event) {
-				if (event) event.preventDefault();
-
-				const password =
-					document.getElementById("admin-password").value;
-				if (!password) {
-					showNotification("Please enter password", "error");
-					return;
 				}
 
-				setLoading(true);
+				/* --- theme -------------------------------------------------- */
 
-				try {
-					const response = await fetch(
-						`${API_BASE}/api/admin/stats`,
-						{
-							method: "POST",
-							headers: {
-								"Content-Type": "application/json",
-							},
-							body: JSON.stringify({ password }),
-						},
+				var toggle = $("theme-toggle");
+				var themeIcon = $("theme-icon");
+
+				function applyTheme(theme) {
+					var light = theme === "light";
+					document.documentElement.setAttribute(
+						"data-theme",
+						light ? "light" : "dark",
 					);
-
-					const data = await response.json();
-
-					if (data.success) {
-						adminPassword = password; // Store for later use
-						// Expand modal from narrow login to dashboard width
-						const modalContent = document.querySelector(
-							"#admin-modal .modal-content",
-						);
-						if (modalContent) {
-							modalContent.classList.remove("modal-login");
-							modalContent.classList.add("modal-wide");
-						}
-						document.getElementById("admin-login").style.display =
-							"none";
-						document.getElementById(
-							"admin-dashboard",
-						).style.display = "block";
-						loadAdminData(data);
-						showNotification("Admin access granted", "success");
-					} else {
-						showNotification("Invalid password", "error");
-					}
-				} catch (error) {
-					showNotification("Authentication failed", "error");
-				} finally {
-					setLoading(false);
+					themeIcon.setAttribute("href", light ? "#i-moon" : "#i-sun");
+					toggle.setAttribute(
+						"aria-label",
+						light ? "Switch to dark theme" : "Switch to light theme",
+					);
 				}
-			}
 
-			function loadAdminData(data) {
-				const stats = data.statistics || {};
-				document.getElementById("admin-requests").textContent =
-					stats.totalViews?.toLocaleString() || "0";
-				document.getElementById("admin-db-ops").textContent =
-					stats.totalProjects || "0";
+				var stored = null;
+				try {
+					stored = localStorage.getItem("viewflare-theme");
+				} catch (error) {
+					/* Private mode, or storage is blocked. The default is fine. */
+				}
+				applyTheme(stored || "dark");
 
-				adminProjectsData = data.projects || [];
-				renderProjectsTable();
-			}
-
-			function renderProjectsTable() {
-				const sorted = [...adminProjectsData].sort((a, b) => {
-					const aVal = a[sortColumn] ?? "";
-					const bVal = b[sortColumn] ?? "";
-					if (typeof aVal === "number" && typeof bVal === "number") {
-						return sortAscending ? aVal - bVal : bVal - aVal;
+				toggle.addEventListener("click", function () {
+					var next =
+						document.documentElement.getAttribute("data-theme") === "light"
+							? "dark"
+							: "light";
+					applyTheme(next);
+					try {
+						localStorage.setItem("viewflare-theme", next);
+					} catch (error) {
+						/* Nothing to persist to. The choice still holds for this page. */
 					}
-					return sortAscending
-						? String(aVal).localeCompare(String(bVal))
-						: String(bVal).localeCompare(String(aVal));
 				});
 
-				const projectsHtml = sorted.length
-					? generateProjectsTable(sorted)
-					: "<p>No projects found. Click 'Add New Project' to get started!</p>";
-				document.getElementById("admin-projects").innerHTML =
-					projectsHtml;
-			}
+				/* --- reveal on scroll --------------------------------------- */
 
-			function sortBy(column) {
-				if (sortColumn === column) {
-					sortAscending = !sortAscending;
-				} else {
-					sortColumn = column;
-					sortAscending = false;
-				}
-				renderProjectsTable();
-			}
-
-			function generateProjectsTable(projects) {
-				if (!projects.length) {
-					return `
-						<p style="text-align: center; color: var(--text-muted); padding: 2rem;">
-							No projects found. Click "Add New Project" to get started!
-						</p>
-					`;
-				}
-
-				let html = `
-					<div style="overflow-x: auto;">
-						<table class="table">
-							<thead>
-								<tr>
-									<th onclick="sortBy('project_name')" style="cursor:pointer;">
-										Project Name ${sortColumn === "project_name" ? (sortAscending ? "↑" : "↓") : "↕"}
-									</th>
-									<th onclick="sortBy('view_count')" style="cursor:pointer;">
-										Views ${sortColumn === "view_count" ? (sortAscending ? "↑" : "↓") : "↕"}
-									</th>
-									<th onclick="sortBy('unique_views')" style="cursor:pointer;">
-										Unique ${sortColumn === "unique_views" ? (sortAscending ? "↑" : "↓") : "↕"}
-									</th>
-									<th>Description</th>
-									<th onclick="sortBy('updated_at')" style="cursor:pointer;">
-										Updated ${sortColumn === "updated_at" ? (sortAscending ? "↑" : "↓") : "↕"}
-									</th>
-									<th style="text-align: center;">Actions</th>
-								</tr>
-							</thead>
-							<tbody>
-				`;
-
-				projects.forEach((project, index) => {
-					const projectName =
-						project.project_name || project.name || "—";
-					const views = project.view_count || project.totalViews || 0;
-					const unique =
-						project.unique_views || project.uniqueViews || 0;
-					const description = project.description || "—";
-					const updated = project.updated_at
-						? new Date(project.updated_at).toLocaleDateString()
-						: "—";
-
-					const safeProjectName = escapeHtml(projectName);
-					const safeDescription = escapeHtml(description);
-					const safeUpdated = escapeHtml(updated);
-
-					html += `
-						<tr>
-							<td><strong>${safeProjectName}</strong></td>
-							<td>${views.toLocaleString()}</td>
-							<td>${unique.toLocaleString()}</td>
-							<td>${safeDescription}</td>
-							<td>${safeUpdated}</td>
-							<td style="text-align: center; white-space: nowrap;">
-								<button
-									data-action="badge"
-									data-project="${safeProjectName}"
-									class="btn btn-secondary"
-									style="padding: 0.25rem 0.5rem; font-size: 0.85rem; margin: 0 0.25rem;"
-									aria-label="Get Badge and Links" title="Get Badge &amp; Links"><svg class="ico" aria-hidden="true"><use href="#i-palette" /></svg></button>
-								<button
-									data-action="installs"
-									data-project="${safeProjectName}"
-									data-row="${index}"
-									class="btn btn-secondary"
-									style="padding: 0.25rem 0.5rem; font-size: 0.85rem; margin: 0 0.25rem;"
-									aria-label="Install counts" title="Install counts"><svg class="ico" aria-hidden="true"><use href="#i-package" /></svg></button>
-								<button
-									data-action="edit"
-									data-project="${safeProjectName}"
-									data-views="${Number(views)}"
-									data-unique="${Number(unique)}"
-									data-description="${safeDescription}"
-									class="btn btn-secondary"
-									style="padding: 0.25rem 0.5rem; font-size: 0.85rem; margin: 0 0.25rem;"
-									aria-label="Edit Project" title="Edit Project"><svg class="ico" aria-hidden="true"><use href="#i-pencil" /></svg></button>
-								<button
-									data-action="increment"
-									data-project="${safeProjectName}"
-									class="btn btn-secondary"
-									style="padding: 0.25rem 0.5rem; font-size: 0.85rem; margin: 0 0.25rem;"
-									aria-label="Add View Count" title="Add View Count"><svg class="ico" aria-hidden="true"><use href="#i-plus" /></svg></button>
-								<button
-									data-action="delete"
-									data-project="${safeProjectName}"
-									class="btn btn-danger btn-secondary"
-									style="padding: 0.25rem 0.5rem; font-size: 0.85rem; margin: 0 0.25rem;"
-									aria-label="Delete Project" title="Delete Project"><svg class="ico" aria-hidden="true"><use href="#i-trash" /></svg></button>
-							</td>
-						</tr>
-						<tr id="installs-row-${index}" hidden>
-							<td colspan="6" style="padding: 0;"></td>
-						</tr>
-					`;
-				});
-
-				html += `
-							</tbody>
-						</table>
-					</div>
-				`;
-
-				return html;
-			}
-
-			// Project Management Functions
-			function showAddProjectModal() {
-				currentEditProject = null;
-				document.getElementById("project-modal-title").textContent =
-					"Add New Project";
-				const nameInput = document.getElementById("project-name");
-				nameInput.value = "";
-				nameInput.disabled = false;
-				nameInput.dataset.originalName = "";
-				document.getElementById("project-description").value = "";
-				document.getElementById("project-views").value = "0";
-				document.getElementById("project-views").disabled = false;
-				document.getElementById("project-unique").value = "0";
-				document.getElementById("project-unique").disabled = false;
-				document.getElementById("save-project-btn").textContent =
-					"Save Project";
-				document
-					.getElementById("project-modal")
-					.classList.add("active");
-			}
-
-			function hideProjectModal() {
-				document
-					.getElementById("project-modal")
-					.classList.remove("active");
-				currentEditProject = null;
-			}
-
-			function editProject(name, views, unique, description) {
-				currentEditProject = name;
-				document.getElementById("project-modal-title").textContent =
-					"Edit Project";
-				const nameInput = document.getElementById("project-name");
-				nameInput.value = name;
-				nameInput.disabled = false;
-				nameInput.dataset.originalName = name;
-				document.getElementById("project-description").value =
-					description === "—" ? "" : description;
-				document.getElementById("project-views").value = views;
-				document.getElementById("project-views").disabled = false;
-				document.getElementById("project-unique").value = unique;
-				document.getElementById("project-unique").disabled = false;
-				document.getElementById("save-project-btn").textContent =
-					"Update Project";
-				document
-					.getElementById("project-modal")
-					.classList.add("active");
-			}
-
-			async function saveProject() {
-				const nameInput = document.getElementById("project-name");
-				const name = nameInput.value.trim();
-				const description = document
-					.getElementById("project-description")
-					.value.trim();
-				const views =
-					parseInt(document.getElementById("project-views").value) ||
-					0;
-				const unique =
-					parseInt(document.getElementById("project-unique").value) ||
-					0;
-
-				if (!name) {
-					showNotification("Project name is required", "error");
-					return;
-				}
-
-				if (!/^[a-zA-Z0-9-_]+$/.test(name)) {
-					showNotification("Invalid project name format", "error");
-					return;
-				}
-
-				setLoading(true);
-
-				try {
-					if (currentEditProject) {
-						const originalName =
-							nameInput.dataset.originalName ||
-							currentEditProject;
-						const body = {
-							password: adminPassword,
-							description: description || null,
-							viewCount: views,
-							uniqueViews: unique,
-						};
-						if (name !== originalName) body.newName = name;
-
-						const response = await fetch(
-							`${API_BASE}/api/admin/projects/${encodeURIComponent(originalName)}`,
-							{
-								method: "PUT",
-								headers: { "Content-Type": "application/json" },
-								body: JSON.stringify(body),
-							},
-						);
-						const data = await response.json();
-
-						if (data.success) {
-							showNotification(
-								`Project "${name}" updated!`,
-								"success",
-							);
-							hideProjectModal();
-							refreshAdminData();
-						} else {
-							showNotification(
-								`${data.error || "Failed to update project"}`,
-								"error",
-							);
-						}
-					} else {
-						const response = await fetch(
-							`${API_BASE}/api/views/${encodeURIComponent(name)}`,
-							{ method: "POST" },
-						);
-
-						const data = await response.json();
-
-						if (data.success) {
-							showNotification(
-								`Project "${name}" created!`,
-								"success",
-							);
-							hideProjectModal();
-							refreshAdminData();
-						} else {
-							showNotification(
-								"Failed to create project",
-								"error",
-							);
-						}
-					}
-				} catch (error) {
-					showNotification("Error saving project", "error");
-				} finally {
-					setLoading(false);
-				}
-			}
-
-			async function incrementProjectViews(projectName) {
-				if (!confirm(`Add 1 view to "${projectName}"?`)) return;
-
-				setLoading(true);
-				try {
-					const response = await fetch(
-						`${API_BASE}/api/views/${encodeURIComponent(
-							projectName,
-						)}`,
-						{
-							method: "POST",
+				if (!reduced && "IntersectionObserver" in window) {
+					var observer = new IntersectionObserver(
+						function (entries) {
+							entries.forEach(function (entry) {
+								if (!entry.isIntersecting) return;
+								entry.target.classList.add("in");
+								observer.unobserve(entry.target);
+							});
 						},
+						{ rootMargin: "0px 0px -8% 0px" },
 					);
-
-					const data = await response.json();
-
-					if (data.success) {
-						showNotification(
-							`View added! Total: ${data.totalViews}`,
-							"success",
-						);
-						refreshAdminData();
-					} else {
-						showNotification(
-							"Failed to increment views",
-							"error",
-						);
-					}
-				} catch (error) {
-					showNotification("Error incrementing views", "error");
-				} finally {
-					setLoading(false);
-				}
-			}
-
-			async function deleteProject(projectName) {
-				if (
-					!confirm(
-						`Are you sure you want to delete "${projectName}"?\n\nThis will permanently remove all view data for this project.`,
-					)
-				) {
-					return;
-				}
-
-				setLoading(true);
-				try {
-					const response = await fetch(
-						`${API_BASE}/api/views/${encodeURIComponent(
-							projectName,
-						)}`,
-						{
-							method: "DELETE",
-							headers: {
-								"Content-Type": "application/json",
-								Authorization: `Bearer ${adminPassword}`,
-							},
-						},
-					);
-
-					const data = await response.json();
-
-					if (data.success) {
-						showNotification(
-							`Project "${projectName}" deleted successfully`,
-							"success",
-						);
-						// Refresh the admin data to reflect changes
-						await refreshAdminData();
-					} else {
-						showNotification(
-							`Failed to delete project: ${
-								data.error || "Unknown error"
-							}`,
-							"error",
-						);
-					}
-				} catch (error) {
-					console.error("Delete project error:", error);
-					showNotification("Error deleting project", "error");
-				} finally {
-					setLoading(false);
-				}
-			}
-
-			async function refreshAdminData() {
-				setLoading(true);
-				try {
-					const response = await fetch(
-						`${API_BASE}/api/admin/stats`,
-						{
-							method: "POST",
-							headers: {
-								"Content-Type": "application/json",
-							},
-							body: JSON.stringify({ password: adminPassword }),
-						},
-					);
-
-					const data = await response.json();
-
-					if (data.success) {
-						loadAdminData(data);
-						showNotification("Data refreshed", "success");
-					} else {
-						showNotification("Failed to refresh data", "error");
-					}
-				} catch (error) {
-					showNotification("Error refreshing data", "error");
-				} finally {
-					setLoading(false);
-				}
-			}
-
-			// Badge & Links Functions
-			function showBadgeLinks(projectName) {
-				const baseUrl = API_BASE;
-				const encodedProject = encodeURIComponent(projectName);
-
-				const content = `
-					<div style="margin-bottom: 1.5rem;">
-						<h3 style="margin-top: 0;">API Endpoints</h3>
-						<div class="code-block" style="background: var(--space-2); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
-							<div style="margin-bottom: 0.5rem;">
-								<strong>Track View (POST):</strong><br>
-								<code style="color: var(--ion);">${baseUrl}/api/views/${encodedProject}</code>
-								<button onclick="copyUrlBtn(this, '${baseUrl}/api/views/${encodedProject}')" class="copy-inline-btn" style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.75rem;">
-									<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy
-								</button>
-							</div>
-							<div style="margin-bottom: 0.5rem;">
-								<strong>Get Stats (GET):</strong><br>
-								<code style="color: var(--ion);">${baseUrl}/api/views/${encodedProject}</code>
-								<button onclick="copyUrlBtn(this, '${baseUrl}/api/views/${encodedProject}')" class="copy-inline-btn" style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.75rem;">
-									<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy
-								</button>
-							</div>
-							<div style="margin-bottom: 0.5rem;">
-								<strong>Install Badge (SVG):</strong><br>
-								<code style="color: var(--ion);">${baseUrl}/api/installs/${encodedProject}/badge</code>
-								<button onclick="copyUrlBtn(this, '${baseUrl}/api/installs/${encodedProject}/badge')" class="copy-inline-btn" style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.75rem;">
-									<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy
-								</button>
-							</div>
-							<div style="margin-bottom: 0.5rem;">
-								<strong>Install Badge (shields.io endpoint):</strong><br>
-								<code style="color: var(--ion);">${baseUrl}/api/installs/${encodedProject}/shields.json</code>
-								<button onclick="copyUrlBtn(this, '${baseUrl}/api/installs/${encodedProject}/shields.json')" class="copy-inline-btn" style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.75rem;">
-									<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy
-								</button>
-							</div>
-						</div>
-
-						<h3>Badge Variations</h3>
-						<div style="display: grid; gap: 1rem;">
-							${generateBadgeVariation(projectName, "blue", "views")}
-							${generateBadgeVariation(projectName, "brightgreen", "views")}
-							${generateBadgeVariation(projectName, "green", "visitors")}
-							${generateBadgeVariation(projectName, "orange", "hits")}
-							${generateBadgeVariation(projectName, "red", "downloads")}
-							${generateBadgeVariation(projectName, "purple", "counter")}
-						</div>
-
-						<h3 style="margin-top: 1.5rem;">Markdown Examples</h3>
-						<div class="code-block" style="background: var(--space-2); padding: 1rem; border-radius: 8px;">
-							<strong>README.md Badge:</strong><br>
-							<code>![Views](${baseUrl}/api/views/${encodedProject}/badge)</code>
-							<button onclick="copyUrlBtn(this, '![Views](${baseUrl}/api/views/${encodedProject}/badge)')" class="copy-inline-btn" style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.75rem;">
-								<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy
-							</button>
-							<br><br>
-							<strong>With Link:</strong><br>
-							<code>[![Views](${baseUrl}/api/views/${encodedProject}/badge)](${baseUrl})</code>
-							<button onclick="copyUrlBtn(this, '[![Views](${baseUrl}/api/views/${encodedProject}/badge)](${baseUrl})')" class="copy-inline-btn" style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.75rem;">
-								<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy
-							</button>
-						</div>
-
-						<h3 style="margin-top: 1.5rem;">HTML Examples</h3>
-						<div class="code-block" style="background: var(--space-2); padding: 1rem; border-radius: 8px;">
-							<strong>Simple Image:</strong><br>
-							<code>&lt;img src="${baseUrl}/api/views/${encodedProject}/badge" alt="Views"&gt;</code>
-							<button onclick="copyUrlBtn(this, '<img src=&quot;${baseUrl}/api/views/${encodedProject}/badge&quot; alt=&quot;Views&quot;>')" class="copy-inline-btn" style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.75rem;">
-								<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy
-							</button>
-							<br><br>
-							<strong>With Link:</strong><br>
-							<code>&lt;a href="${baseUrl}"&gt;&lt;img src="${baseUrl}/api/views/${encodedProject}/badge" alt="Views"&gt;&lt;/a&gt;</code>
-							<button onclick="copyUrlBtn(this, '<a href=&quot;${baseUrl}&quot;><img src=&quot;${baseUrl}/api/views/${encodedProject}/badge&quot; alt=&quot;Views&quot;></a>')" class="copy-inline-btn" style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.75rem;">
-								<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy
-							</button>
-						</div>
-					</div>
-				`;
-
-				document.getElementById("badge-links-content").innerHTML =
-					content;
-				setupCodeBlockCopyButtons(
-					document.getElementById("badge-links-content"),
-				);
-				document.getElementById("badge-modal").classList.add("active");
-			}
-
-			function generateBadgeVariation(projectName, color, label) {
-				const baseUrl = API_BASE;
-				const encodedProject = encodeURIComponent(projectName);
-				const badgeUrl = `${baseUrl}/api/views/${encodedProject}/badge?color=${color}&label=${label}`;
-
-				return `
-					<div style="background: var(--space-2); padding: 1rem; border-radius: 8px;">
-						<div style="margin-bottom: 0.5rem;">
-							<img src="${badgeUrl}" alt="${label} badge" style="vertical-align: middle;">
-							<span style="margin-left: 0.5rem; color: var(--text-muted);">color=${color}, label=${label}</span>
-						</div>
-						<div style="display: flex; gap: 0.5rem;">
-							<input type="text" value="${badgeUrl}" readonly
-								style="flex: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; font-size: 0.85rem; font-family: monospace;">
-							<button onclick="copyUrlBtn(this, '${badgeUrl}')" class="copy-inline-btn" style="padding: 0.5rem 1rem;">
-								<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy
-							</button>
-						</div>
-					</div>
-				`;
-			}
-
-			function hideBadgeModal() {
-				document
-					.getElementById("badge-modal")
-					.classList.remove("active");
-			}
-
-			function copyToClipboard(text) {
-				navigator.clipboard
-					.writeText(text)
-					.then(() => {
-						showNotification("Copied to clipboard!", "success");
-					})
-					.catch(() => {
-						showNotification("Failed to copy", "error");
+					document.querySelectorAll(".reveal").forEach(function (el) {
+						observer.observe(el);
 					});
-			}
+				} else {
+					document.querySelectorAll(".reveal").forEach(function (el) {
+						el.classList.add("in");
+					});
+				}
 
-			async function clearCache() {
-				// Note: /api/admin/cache endpoint not implemented
-				showNotification(
-					"Cache clearing not yet implemented",
-					"warning",
-				);
-				return;
+				/* --- copy buttons ------------------------------------------- */
 
-				/* Disabled until endpoint is implemented
-				if (!confirm("Are you sure you want to clear the cache?"))
-					return;
-
-				try {
-					const response = await fetch(
-						`${API_BASE}/api/admin/cache`,
-						{
-							method: "DELETE",
-							headers: {
-								Authorization: `Bearer ${
-									document.getElementById("admin-password")
-										.value
-								}`,
+				document.querySelectorAll(".code[data-copy]").forEach(function (block) {
+					// Read the snippet before the button is appended, otherwise the
+					// button's own label ends up on the clipboard.
+					var text = block.textContent.trim();
+					var button = document.createElement("button");
+					button.className = "copy-btn";
+					button.type = "button";
+					button.innerHTML =
+						'<svg class="ico" aria-hidden="true"><use href="#i-copy" /></svg>Copy';
+					button.addEventListener("click", function () {
+						navigator.clipboard.writeText(text).then(
+							function () {
+								button.lastChild.textContent = "Copied";
+								setTimeout(function () {
+									button.lastChild.textContent = "Copy";
+								}, 2000);
 							},
-						}
-					);
-
-					if (response.ok) {
-						showNotification(
-							"Cache cleared successfully",
-							"success"
-						);
-					} else {
-						showNotification("Failed to clear cache", "error");
-					}
-				} catch (error) {
-					showNotification("Error clearing cache", "error");
-				}
-				*/
-			}
-
-			async function exportData() {
-				// Note: /api/admin/export endpoint not implemented
-				showNotification(
-					"Data export not yet implemented",
-					"warning",
-				);
-				return;
-
-				/* Disabled until endpoint is implemented
-				try {
-					const response = await fetch(
-						`${API_BASE}/api/admin/export`,
-						{
-							headers: {
-								Authorization: `Bearer ${
-									document.getElementById("admin-password")
-										.value
-								}`,
+							function () {
+								toast("The browser refused clipboard access", "error");
 							},
+						);
+					});
+					block.appendChild(button);
+				});
+
+				/* --- health ------------------------------------------------- */
+
+				json("/health")
+					.then(function (data) {
+						$("health-dot").className = "dot " + (data.status ? "ok" : "bad");
+						$("health-text").textContent =
+							window.location.host + " responding";
+					})
+					.catch(function () {
+						$("health-dot").className = "dot bad";
+						$("health-text").textContent = "This instance is not responding";
+					});
+
+				/* --- live totals -------------------------------------------- */
+
+				json("/api/stats")
+					.then(function (data) {
+						if (!data.success) return;
+						show($("s-views"), data.statistics.totalViews);
+						show($("s-projects"), data.statistics.totalProjects);
+						if (
+							data.statistics.analyticsEnabled &&
+							typeof data.statistics.uniqueViews === "number"
+						) {
+							$("s-unique-wrap").hidden = false;
+							show($("s-unique"), data.statistics.uniqueViews);
 						}
+					})
+					.catch(function () {
+						/* The markup already reads unavailable. Leave it saying so. */
+					});
+
+				/* --- the demo ----------------------------------------------- */
+
+				var lastCount = 0;
+
+				function project() {
+					var value = $("demo-project").value.trim();
+					if (!value) toast("Give the project a name first", "error");
+					return value;
+				}
+
+				function paint(data) {
+					$("demo-result").hidden = false;
+					show(
+						$("demo-total"),
+						typeof data.totalViews === "number" ? data.totalViews : null,
 					);
-
-					if (response.ok) {
-						const blob = await response.blob();
-						const url = window.URL.createObjectURL(blob);
-						const a = document.createElement("a");
-						a.href = url;
-						a.download = `viewflare-export-${
-							new Date().toISOString().split("T")[0]
-						}.json`;
-						a.click();
-						window.URL.revokeObjectURL(url);
-						showNotification(
-							"Data exported successfully",
-							"success"
-						);
-					} else {
-						showNotification("Failed to export data", "error");
-					}
-				} catch (error) {
-					showNotification("Error exporting data", "error");
+					show(
+						$("demo-unique"),
+						typeof data.uniqueViews === "number" ? data.uniqueViews : null,
+					);
+					paintBadges($("demo-project").value.trim());
 				}
-				*/
-			}
 
-			// Utility Functions
-			function showNotification(message, type = "info") {
-				const notification = document.getElementById("notification");
-				notification.textContent = message;
-				notification.className = `notification ${type}`;
-				notification.style.display = "block";
-
-				setTimeout(() => {
-					notification.style.display = "none";
-				}, 4000);
-			}
-
-			function setLoading(isLoading) {
-				const buttons = document.querySelectorAll(".btn");
-				buttons.forEach((btn) => {
-					if (isLoading) {
-						btn.classList.add("loading");
-						if (!btn.innerHTML.includes("spinner")) {
-							btn.innerHTML =
-								'<span class="spinner"></span>' + btn.innerHTML;
-						}
-					} else {
-						btn.classList.remove("loading");
-						btn.innerHTML = btn.innerHTML.replace(
-							'<span class="spinner"></span>',
-							"",
-						);
-					}
-				});
-			}
-
-			// Keyboard shortcuts
-			document.addEventListener("keydown", function (e) {
-				if (e.key === "Escape") {
-					hideAdminModal();
-					hideProjectModal();
-					hideBadgeModal();
+				function paintBadges(name) {
+					var strip = $("badge-strip");
+					strip.textContent = "";
+					["flat", "flat-square", "for-the-badge"].forEach(function (style) {
+						var img = document.createElement("img");
+						img.src =
+							API +
+							"/api/views/" +
+							encodeURIComponent(name) +
+							"/badge?style=" +
+							style;
+						img.alt = style + " badge for " + name;
+						img.loading = "lazy";
+						strip.appendChild(img);
+					});
 				}
-			});
 
-			// Click outside modals to close
-			document
-				.getElementById("admin-modal")
-				.addEventListener("click", function (e) {
-					if (e.target === this) {
-						hideAdminModal();
+				$("btn-count").addEventListener("click", function (event) {
+					var name = project();
+					if (!name) return;
+
+					// A small client-side gap. It does not replace the per-IP rate
+					// limit on the route, it just stops an impatient double click
+					// from spending two of them.
+					if (Date.now() - lastCount < 1500) {
+						toast("Give it a second", "info");
+						return;
 					}
+					lastCount = Date.now();
+
+					var button = event.currentTarget;
+					busy(button, true);
+					json("/api/views/" + encodeURIComponent(name), { method: "POST" })
+						.then(function (data) {
+							if (!data.success) throw new Error(data.error || "Failed");
+							paint(data);
+							toast("Counted. " + name + " is at " + data.totalViews, "success");
+						})
+						.catch(function (error) {
+							toast(error.message, "error");
+						})
+						.finally(function () {
+							busy(button, false);
+						});
 				});
 
-			document
-				.getElementById("project-modal")
-				.addEventListener("click", function (e) {
-					if (e.target === this) {
-						hideProjectModal();
-					}
+				$("btn-read").addEventListener("click", function (event) {
+					var name = project();
+					if (!name) return;
+					var button = event.currentTarget;
+					busy(button, true);
+					json("/api/views/" + encodeURIComponent(name))
+						.then(function (data) {
+							if (!data.success) throw new Error(data.error || "Not found");
+							paint(data);
+						})
+						.catch(function (error) {
+							toast(error.message, "error");
+						})
+						.finally(function () {
+							busy(button, false);
+						});
 				});
 
-			document
-				.getElementById("badge-modal")
-				.addEventListener("click", function (e) {
-					if (e.target === this) {
-						hideBadgeModal();
+				/* --- compute ------------------------------------------------ */
+
+				$("btn-compute").addEventListener("click", function (event) {
+					var name = project();
+					if (!name) return;
+					var expr = $("expr").value.trim();
+					if (!expr) {
+						toast("Type an expression first", "error");
+						return;
 					}
+
+					var button = event.currentTarget;
+					busy(button, true);
+					json(
+						"/api/compute/" +
+							encodeURIComponent(name) +
+							"?expr=" +
+							encodeURIComponent(expr),
+					)
+						.then(function (data) {
+							$("compute-result").hidden = false;
+							$("compute-label").textContent = expr;
+							if (data.unavailable || typeof data.value !== "number") {
+								$("compute-value").textContent = "unavailable";
+								toast(data.reason || data.error || "No value", "info");
+								return;
+							}
+							show($("compute-value"), data.value);
+						})
+						.catch(function (error) {
+							toast(error.message, "error");
+						})
+						.finally(function () {
+							busy(button, false);
+						});
 				});
+			})();
 		</script>
 	</body>
 </html>

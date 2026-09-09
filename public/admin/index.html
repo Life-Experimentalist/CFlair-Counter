@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="robots" content="noindex, nofollow" />
+		<meta name="darkreader-lock" />
+		<title>Console - ViewFlare</title>
+
+		<link rel="icon" type="image/png" href="/logo.png" />
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			rel="stylesheet"
+			href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+		/>
+		<link rel="stylesheet" href="/viewflare.css" />
+		<style>
+			.console-shell {
+				max-width: 1180px;
+				margin: 0 auto;
+				padding: 2.5rem 2rem 4rem;
+			}
+
+			.login-card {
+				max-width: 24rem;
+				margin: 4rem auto;
+			}
+
+			.console-head {
+				display: flex;
+				flex-wrap: wrap;
+				align-items: center;
+				justify-content: space-between;
+				gap: 1rem;
+				margin-bottom: 1.75rem;
+			}
+
+			.console-actions {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.6rem;
+			}
+
+			.row-actions {
+				display: flex;
+				gap: 0.3rem;
+				justify-content: flex-end;
+			}
+
+			.row-actions .btn {
+				min-height: 34px;
+				min-width: 34px;
+				padding: 0.35rem 0.5rem;
+			}
+
+			.table-toolbar {
+				display: flex;
+				flex-wrap: wrap;
+				align-items: center;
+				gap: 0.75rem;
+				margin-bottom: 1rem;
+			}
+
+			.table-toolbar input[type="text"] {
+				max-width: 18rem;
+			}
+
+			/* The sort control is a real button so it can be tabbed to and
+			   pressed with the keyboard. It inherits the header cell's look. */
+			.th-sort {
+				display: inline-flex;
+				align-items: center;
+				gap: 0.35rem;
+				background: none;
+				border: 0;
+				padding: 0;
+				font: inherit;
+				color: inherit;
+				letter-spacing: inherit;
+				text-transform: inherit;
+				cursor: pointer;
+			}
+
+			.th-sort:hover {
+				color: var(--text);
+			}
+
+			th[aria-sort="ascending"] .th-sort::after {
+				content: "91";
+			}
+
+			th[aria-sort="descending"] .th-sort::after {
+				content: "93";
+			}
+
+			.empty {
+				padding: 2.5rem 1rem;
+				text-align: center;
+				color: var(--text-muted);
+			}
+
+			@media (max-width: 760px) {
+				.console-shell {
+					padding: 1.75rem 1.15rem 3rem;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<a class="skip-link" href="#app">Skip to content</a>
+
+		<!-- Icons used by the console. Defined once, referenced with <use>. -->
+		<svg
+			aria-hidden="true"
+			focusable="false"
+			style="position: absolute; width: 0; height: 0"
+		>
+			<defs>
+				<symbol id="i-lock" viewBox="0 0 24 24">
+					<rect x="4" y="10.5" width="16" height="10.5" rx="2" />
+					<path d="M7.8 10.5V7a4.2 4.2 0 0 1 8.4 0v3.5" />
+				</symbol>
+				<symbol id="i-home" viewBox="0 0 24 24">
+					<path d="M3 10.4 12 3l9 7.4" />
+					<path d="M5.5 9.2V21h13V9.2" />
+				</symbol>
+				<symbol id="i-refresh" viewBox="0 0 24 24">
+					<path d="M20.5 12a8.5 8.5 0 1 1-2.5-6" />
+					<path d="M20.5 3.5V9H15" />
+				</symbol>
+				<symbol id="i-plus" viewBox="0 0 24 24">
+					<path d="M12 4.6v14.8M4.6 12h14.8" />
+				</symbol>
+				<symbol id="i-pencil" viewBox="0 0 24 24">
+					<path
+						d="M16.4 3.4a2.3 2.3 0 0 1 3.2 3.2L8 18.2l-4.2 1.2 1.2-4.2z"
+					/>
+				</symbol>
+				<symbol id="i-trash" viewBox="0 0 24 24">
+					<path d="M4 6.4h16M9.4 6.4V4.2h5.2v2.2" />
+					<path d="M6.2 6.4 7 20.2h10l.8-13.8" />
+				</symbol>
+				<symbol id="i-tag" viewBox="0 0 24 24">
+					<path d="M3 12.5V4a1 1 0 0 1 1-1h8.5L21 11.5 12.5 20 3 12.5z" />
+					<circle cx="7.6" cy="7.6" r="1.4" />
+				</symbol>
+				<symbol id="i-package" viewBox="0 0 24 24">
+					<path d="M20.5 7.7 12 3 3.5 7.7v8.6L12 21l8.5-4.7z" />
+					<path d="m3.7 7.8 8.3 4.5 8.3-4.5M12 12.3V21" />
+				</symbol>
+				<symbol id="i-camera" viewBox="0 0 24 24">
+					<path
+						d="M3 8.5h3.4L8 6h8l1.6 2.5H21v11H3z"
+					/>
+					<circle cx="12" cy="13.7" r="3.6" />
+				</symbol>
+				<symbol id="i-exit" viewBox="0 0 24 24">
+					<path d="M9.5 3.5H5a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 5 20.5h4.5" />
+					<path d="M15 16.5 19.5 12 15 7.5M19.5 12H9" />
+				</symbol>
+				<symbol id="i-copy" viewBox="0 0 24 24">
+					<rect x="8.5" y="8.5" width="12" height="12" rx="2" />
+					<path
+						d="M4.5 15.5A2 2 0 0 1 3.5 13.6V5.5a2 2 0 0 1 2-2h8.1a2 2 0 0 1 1.9 1.4"
+					/>
+				</symbol>
+			</defs>
+		</svg>
+
+		<header class="navbar">
+			<div class="nav-container">
+				<a class="nav-brand" href="/">
+					<svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+						<rect
+							x="1"
+							y="1"
+							width="30"
+							height="30"
+							rx="7"
+							fill="#111524"
+							stroke="rgba(150,168,214,0.25)"
+						/>
+						<rect x="8" y="19" width="3.4" height="6" rx="1" fill="#e9edf9" />
+						<rect x="14" y="15" width="3.4" height="10" rx="1" fill="#e9edf9" />
+						<rect x="20" y="11" width="3.4" height="14" rx="1" fill="#e9edf9" />
+						<path
+							d="M21.7 11.5c1.6-1.3 1.2-3.4.3-4.8 2.6 1 4.6 3.4 4.2 5.9-.3 1.7-1.7 2.7-3.2 2.6-1.4-.1-2.4-1.1-2.3-2.4 0-.6.4-1 1-1.3z"
+							fill="#ff9a3c"
+						/>
+					</svg>
+					ViewFlare
+				</a>
+				<nav aria-label="Primary">
+					<ul class="nav-links">
+						<li>
+							<a class="nav-link" href="/">
+								<svg class="ico" aria-hidden="true">
+									<use href="#i-home" />
+								</svg>
+								<span>Site</span>
+							</a>
+						</li>
+						<li>
+							<a class="nav-link" aria-current="page" href="/admin/">
+								<svg class="ico" aria-hidden="true">
+									<use href="#i-lock" />
+								</svg>
+								<span>Console</span>
+							</a>
+						</li>
+					</ul>
+				</nav>
+			</div>
+		</header>
+
+		<!--
+			Everything below #app is drawn by console.js after the server has
+			accepted a password. The shipped HTML carries the sign-in form and
+			nothing else: no project names, no counts, no admin controls. A
+			crawler, a "view source", or anyone who never signs in sees a login
+			box. That keeps the console out of the landing page and out of search
+			results, but console.js itself is a public file like any other, so
+			treat this as tidiness rather than a security boundary. The boundary
+			is the password check the Worker runs on every admin route.
+		-->
+		<main class="console-shell" id="app">
+			<form class="card login-card" id="login-form">
+				<h1 class="section-title" style="font-size: 1.3rem">Console</h1>
+				<p class="section-lede" style="margin-bottom: 1.25rem">
+					Sign in with the admin password set for this instance.
+				</p>
+				<div class="field">
+					<label for="password">Admin password</label>
+					<input
+						type="password"
+						id="password"
+						name="password"
+						autocomplete="current-password"
+						required
+					/>
+				</div>
+				<p
+					class="hint"
+					id="login-error"
+					role="alert"
+					style="color: var(--danger); min-height: 1.2rem"
+				></p>
+				<button class="btn btn-primary" type="submit" style="width: 100%">
+					<svg class="ico" aria-hidden="true"><use href="#i-lock" /></svg>
+					Sign in
+				</button>
+			</form>
+		</main>
+
+		<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+		<script src="/admin/console.js" defer></script>
+	</body>
+</html>
