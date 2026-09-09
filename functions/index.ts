@@ -3318,12 +3318,16 @@ export default {
 		// Handle static files - pass to Cloudflare Pages.
 		// /api/ is always the worker's: /api/installs/x/shields.json ends in
 		// .json but is a route, not an asset.
+		// Extensionless pages have to be listed by name. /admin is one, and
+		// leaving it off the list is a silent 404 rather than an error.
 		if (
 			!url.pathname.startsWith("/api/") &&
 			(url.pathname === "/" ||
 				url.pathname === "/index.html" ||
+				url.pathname === "/admin" ||
+				url.pathname === "/admin/" ||
 				url.pathname.match(
-					/\.(html|css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|json|webp|txt|yaml)$/i,
+					/\.(html|css|js|mjs|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|json|webp|avif|txt|xml|yaml|webmanifest)$/i,
 				))
 		) {
 			return env.ASSETS.fetch(request);
