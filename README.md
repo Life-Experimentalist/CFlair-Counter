@@ -238,6 +238,7 @@ the frontmatter each one needs.
 | `RATE_LIMIT_REQUESTS` | No                  | `60`    | Requests per window            |
 | `RATE_LIMIT_WINDOW`   | No                  | `60000` | Rate-limit window in ms        |
 | `TRACK_USAGE`         | No                  | `false` | Write a daily row to `usage_stats`. Off because it costs one extra D1 write per view and duplicates the Cloudflare dashboard |
+| `TRACK_BREAKDOWN`     | No                  | `false` | Record country and referring host per day in `view_breakdown`, read back with `history?series=breakdown`. Off because it is a second D1 write per view |
 | `DEBUG`               | No                  | `false` | Verbose debug logging          |
 
 ## Development Commands

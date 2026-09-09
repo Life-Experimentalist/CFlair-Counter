@@ -88,3 +88,18 @@ CREATE TABLE IF NOT EXISTS view_snapshots (
     recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY(day, project_name)
 );
+
+-- Where the views came from, one row per UTC day, project, country and
+-- referring host. Only written when TRACK_BREAKDOWN is "true", because it costs
+-- a second D1 write on every view. "unknown" means the signal was missing
+-- (CF-IPCountry is absent under wrangler pages dev, and a referrer can be
+-- stripped by referrer policy); "none" means no Referer header was sent at all.
+CREATE TABLE IF NOT EXISTS view_breakdown (
+    day TEXT NOT NULL,            -- YYYY-MM-DD, UTC
+    project_name TEXT NOT NULL,
+    country TEXT NOT NULL,        -- ISO 3166-1 alpha-2, or "unknown"
+    referrer_host TEXT NOT NULL,  -- host, "none", or "unknown"
+    view_count INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY(day, project_name, country, referrer_host)
+);
+CREATE INDEX IF NOT EXISTS idx_view_breakdown_project ON view_breakdown(project_name, day);

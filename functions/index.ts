@@ -15,6 +15,7 @@ type Bindings = {
 	RATE_LIMIT_WINDOW?: string;
 	INSTALL_CACHE_TTL?: string;
 	TRACK_USAGE?: string;
+	TRACK_BREAKDOWN?: string;
 	DEBUG?: string;
 };
 
@@ -342,6 +343,33 @@ const runSchemaDdl = async (db: D1Database) => {
 		`,
 			)
 			.run();
+
+		// Where the views came from, one row per day, project, country and
+		// referring host. Only written when TRACK_BREAKDOWN is "true", because
+		// it costs a second D1 write on every view. The two sentinel values are
+		// "unknown" (the signal was not there) and "none" (a referrer was
+		// genuinely absent); the read route turns "unknown" back into null so a
+		// missing value never reads as a real one.
+		await db
+			.prepare(
+				`
+			CREATE TABLE IF NOT EXISTS view_breakdown (
+				day TEXT NOT NULL,            -- YYYY-MM-DD, UTC
+				project_name TEXT NOT NULL,
+				country TEXT NOT NULL,        -- ISO 3166-1 alpha-2, or "unknown"
+				referrer_host TEXT NOT NULL,  -- host, "none", or "unknown"
+				view_count INTEGER NOT NULL DEFAULT 0,
+				PRIMARY KEY(day, project_name, country, referrer_host)
+			)
+		`,
+			)
+			.run();
+
+		await db
+			.prepare(
+				"CREATE INDEX IF NOT EXISTS idx_view_breakdown_project ON view_breakdown(project_name, day)",
+			)
+			.run();
 	} catch (error) {
 		console.error("Database initialization error:", error);
 	}
@@ -624,6 +652,25 @@ app.post("/api/views/:projectName", customRateLimiter, async (c) => {
 				"UPDATE project_views SET unique_views = ? WHERE project_name = ?",
 			)
 				.bind(uniqueViews, projectName)
+				.run();
+		}
+
+		// Optional: remember where the view came from. Off by default because
+		// it is a second write on every single view.
+		if (c.env.TRACK_BREAKDOWN === "true") {
+			await c.env.DB.prepare(
+				`
+				INSERT INTO view_breakdown (day, project_name, country, referrer_host, view_count)
+				VALUES (DATE('now'), ?, ?, ?, 1)
+				ON CONFLICT(day, project_name, country, referrer_host) DO UPDATE SET
+					view_count = view_count + 1
+			`,
+			)
+				.bind(
+					projectName,
+					readCountry(c.req.raw),
+					readReferrerHost(c.req.raw),
+				)
 				.run();
 		}
 
@@ -1443,6 +1490,49 @@ app.get("/api/views/:projectName/history", edgeCache(300), async (c) => {
 			})
 		}
 
+		// series=breakdown reads view_breakdown, which only has rows if the
+		// instance runs with TRACK_BREAKDOWN=true. An instance that never
+		// collected this answers with an empty list and enabled: false, so a
+		// caller can tell "nobody visited" apart from "nothing was recorded".
+		if (c.req.query("series") === "breakdown") {
+			const days = parseHistoryDays(c.req.query("days"), 30)
+			const by = c.req.query("by") === "referrer" ? "referrer" : "country"
+			const column = by === "referrer" ? "referrer_host" : "country"
+
+			const breakdownRows = await c.env.DB.prepare(`
+				SELECT ${column} AS key, SUM(view_count) AS views
+				FROM view_breakdown
+				WHERE project_name = ?
+					AND day >= DATE('now', ?)
+				GROUP BY ${column}
+				ORDER BY views DESC
+				LIMIT 100
+			`)
+				.bind(projectName, `-${days} days`)
+				.all()
+
+			const buckets = ((breakdownRows.results || []) as any[]).map((row) => ({
+				// "unknown" means the signal was missing, so it leaves as null
+				// rather than as a value someone might chart as real.
+				key: String(row.key) === "unknown" ? null : String(row.key),
+				views: Number(row.views) || 0,
+			}))
+			const total = buckets.reduce((sum, bucket) => sum + bucket.views, 0)
+
+			c.header("Cache-Control", "public, max-age=900")
+			c.header("Access-Control-Allow-Origin", "*")
+			return c.json({
+				success: true,
+				projectName,
+				series: "breakdown",
+				by,
+				days,
+				enabled: c.env.TRACK_BREAKDOWN === "true",
+				total,
+				buckets,
+			})
+		}
+
 		const rows = await c.env.DB.prepare(`
 			SELECT DATE(last_visit) as date, COUNT(*) as visits
 			FROM visitor_tracking
@@ -1465,6 +1555,26 @@ app.get("/api/views/:projectName/history", edgeCache(300), async (c) => {
 		return c.json({ success: false, error: "Database error" }, 500)
 	}
 })
+
+// Where a view came from. Both readers answer "unknown" rather than guessing:
+// CF-IPCountry is absent under `wrangler pages dev` and on some Cloudflare
+// plans, and a referrer can be stripped by the browser's referrer policy.
+const readCountry = (request: Request): string => {
+	const raw = (request.headers.get("CF-IPCountry") || "").toUpperCase();
+	// T1 is Cloudflare's code for a Tor exit, XX for "could not determine".
+	if (!/^[A-Z]{2}$/.test(raw) || raw === "XX" || raw === "T1") return "unknown";
+	return raw;
+};
+
+const readReferrerHost = (request: Request): string => {
+	const referer = request.headers.get("Referer");
+	if (!referer) return "none";
+	try {
+		return new URL(referer).hostname.toLowerCase() || "unknown";
+	} catch {
+		return "unknown";
+	}
+};
 
 // Usage tracking helper
 // One extra D1 write per tracked view, duplicating numbers the Cloudflare

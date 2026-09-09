@@ -269,9 +269,16 @@ paths:
         in: query
         description: |
           `snapshots` reads the daily rows written by the snapshot endpoint.
-          The default is the visitor-derived series this endpoint has always
-          returned.
-        schema: { type: string, enum: [visitors, snapshots] }
+          `breakdown` groups views by country or referring host, and only has
+          rows when the instance runs with TRACK_BREAKDOWN=true. The default is
+          the visitor-derived series this endpoint has always returned.
+        schema: { type: string, enum: [visitors, snapshots, breakdown] }
+      - name: by
+        in: query
+        description: |
+          Only read when `series=breakdown`. Anything other than `referrer` is
+          treated as `country`.
+        schema: { type: string, enum: [country, referrer], default: country }
       - $ref: "#/components/parameters/Days"
       - $ref: "#/components/parameters/Bucket"
     get:
@@ -280,20 +287,49 @@ paths:
       operationId: viewsHistory
       responses:
         "200":
-          description: A dated series.
+          description: A dated series, or a grouped breakdown.
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  success: { type: boolean }
-                  projectName: { type: string }
-                  series: { type: string }
-                  history:
-                    type: array
-                    items:
-                      type: object
-                      additionalProperties: true
+                oneOf:
+                  - type: object
+                    required: [series]
+                    properties:
+                      success: { type: boolean }
+                      projectName: { type: string }
+                      series: { type: string, enum: [visitors, snapshots] }
+                      history:
+                        type: array
+                        items:
+                          type: object
+                          additionalProperties: true
+                  - type: object
+                    description: |
+                      series=breakdown. `enabled` is false when the instance is
+                      not recording this, which an empty `buckets` alone does
+                      not tell you.
+                    required: [series]
+                    properties:
+                      success: { type: boolean }
+                      projectName: { type: string }
+                      series: { type: string, enum: [breakdown] }
+                      by: { type: string, enum: [country, referrer] }
+                      days: { type: integer }
+                      enabled: { type: boolean }
+                      total: { type: integer }
+                      buckets:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            key:
+                              type: [string, "null"]
+                              description: |
+                                An ISO 3166-1 alpha-2 country, a referring host,
+                                or "none" for a request that carried no Referer.
+                                null means the signal was missing and was not
+                                guessed.
+                            views: { type: integer }
         "400":
           $ref: "#/components/responses/BadRequest"
 

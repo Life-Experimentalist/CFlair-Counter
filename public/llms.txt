@@ -46,7 +46,12 @@ Full docs: https://github.com/Life-Experimentalist/ViewFlare
   per-project breakdown in `members`. Matching is on whole segments, so
   acme_other is never counted under acme. The badge takes ?rollup=1 too.
 - GET /api/views?names=a,b,c batch read, up to 50 projects, never increments.
-- GET /api/views/{project}/history daily series.
+- GET /api/views/{project}/history daily series. ?series=breakdown groups
+  the last 30 days by country (default) or by ?by=referrer. Read `enabled`
+  first: it is false unless the instance runs with TRACK_BREAKDOWN=true, and
+  an empty list on a disabled instance means nothing was recorded, not that
+  nobody visited. A bucket key of null means the signal was missing; "none"
+  on a referrer breakdown means no Referer header arrived.
 - GET /api/installs/{project} install counts aggregated across the registries
   configured for that project, with a per-source breakdown.
 - GET /api/installs/{project}/history daily install series.

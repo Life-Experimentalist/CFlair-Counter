@@ -473,6 +473,53 @@ curl "https://counter.vkrishna04.me/api/views/MyProject/history?series=snapshots
 
 It only goes back as far as the first night the job ran.
 
+### `GET /api/views/{project}/history?series=breakdown`
+
+Where the views came from, grouped by country or by referring host, over the
+last `days` days (default 30, max 365). `by=country` is the default; `by=referrer`
+is the other option. Up to 100 buckets, biggest first.
+
+```bash
+curl "https://counter.vkrishna04.me/api/views/MyProject/history?series=breakdown&by=referrer&days=30"
+```
+
+```json
+{
+  "success": true,
+  "projectName": "MyProject",
+  "series": "breakdown",
+  "by": "referrer",
+  "days": 30,
+  "enabled": true,
+  "total": 5,
+  "buckets": [
+    { "key": "none", "views": 2 },
+    { "key": "github.com", "views": 2 },
+    { "key": "news.ycombinator.com", "views": 1 }
+  ]
+}
+```
+
+Three things to read carefully:
+
+- `enabled` says whether this instance is recording the breakdown at all. It is
+  off unless `TRACK_BREAKDOWN` is `"true"`, because it costs a second D1 write
+  on every view. `enabled: false` with an empty `buckets` means nothing was
+  recorded, which is not the same as nobody visiting.
+- `"key": null` means the signal was missing, not that the value is zero or
+  unknown-but-real. For countries that happens under `wrangler pages dev` and
+  wherever Cloudflare does not set `CF-IPCountry`; for referrers it happens when
+  a `Referer` was sent but could not be parsed. No country code is ever guessed
+  from anything else.
+- `"key": "none"` on a referrer breakdown means no `Referer` header arrived. That
+  covers genuine direct hits and requests where the browser's referrer policy
+  stripped it, and the two cannot be told apart.
+
+Only the host is stored, never the full referring URL, and nothing is stored per
+visitor: a row is one day, one project, one country and one host, with a count.
+The rollup query parameter does not apply here, so ask for each dotted project
+by name.
+
 ### Setting the schedule up
 
 `.github/workflows/snapshot.yml` runs at 02:23 UTC daily and on
