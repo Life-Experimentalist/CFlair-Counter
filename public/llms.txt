@@ -19,8 +19,10 @@ Full docs: https://github.com/Life-Experimentalist/ViewFlare
   the page or the job it is measuring, and use a short timeout.
 - A number that could not be fetched is reported as unavailable, never as 0.
   Read the `unavailable`, `partial` and `stale` fields before using a figure.
-- Read endpoints are rate limited per IP: 60 requests a minute by default.
-  Badge endpoints are not limited.
+- Five routes are rate limited per IP, 60 requests a minute by default: POST
+  /api/views/{project}, POST /api/events, GET /api/metrics, GET
+  /api/installs/{project} and GET /api/compute/{project}. Nothing else is,
+  badges included.
 - No authentication for anything below except the admin routes.
 
 ## Record
@@ -81,6 +83,9 @@ The shields.json shapes are shields.io endpoint badges.
 
 Password-protected, for the instance owner only. Send the password as an
 X-Admin-Password header, an Authorization: Bearer header, or a JSON body field.
+Two routes are narrower: POST /api/admin/stats reads the body field only, and
+DELETE /api/views/{project} reads a bearer token or the body field, not the
+X-Admin-Password header. openapi.yaml records which form each route accepts.
 
 - POST /api/admin/stats, GET /api/admin/projects,
   PUT /api/admin/projects/{project}, DELETE /api/views/{project}

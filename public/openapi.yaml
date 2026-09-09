@@ -133,8 +133,6 @@ paths:
                   timestamp: { type: string, format: date-time }
         "400":
           $ref: "#/components/responses/BadRequest"
-        "429":
-          $ref: "#/components/responses/RateLimited"
 
   /api/views/{project}:
     parameters:
@@ -187,20 +185,36 @@ paths:
     delete:
       tags: [admin]
       summary: Delete a project and its history
+      description: |
+        Unlike the other admin routes this one reads only
+        `Authorization: Bearer <password>` or a `password` field in a JSON body.
+        It does not read `X-Admin-Password`.
       operationId: deleteProject
       security:
-        - adminHeader: []
         - adminBearer: []
+      requestBody:
+        required: false
+        description: Only needed when the password is not sent as a bearer token.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password: { type: string }
       responses:
         "200":
           description: Deleted.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Ok" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/AdminDisabled"
+        "404":
+          description: No such project.
 
   /api/views/{project}/badge:
     parameters:
@@ -324,6 +338,11 @@ paths:
           content:
             image/svg+xml:
               schema: { type: string }
+        "400":
+          description: Invalid project name.
+          content:
+            text/plain:
+              schema: { type: string }
 
   /api/installs/{project}/shields.json:
     parameters:
@@ -337,6 +356,13 @@ paths:
       responses:
         "200":
           description: A shields.io endpoint response.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ShieldsEndpoint" }
+        "400":
+          description: |
+            Invalid project name, returned in the shields.io shape so the badge
+            still renders, with `isError: true`.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ShieldsEndpoint" }
@@ -362,6 +388,8 @@ paths:
               schema:
                 type: object
                 additionalProperties: true
+        "400":
+          $ref: "#/components/responses/BadRequest"
 
   /api/events:
     post:
@@ -533,6 +561,11 @@ paths:
           content:
             image/svg+xml:
               schema: { type: string }
+        "400":
+          description: Invalid project name.
+          content:
+            text/plain:
+              schema: { type: string }
 
   /api/compute/{project}/shields.json:
     parameters:
@@ -543,10 +576,21 @@ paths:
     get:
       tags: [compute]
       summary: shields.io endpoint badge of a computed number
+      description: |
+        A broken expression answers 200 with `message: "invalid expression"`
+        and `isError: true`, so the badge still renders. Only an invalid project
+        name is a 400.
       operationId: computeShields
       responses:
         "200":
           description: A shields.io endpoint response.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ShieldsEndpoint" }
+        "400":
+          description: |
+            Invalid project name, returned in the shields.io shape so the badge
+            still renders, with `isError: true`.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ShieldsEndpoint" }
@@ -555,17 +599,18 @@ paths:
     post:
       tags: [admin]
       summary: Dashboard stats
+      description: |
+        This route reads the password from the JSON body only. The header and
+        bearer forms the other admin routes accept are not read here.
       operationId: adminStats
-      security:
-        - adminHeader: []
-        - adminBearer: []
-        - adminBody: []
+      security: []
       requestBody:
-        required: false
+        required: true
         content:
           application/json:
             schema:
               type: object
+              required: [password]
               properties:
                 password: { type: string }
       responses:
@@ -589,6 +634,7 @@ paths:
       security:
         - adminHeader: []
         - adminBearer: []
+        - adminQuery: []
       responses:
         "200":
           description: Every project row.
@@ -627,7 +673,9 @@ paths:
       security:
         - adminHeader: []
         - adminBearer: []
-        - adminBody: []
+      # These routes also accept the password as the `password` field of the
+      # request body, which the schema below declares. OpenAPI has no security
+      # scheme for that, so it is not listed above.
       requestBody:
         required: true
         content:
@@ -664,7 +712,9 @@ paths:
       security:
         - adminHeader: []
         - adminBearer: []
-        - adminBody: []
+      # These routes also accept the password as the `password` field of the
+      # request body, which the schema below declares. OpenAPI has no security
+      # scheme for that, so it is not listed above.
       requestBody:
         required: true
         content:
@@ -710,7 +760,9 @@ paths:
       security:
         - adminHeader: []
         - adminBearer: []
-        - adminBody: []
+      # These routes also accept the password as the `password` field of the
+      # request body, which the schema below declares. OpenAPI has no security
+      # scheme for that, so it is not listed above.
       requestBody:
         required: false
         content:
@@ -749,14 +801,13 @@ components:
     adminBearer:
       type: http
       scheme: bearer
-    adminBody:
+    adminQuery:
       type: apiKey
-      in: cookie
+      in: query
       name: password
       description: |
-        Not a cookie. OpenAPI has no way to describe a password in a JSON body,
-        so this entry stands for the `password` field of the request body, which
-        these endpoints also accept. Prefer one of the header forms.
+        Only `GET /api/admin/projects` reads this. It puts the password in the
+        URL, where proxies and logs can see it, so prefer a header.
 
   parameters:
     Project:
@@ -774,7 +825,7 @@ components:
         The expression to evaluate. A `+` in a query string decodes to a space,
         so write it as `%2B`.
       schema: { type: string, maxLength: 200 }
-      example: views.total%2Binstalls.total
+      example: views.total+installs.total
     Style:
       name: style
       in: query
