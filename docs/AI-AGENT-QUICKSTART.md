@@ -34,6 +34,7 @@ Integrate and validate ViewFlare as a telemetry microservice that can:
 - `ENABLE_ANALYTICS` (`true`/`false`, default disabled)
 - `RATE_LIMIT_REQUESTS` (default `60`)
 - `RATE_LIMIT_WINDOW` (default `60000` ms)
+- `TRACK_USAGE` (`true`/`false`, default disabled)
 - `DEBUG` (`true`/`false`)
 
 ### D1 Binding

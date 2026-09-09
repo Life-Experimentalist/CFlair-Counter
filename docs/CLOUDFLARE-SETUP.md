@@ -122,3 +122,46 @@ Create a new `viewflare` project, bind the **existing** `cflaircounter-db` (neve
 database — that starts the counts at zero), copy the environment variables across with
 `ADMIN_PASSWORD` entered as a secret, verify a known count on `viewflare.pages.dev`, and
 only then move `counter.vkrishna04.me` across. There is a window where the hostname 404s.
+
+## Staying inside the free tier
+
+The free plan gives you 100,000 Worker requests a day, 10ms CPU per invocation,
+5,000,000 D1 rows read a day and 100,000 rows written. Three things in the Worker
+are tuned for that.
+
+**The schema runs once per isolate.** `initDatabase` used to issue about ten
+`CREATE TABLE IF NOT EXISTS` statements on every single request. It now runs at
+most once per Worker isolate and every later caller reuses the same promise. The
+schema itself is still applied by `npm run db:init`, which is the only place it
+needs to happen.
+
+**`usage_stats` is off by default.** It cost one extra D1 write per tracked view
+to record numbers the Cloudflare dashboard already reports. Set `TRACK_USAGE` to
+`true` if you want the in-database copy back.
+
+**Read routes are served from the Workers cache.** Every unauthenticated GET that
+touches D1 goes through `caches.default` first. A hit answers without a single
+D1 read. Check the `X-Worker-Cache` response header to see which you got:
+
+```bash
+curl -sI "https://your-domain.com/api/views/my-project/badge" | grep -i x-worker-cache
+```
+
+TTLs are 60 seconds for views, compute and metrics, 300 seconds for stats,
+history and installs. A count can therefore lag by up to a minute, which is the
+trade for a README badge that no longer reads D1 on every render.
+`?inc=true` always bypasses the cache, because that request is a write.
+
+### The one thing the Worker cannot fix
+
+A cache hit still counts as a Worker invocation. If a badge gets hammered hard
+enough to threaten the 100,000/day request limit, move the caching to the edge
+so Cloudflare answers without starting the Worker at all. That is a dashboard
+setting, not code:
+
+1. Open the zone for your custom domain, then **Caching** then **Cache Rules**.
+2. Create a rule matching `(starts_with(http.request.uri.path, "/api/") and ends_with(http.request.uri.path, "/badge"))`.
+3. Set **Eligible for cache**, **Edge TTL** to "Use cache-control header if present", and **Browser TTL** to respect origin.
+
+This only works on a zone you control, so it applies to `counter.vkrishna04.me`
+and not to the `*.pages.dev` hostname.

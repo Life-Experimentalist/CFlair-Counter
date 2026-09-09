@@ -14,6 +14,7 @@ type Bindings = {
 	RATE_LIMIT_REQUESTS?: string;
 	RATE_LIMIT_WINDOW?: string;
 	INSTALL_CACHE_TTL?: string;
+	TRACK_USAGE?: string;
 	DEBUG?: string;
 };
 
@@ -145,8 +146,15 @@ app.use(
 	}),
 );
 
-// Database initialization with optimized schema
-const initDatabase = async (db: D1Database) => {
+// Database initialization with optimized schema.
+// The schema is normally applied once by `npm run db:init`. Running the DDL on
+// every request costs about ten D1 statements per invocation for no benefit, so
+// it runs at most once per Worker isolate and every later caller reuses the same
+// promise. Nothing here ever rejects, so a cached failure cannot wedge the
+// isolate.
+let schemaReady: Promise<void> | null = null;
+
+const runSchemaDdl = async (db: D1Database) => {
 	try {
 		// Create tables with minimal indexes for cost optimization
 		await db
@@ -297,6 +305,64 @@ const initDatabase = async (db: D1Database) => {
 	}
 };
 
+const initDatabase = (db: D1Database): Promise<void> => {
+	if (!schemaReady) {
+		schemaReady = runSchemaDdl(db);
+	}
+	return schemaReady;
+};
+
+// Edge cache for read-only GET routes. A hit answers without touching D1, which
+// is what keeps a busy badge off the free-tier row budget. Worker invocations
+// still count on a hit; docs/CLOUDFLARE-SETUP.md covers the zone-level cache
+// rule that avoids those too.
+const edgeCache = (seconds: number) => async (c: any, next: any) => {
+	const cache = (globalThis as any).caches?.default;
+	// ?inc=true makes a badge request a write. Serving that from cache would
+	// silently drop the increment, so it always goes through.
+	if (!cache || c.req.method !== "GET" || c.req.query("inc") === "true") {
+		return next();
+	}
+
+	const key = new Request(c.req.url, { method: "GET" });
+	const hit = await cache.match(key);
+	if (hit) {
+		const cached = new Response(hit.body, hit);
+		cached.headers.set("X-Worker-Cache", "HIT");
+		c.res = cached;
+		return;
+	}
+
+	await next();
+
+	const res = c.res;
+	if (!res || res.status !== 200) {
+		return;
+	}
+
+	const out = new Response(res.body, res);
+	if (!out.headers.has("Cache-Control")) {
+		out.headers.set("Cache-Control", `public, max-age=${seconds}`);
+	}
+
+	// The stored copy must not carry this request's rate-limit counters, or a
+	// later hit would report a window that has long since expired.
+	const stored = out.clone();
+	stored.headers.delete("X-RateLimit-Limit");
+	stored.headers.delete("X-RateLimit-Remaining");
+	stored.headers.delete("X-RateLimit-Reset");
+	stored.headers.delete("Retry-After");
+
+	try {
+		c.executionCtx.waitUntil(cache.put(key, stored));
+	} catch {
+		await cache.put(key, stored);
+	}
+
+	out.headers.set("X-Worker-Cache", "MISS");
+	c.res = out;
+};
+
 // Health check endpoint
 app.get("/health", (c) => {
 	// Debug logging only if DEBUG env variable is set to "true"
@@ -325,7 +391,7 @@ app.get("/health", (c) => {
 // increments, so it is safe to call on every page render.
 const BATCH_VIEWS_LIMIT = 50;
 
-app.get("/api/views", async (c) => {
+app.get("/api/views", edgeCache(60), async (c) => {
 	const raw = c.req.query("names") || c.req.query("projects") || "";
 	const requested = [
 		...new Set(
@@ -399,7 +465,7 @@ app.get("/api/views", async (c) => {
 	}
 });
 
-app.get("/api/views/:projectName", async (c) => {
+app.get("/api/views/:projectName", edgeCache(60), async (c) => {
 	const projectName = c.req.param("projectName");
 	if (!projectName || projectName.length > 100) {
 		return c.json({ error: "Invalid project name" }, 400);
@@ -454,7 +520,7 @@ app.post("/api/views/:projectName", customRateLimiter, async (c) => {
 
 	try {
 		// Track usage for monitoring
-		await trackUsage(c.env.DB);
+		await trackUsage(c.env);
 
 		// Single optimized query - Insert or increment in one operation
 		await c.env.DB.prepare(
@@ -563,7 +629,7 @@ app.post("/api/events", customRateLimiter, async (c) => {
 			)
 			.run()
 
-		await trackUsage(c.env.DB)
+		await trackUsage(c.env)
 
 		return c.json({
 			success: true,
@@ -577,7 +643,7 @@ app.post("/api/events", customRateLimiter, async (c) => {
 	}
 })
 
-app.get("/api/metrics", customRateLimiter, async (c) => {
+app.get("/api/metrics", edgeCache(60), customRateLimiter, async (c) => {
 	try {
 		await initDatabase(c.env.DB)
 
@@ -1180,7 +1246,7 @@ const renderBadgeSvg = (
 
 // Generate SVG badge for project views
 // Shields.io style with better aesthetics
-app.get("/api/views/:projectName/badge", async (c) => {
+app.get("/api/views/:projectName/badge", edgeCache(60), async (c) => {
 	const projectName = c.req.param("projectName");
 	const styleParam = (c.req.query("style") || "flat").toLowerCase(); // flat, flat-square, for-the-badge
 	const style = BADGE_STYLES.includes(styleParam) ? styleParam : "flat";
@@ -1210,7 +1276,7 @@ app.get("/api/views/:projectName/badge", async (c) => {
 				.run();
 
 			// Track usage for monitoring
-			await trackUsage(c.env.DB);
+			await trackUsage(c.env);
 
 			// Track unique visitor if analytics enabled
 			const enableAnalytics = c.env.ENABLE_ANALYTICS !== "false";
@@ -1257,9 +1323,10 @@ app.get("/api/views/:projectName/badge", async (c) => {
 		const svg = renderBadgeSvg(rawLabel, valueTextRaw, badgeColor, style);
 
 		c.header("Content-Type", "image/svg+xml");
-		c.header("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0");
-		c.header("Pragma", "no-cache");
-		c.header("Expires", "0");
+		c.header(
+			"Cache-Control",
+			"public, max-age=60, stale-while-revalidate=86400",
+		);
 		c.header("Access-Control-Allow-Origin", "*");
 		return c.body(svg.trim());
 	} catch (error) {
@@ -1268,7 +1335,7 @@ app.get("/api/views/:projectName/badge", async (c) => {
 	}
 });
 
-app.get("/api/views/:projectName/history", async (c) => {
+app.get("/api/views/:projectName/history", edgeCache(300), async (c) => {
 	const projectName = c.req.param("projectName")
 	if (!projectName || projectName.length > 100) {
 		return c.json({ error: "Invalid project name" }, 400)
@@ -1338,10 +1405,16 @@ app.get("/api/views/:projectName/history", async (c) => {
 })
 
 // Usage tracking helper
-const trackUsage = async (db: D1Database) => {
+// One extra D1 write per tracked view, duplicating numbers the Cloudflare
+// dashboard already reports. Off unless TRACK_USAGE is "true".
+const trackUsage = async (env: Bindings) => {
+	if (env.TRACK_USAGE !== "true") {
+		return;
+	}
+
 	const today = new Date().toISOString().split("T")[0];
 	try {
-		await db
+		await env.DB
 			.prepare(
 				`
 			INSERT INTO usage_stats (date, requests_count, rows_read, rows_written)
@@ -1362,7 +1435,7 @@ const trackUsage = async (db: D1Database) => {
 };
 
 // Public: Get global statistics (no authentication required)
-app.get("/api/stats", async (c) => {
+app.get("/api/stats", edgeCache(300), async (c) => {
 	try {
 		await initDatabase(c.env.DB);
 
@@ -1436,7 +1509,7 @@ app.post("/api/admin/stats", async (c) => {
 		}
 
 		await initDatabase(c.env.DB);
-		await trackUsage(c.env.DB);
+		await trackUsage(c.env);
 
 		// Get total statistics
 		const stats = await c.env.DB.prepare(
@@ -1515,7 +1588,7 @@ app.get("/api/admin/projects", async (c) => {
 		}
 
 		await initDatabase(c.env.DB);
-		await trackUsage(c.env.DB);
+		await trackUsage(c.env);
 
 		const projects = await c.env.DB.prepare(
 			`SELECT
@@ -1633,7 +1706,7 @@ app.delete("/api/views/:projectName", async (c) => {
 			.bind(projectName)
 			.run();
 
-		await trackUsage(c.env.DB);
+		await trackUsage(c.env);
 
 		return c.json({
 			success: true,
@@ -1653,7 +1726,7 @@ app.delete("/api/views/:projectName", async (c) => {
 	}
 });
 
-// Admin: Update a project — rename, change description, set view/unique counts
+// Admin: Update a project. Rename, change description, set view/unique counts
 app.put("/api/admin/projects/:projectName", async (c) => {
 	const originalName = c.req.param("projectName");
 	if (!originalName || originalName.length > 100) {
@@ -1745,7 +1818,7 @@ app.put("/api/admin/projects/:projectName", async (c) => {
 			).bind(finalViews, finalUnique, finalDesc, originalName).run();
 		}
 
-		await trackUsage(c.env.DB);
+		await trackUsage(c.env);
 
 		const updated = await c.env.DB.prepare(
 			"SELECT project_name, view_count, unique_views, description, created_at, updated_at FROM project_views WHERE project_name = ?"
@@ -1768,7 +1841,7 @@ app.put("/api/admin/projects/:projectName", async (c) => {
 // Aggregate install / download counts for a project.
 // Partial failure is a normal outcome here, not an error: whatever answered is
 // returned with a coverage figure, and the sources that did not are marked.
-app.get("/api/installs/:projectName", customRateLimiter, async (c) => {
+app.get("/api/installs/:projectName", edgeCache(300), customRateLimiter, async (c) => {
 	const projectName = c.req.param("projectName");
 	if (!projectName || projectName.length > 100) {
 		return c.json({ success: false, error: "Invalid project name" }, 400);
@@ -1882,7 +1955,7 @@ const resolveInstallBadge = async (
 // No per-IP rate limit here, matching the existing view badge: GitHub's camo
 // proxy fetches from a small pool of IPs, so limiting per IP would break the
 // badge for everyone at once. The D1 cache is what protects the upstreams.
-app.get("/api/installs/:projectName/badge", async (c) => {
+app.get("/api/installs/:projectName/badge", edgeCache(300), async (c) => {
 	const projectName = c.req.param("projectName");
 	const styleParam = (c.req.query("style") || "flat").toLowerCase();
 	const style = BADGE_STYLES.includes(styleParam) ? styleParam : "flat";
@@ -2352,7 +2425,7 @@ const parseHistoryDays = (
 const parseHistoryBucket = (raw: string | undefined): string =>
 	SNAPSHOT_BUCKETS.includes(raw || "") ? (raw as string) : "day";
 
-app.get("/api/installs/:projectName/history", async (c) => {
+app.get("/api/installs/:projectName/history", edgeCache(300), async (c) => {
 	const projectName = c.req.param("projectName");
 	if (!projectName || projectName.length > 100) {
 		return c.json({ success: false, error: "Invalid project name" }, 400);
@@ -2978,7 +3051,7 @@ const computeCacheSeconds = (result: ComputeResult): number => {
 	return 3600;
 };
 
-app.get("/api/compute/:projectName", customRateLimiter, async (c) => {
+app.get("/api/compute/:projectName", edgeCache(60), customRateLimiter, async (c) => {
 	const projectName = c.req.param("projectName");
 	if (!projectName || projectName.length > 100) {
 		return c.json({ success: false, error: "Invalid project name" }, 400);
@@ -3021,7 +3094,7 @@ app.get("/api/compute/:projectName", customRateLimiter, async (c) => {
 // SVG badge of the same number. No per-IP rate limit, for the same reason the
 // other badge routes have none: GitHub's camo proxy fetches from a small pool
 // of IPs, so limiting per IP would break the badge for everyone at once.
-app.get("/api/compute/:projectName/badge", async (c) => {
+app.get("/api/compute/:projectName/badge", edgeCache(60), async (c) => {
 	const projectName = c.req.param("projectName");
 	const styleParam = (c.req.query("style") || "flat").toLowerCase();
 	const style = BADGE_STYLES.includes(styleParam) ? styleParam : "flat";
@@ -3080,7 +3153,7 @@ app.get("/api/compute/:projectName/badge", async (c) => {
 });
 
 // shields.io endpoint-badge format: https://shields.io/badges/endpoint-badge
-app.get("/api/compute/:projectName/shields.json", async (c) => {
+app.get("/api/compute/:projectName/shields.json", edgeCache(60), async (c) => {
 	const projectName = c.req.param("projectName");
 	const colorParam = c.req.query("color");
 	const labelParam = c.req.query("label");

@@ -184,6 +184,7 @@ curl "https://your-domain.com/api/compute/my-project?expr=views.total%2Binstalls
 | `MAX_PROJECTS`        | No                  | `100`   | Soft project cap               |
 | `RATE_LIMIT_REQUESTS` | No                  | `60`    | Requests per window            |
 | `RATE_LIMIT_WINDOW`   | No                  | `60000` | Rate-limit window in ms        |
+| `TRACK_USAGE`         | No                  | `false` | Write a daily row to `usage_stats`. Off because it costs one extra D1 write per view and duplicates the Cloudflare dashboard |
 | `DEBUG`               | No                  | `false` | Verbose debug logging          |
 
 ## Development Commands
