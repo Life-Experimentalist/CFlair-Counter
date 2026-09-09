@@ -63,7 +63,8 @@ If the user already has an instance or wants to use an existing domain to track 
      the value. `INTEGRATION.md` Goal 7 has the full contract.
 
 A deployed instance serves `https://[DOMAIN]/llms.txt`, a short plain-text
-summary of every endpoint above. Read it when working against an instance whose
-repository you do not have.
+summary of every endpoint above, and `https://[DOMAIN]/openapi.yaml`, the same
+API as OpenAPI 3.1 with request and response shapes. Read one of those when
+working against an instance whose repository you do not have.
 
 Always prioritize minimal, non-blocking code when integrating tracking into the user's applications. Validate your changes when done.

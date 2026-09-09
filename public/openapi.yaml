@@ -1,0 +1,899 @@
+openapi: 3.1.0
+info:
+  title: ViewFlare
+  version: 2.4.0
+  summary: View counter, install-count aggregator, event log and computed metrics.
+  description: |
+    ViewFlare runs on Cloudflare Pages Functions with a D1 database. Every
+    endpoint below is served by the same Worker.
+
+    Two rules run through the whole API and are worth knowing before you read
+    the paths:
+
+    - A number that could not be fetched is reported as unavailable, never as
+      zero. Check `unavailable`, `partial` and `stale` before using a figure.
+    - Tracking is fire and forget. Swallow the error at the call site so a
+      failed request cannot break the page or job it is measuring.
+
+    Read endpoints are rate limited per IP, 60 requests a minute by default,
+    configurable with `RATE_LIMIT_REQUESTS` (a count) and `RATE_LIMIT_WINDOW`
+    (milliseconds). The count is held in memory on the Worker instance serving
+    the request, so treat it as approximate. Badge endpoints are not limited,
+    because GitHub's camo proxy fetches them from a small pool of IPs.
+
+    This file is served at `/openapi.yaml` on a deployed instance. `/llms.txt`
+    is the plain-text version of the same thing.
+  license:
+    name: See LICENSE.md
+    url: https://github.com/Life-Experimentalist/ViewFlare/blob/main/LICENSE.md
+externalDocs:
+  description: INTEGRATION.md, the full contract with worked examples
+  url: https://github.com/Life-Experimentalist/ViewFlare/blob/main/INTEGRATION.md
+
+servers:
+  - url: https://counter.vkrishna04.me
+    description: The reference instance
+  - url: https://{host}
+    description: Your own instance
+    variables:
+      host:
+        default: your-instance.pages.dev
+
+tags:
+  - name: views
+    description: Counting page views.
+  - name: installs
+    description: Install and download counts aggregated across package registries.
+  - name: events
+    description: Named events that are not page views.
+  - name: compute
+    description: One number derived from everything above.
+  - name: admin
+    description: Password-protected, for the instance owner.
+
+security: []
+
+paths:
+  /health:
+    get:
+      tags: [views]
+      summary: Liveness check
+      operationId: health
+      responses:
+        "200":
+          description: The Worker is running.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  status: { type: string, examples: ["ok"] }
+                  timestamp: { type: string, format: date-time }
+                  worker: { type: string }
+                  version: { type: string }
+
+  /api/stats:
+    get:
+      tags: [views]
+      summary: Totals across every project
+      operationId: globalStats
+      responses:
+        "200":
+          description: Instance-wide totals.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  statistics:
+                    type: object
+                    properties:
+                      totalViews: { type: integer }
+                      uniqueViews: { type: integer }
+                      totalProjects: { type: integer }
+                      analyticsEnabled: { type: boolean }
+                  timestamp: { type: string, format: date-time }
+
+  /api/views:
+    get:
+      tags: [views]
+      summary: Read up to 50 projects at once
+      description: Never increments. Unknown names come back in `missing`.
+      operationId: batchViews
+      parameters:
+        - name: names
+          in: query
+          required: true
+          description: Comma-separated project names, at most 50. `projects` is accepted as an alias.
+          schema: { type: string }
+          example: docs,api,cli
+      responses:
+        "200":
+          description: Counts for the names that exist.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  views:
+                    type: object
+                    additionalProperties: { type: integer }
+                  uniqueViews:
+                    type: object
+                    additionalProperties: { type: integer }
+                  missing:
+                    type: array
+                    items: { type: string }
+                  requested: { type: integer }
+                  found: { type: integer }
+                  total: { type: integer }
+                  timestamp: { type: string, format: date-time }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /api/views/{project}:
+    parameters:
+      - $ref: "#/components/parameters/Project"
+    get:
+      tags: [views]
+      summary: One project's totals
+      description: A project that has never been seen reads as zero rather than 404.
+      operationId: getViews
+      responses:
+        "200":
+          description: The project's counts.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  projectName: { type: string }
+                  totalViews: { type: integer }
+                  uniqueViews: { type: integer }
+                  description: { type: [string, "null"] }
+                  createdAt: { type: [string, "null"] }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+    post:
+      tags: [views]
+      summary: Increment the view count
+      description: |
+        Creates the project on first use. No body. The visitor is recorded as a
+        short non-cryptographic hash of IP plus user agent; the raw IP and user
+        agent are not stored.
+      operationId: incrementViews
+      responses:
+        "200":
+          description: Recorded.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  projectName: { type: string }
+                  totalViews: { type: integer }
+                  uniqueViews: { type: integer }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+    delete:
+      tags: [admin]
+      summary: Delete a project and its history
+      operationId: deleteProject
+      security:
+        - adminHeader: []
+        - adminBearer: []
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ok" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/AdminDisabled"
+
+  /api/views/{project}/badge:
+    parameters:
+      - $ref: "#/components/parameters/Project"
+      - $ref: "#/components/parameters/Style"
+      - $ref: "#/components/parameters/Color"
+      - name: label
+        in: query
+        description: Left-hand label, truncated to 24 characters.
+        schema: { type: string, default: views }
+      - name: inc
+        in: query
+        description: Set to `true` to increment while rendering. Off by default.
+        schema: { type: string, enum: ["true"] }
+    get:
+      tags: [views]
+      summary: SVG views badge
+      operationId: viewsBadge
+      responses:
+        "200":
+          description: The badge.
+          content:
+            image/svg+xml:
+              schema: { type: string }
+        "400":
+          description: Invalid project name.
+          content:
+            text/plain:
+              schema: { type: string }
+
+  /api/views/{project}/history:
+    parameters:
+      - $ref: "#/components/parameters/Project"
+      - name: series
+        in: query
+        description: |
+          `snapshots` reads the daily rows written by the snapshot endpoint.
+          The default is the visitor-derived series this endpoint has always
+          returned.
+        schema: { type: string, enum: [visitors, snapshots] }
+      - $ref: "#/components/parameters/Days"
+      - $ref: "#/components/parameters/Bucket"
+    get:
+      tags: [views]
+      summary: Views over time
+      operationId: viewsHistory
+      responses:
+        "200":
+          description: A dated series.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  projectName: { type: string }
+                  series: { type: string }
+                  history:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/installs/{project}:
+    parameters:
+      - $ref: "#/components/parameters/Project"
+    get:
+      tags: [installs]
+      summary: Install counts aggregated across registries
+      description: |
+        One dead upstream never takes the whole response down: each source is
+        fetched independently and failures are reported per source. `total` is
+        null when nothing answered, and `mixedWindows` is true when an all-time
+        count has been added to a rolling-window one.
+      operationId: getInstalls
+      responses:
+        "200":
+          description: The aggregate and the per-source breakdown.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  project: { type: string }
+                  total: { type: [integer, "null"] }
+                  totalLabel: { type: string }
+                  mixedWindows: { type: boolean }
+                  coverage: { type: string, examples: ["2 of 3 sources"] }
+                  sourcesConfigured: { type: integer }
+                  sourcesAnswered: { type: integer }
+                  complete: { type: boolean }
+                  sources:
+                    type: array
+                    items: { $ref: "#/components/schemas/InstallSourceResult" }
+                  timestamp: { type: string, format: date-time }
+        "404":
+          description: No install sources configured for this project.
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /api/installs/{project}/badge:
+    parameters:
+      - $ref: "#/components/parameters/Project"
+      - $ref: "#/components/parameters/Style"
+      - $ref: "#/components/parameters/Color"
+      - $ref: "#/components/parameters/BadgeLabel"
+    get:
+      tags: [installs]
+      summary: SVG installs badge
+      description: |
+        The default label carries the caveats the number cannot show, for
+        example `installs (2 of 3 registries, mixed windows)`. A label you pass
+        replaces it.
+      operationId: installsBadge
+      responses:
+        "200":
+          description: The badge.
+          content:
+            image/svg+xml:
+              schema: { type: string }
+
+  /api/installs/{project}/shields.json:
+    parameters:
+      - $ref: "#/components/parameters/Project"
+      - $ref: "#/components/parameters/Color"
+      - $ref: "#/components/parameters/BadgeLabel"
+    get:
+      tags: [installs]
+      summary: shields.io endpoint badge for installs
+      operationId: installsShields
+      responses:
+        "200":
+          description: A shields.io endpoint response.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ShieldsEndpoint" }
+
+  /api/installs/{project}/history:
+    parameters:
+      - $ref: "#/components/parameters/Project"
+      - $ref: "#/components/parameters/Days"
+      - $ref: "#/components/parameters/Bucket"
+    get:
+      tags: [installs]
+      summary: Install counts over time
+      description: |
+        Snapshots are gauges, not counters: each row is the registry's own
+        running total on that day, so a bucket keeps the last value in the
+        bucket rather than summing.
+      operationId: installsHistory
+      responses:
+        "200":
+          description: A dated series with per-day change.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  /api/events:
+    post:
+      tags: [events]
+      summary: Record a named event
+      description: |
+        For anything that is not a page view: a signup, a download, a CLI run, a
+        finished job. Events are instance wide, not per project; group them with
+        `category`. They never touch view counts.
+      operationId: recordEvent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [category, event]
+              properties:
+                category:
+                  type: string
+                  maxLength: 64
+                  examples: ["cli"]
+                event:
+                  type: string
+                  maxLength: 64
+                  examples: ["build_run"]
+                metadata:
+                  type: object
+                  description: Free-form. Stored next to the event, never indexed or aggregated.
+                  additionalProperties: true
+      responses:
+        "200":
+          description: Recorded.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  category: { type: string }
+                  event: { type: string }
+                  timestamp: { type: string, format: date-time }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /api/metrics:
+    get:
+      tags: [events]
+      summary: All-time event rollup
+      description: |
+        Counts are lifetime totals: no date filter, no window parameter. The 100
+        highest-count category/event pairs are returned, so an instance with
+        more than 100 distinct pairs will not see the rarest ones here.
+        `metadata` is stored, not aggregated, and never appears.
+      operationId: metrics
+      responses:
+        "200":
+          description: Counts grouped by category, then by event name.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  metrics:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      additionalProperties: { type: integer }
+                  timestamp: { type: string, format: date-time }
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /api/compute/{project}:
+    parameters:
+      - $ref: "#/components/parameters/Project"
+      - $ref: "#/components/parameters/Expr"
+    get:
+      tags: [compute]
+      summary: One number from an expression
+      description: |
+        Evaluates arithmetic over the numbers ViewFlare already holds and
+        answers with a single value.
+
+        Variables: `views.total`, `views.unique`, `installs.total`,
+        `installs.<source>` (vscode, openvsx, pypi, github, npm, crates),
+        `events.<category>`, `events.<category>.<name>`. Views and installs are
+        scoped to the project in the URL; event counts are instance wide,
+        because the event log has no project column.
+
+        Operators are `+ - * / %` with parentheses and unary minus. Functions
+        are `min` and `max` (1 to 8 arguments), `abs`, `floor`, `ceil`,
+        `round(x)` or `round(x, digits)`, and `pct(part, whole)`.
+
+        There is no eval behind this: the expression is tokenised and walked by
+        a recursive descent parser, capped at 200 characters and 24 levels of
+        nesting. Anything unrecognised is a 400 naming it.
+
+        If any input is unavailable the whole metric is unavailable and `reason`
+        says which input was missing. A non-finite result, such as a divide by
+        zero, is unavailable too, never `NaN`.
+      operationId: compute
+      responses:
+        "200":
+          description: The computed value, with every input that fed it.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  project: { type: string }
+                  expression: { type: string }
+                  value: { type: [number, "null"] }
+                  formatted:
+                    type: string
+                    description: Compact form for display, or `unavailable`.
+                  unavailable: { type: boolean }
+                  reason: { type: [string, "null"] }
+                  partial:
+                    type: boolean
+                    description: True when installs.total was summed from fewer registries than are configured.
+                  stale:
+                    type: boolean
+                    description: True when a registry figure came from cache after the upstream failed.
+                  mixedWindows: { type: boolean }
+                  inputs:
+                    type: array
+                    items: { $ref: "#/components/schemas/ComputeInput" }
+                  timestamp: { type: string, format: date-time }
+        "400":
+          description: The expression could not be parsed, or names something unknown.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+              examples:
+                unencodedPlus:
+                  value:
+                    success: false
+                    error: 'Two values with no operator between them. A "+" in a URL means a space: write it as %2B.'
+                unknownVariable:
+                  value:
+                    success: false
+                    error: 'Unknown variable "views.bogus". Try views.total or views.unique.'
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /api/compute/{project}/badge:
+    parameters:
+      - $ref: "#/components/parameters/Project"
+      - $ref: "#/components/parameters/Expr"
+      - $ref: "#/components/parameters/Style"
+      - $ref: "#/components/parameters/Color"
+      - $ref: "#/components/parameters/BadgeLabel"
+    get:
+      tags: [compute]
+      summary: SVG badge of a computed number
+      description: |
+        The label defaults to `metric` and gains the caveats the number cannot
+        show: `metric (partial, stale, mixed windows)`. A broken expression
+        renders as a grey `invalid expression` badge with HTTP 200 rather than a
+        broken image in a README.
+      operationId: computeBadge
+      responses:
+        "200":
+          description: The badge.
+          content:
+            image/svg+xml:
+              schema: { type: string }
+
+  /api/compute/{project}/shields.json:
+    parameters:
+      - $ref: "#/components/parameters/Project"
+      - $ref: "#/components/parameters/Expr"
+      - $ref: "#/components/parameters/Color"
+      - $ref: "#/components/parameters/BadgeLabel"
+    get:
+      tags: [compute]
+      summary: shields.io endpoint badge of a computed number
+      operationId: computeShields
+      responses:
+        "200":
+          description: A shields.io endpoint response.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ShieldsEndpoint" }
+
+  /api/admin/stats:
+    post:
+      tags: [admin]
+      summary: Dashboard stats
+      operationId: adminStats
+      security:
+        - adminHeader: []
+        - adminBearer: []
+        - adminBody: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password: { type: string }
+      responses:
+        "200":
+          description: Totals plus a project listing.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/AdminDisabled"
+
+  /api/admin/projects:
+    get:
+      tags: [admin]
+      summary: List every project
+      operationId: adminProjects
+      security:
+        - adminHeader: []
+        - adminBearer: []
+      responses:
+        "200":
+          description: Every project row.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  projects:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        project_name: { type: string }
+                        view_count: { type: integer }
+                        unique_views: { type: integer }
+                        description: { type: [string, "null"] }
+                        created_at: { type: [string, "null"] }
+                        updated_at: { type: [string, "null"] }
+                  totalProjects: { type: integer }
+                  timestamp: { type: string, format: date-time }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/AdminDisabled"
+
+  /api/admin/projects/{project}:
+    parameters:
+      - $ref: "#/components/parameters/Project"
+    put:
+      tags: [admin]
+      summary: Rename a project or edit its counts
+      description: Every field is optional. Omitted fields keep their current value.
+      operationId: adminUpdateProject
+      security:
+        - adminHeader: []
+        - adminBearer: []
+        - adminBody: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password: { type: string }
+                newName: { type: string }
+                description: { type: [string, "null"] }
+                viewCount: { type: integer }
+                uniqueViews: { type: integer }
+      responses:
+        "200":
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ok" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/AdminDisabled"
+
+  /api/admin/installs/{project}:
+    parameters:
+      - $ref: "#/components/parameters/Project"
+    put:
+      tags: [admin]
+      summary: Configure which registries a project is published on
+      description: A null or empty value removes that source.
+      operationId: adminSetInstallSources
+      security:
+        - adminHeader: []
+        - adminBearer: []
+        - adminBody: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sources]
+              properties:
+                password: { type: string }
+                sources:
+                  type: object
+                  description: Keys are source ids; values are that registry's package identifier, or null to remove.
+                  properties:
+                    vscode: { type: [string, "null"], examples: ["publisher.extension"] }
+                    openvsx: { type: [string, "null"] }
+                    pypi: { type: [string, "null"] }
+                    github: { type: [string, "null"], examples: ["owner/repo"] }
+                    npm: { type: [string, "null"] }
+                    crates: { type: [string, "null"] }
+                  additionalProperties: false
+      responses:
+        "200":
+          description: Sources stored.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ok" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/AdminDisabled"
+
+  /api/admin/installs/snapshot:
+    post:
+      tags: [admin]
+      summary: Record today's snapshot
+      description: |
+        Writes one row per project for today's view and install counts. Pages
+        Functions have no cron, so this is driven by a scheduled GitHub Action
+        reading the password from a repository secret.
+      operationId: adminSnapshot
+      security:
+        - adminHeader: []
+        - adminBearer: []
+        - adminBody: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password: { type: string }
+                offset:
+                  type: integer
+                  minimum: 0
+                  description: Skip this many projects, for paging a large instance across runs.
+                limit:
+                  type: integer
+                  minimum: 1
+                  description: How many projects to fetch install counts for in this run.
+      responses:
+        "200":
+          description: Snapshot written.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/AdminDisabled"
+
+components:
+  securitySchemes:
+    adminHeader:
+      type: apiKey
+      in: header
+      name: X-Admin-Password
+    adminBearer:
+      type: http
+      scheme: bearer
+    adminBody:
+      type: apiKey
+      in: cookie
+      name: password
+      description: |
+        Not a cookie. OpenAPI has no way to describe a password in a JSON body,
+        so this entry stands for the `password` field of the request body, which
+        these endpoints also accept. Prefer one of the header forms.
+
+  parameters:
+    Project:
+      name: project
+      in: path
+      required: true
+      description: URL-safe project slug, at most 100 characters. Created on first use.
+      schema: { type: string, maxLength: 100 }
+      example: my-project
+    Expr:
+      name: expr
+      in: query
+      required: true
+      description: |
+        The expression to evaluate. A `+` in a query string decodes to a space,
+        so write it as `%2B`.
+      schema: { type: string, maxLength: 200 }
+      example: views.total%2Binstalls.total
+    Style:
+      name: style
+      in: query
+      description: Badge style.
+      schema:
+        type: string
+        enum: [flat, flat-square, for-the-badge]
+        default: flat
+    Color:
+      name: color
+      in: query
+      description: A shields.io colour name or a hex value such as `%2300bcd4`.
+      schema: { type: string, default: blue }
+    BadgeLabel:
+      name: label
+      in: query
+      description: Left-hand label, truncated to 40 characters. Replaces the default label.
+      schema: { type: string }
+    Days:
+      name: days
+      in: query
+      description: How many days back to read. Clamped to 1..365.
+      schema: { type: integer, minimum: 1, maximum: 365, default: 90 }
+    Bucket:
+      name: bucket
+      in: query
+      schema:
+        type: string
+        enum: [day, week, month]
+        default: day
+
+  responses:
+    BadRequest:
+      description: The request was malformed or a value was out of range.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unauthorized:
+      description: Missing or wrong admin password.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    AdminDisabled:
+      description: Admin functionality is disabled on this instance.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    RateLimited:
+      description: |
+        Over the per-IP limit. Carries `Retry-After` and `X-RateLimit-*`
+        headers.
+      headers:
+        Retry-After:
+          schema: { type: integer }
+        X-RateLimit-Limit:
+          schema: { type: integer }
+        X-RateLimit-Remaining:
+          schema: { type: integer }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    Ok:
+      type: object
+      properties:
+        success: { type: boolean }
+      additionalProperties: true
+    Error:
+      type: object
+      properties:
+        success: { type: boolean, const: false }
+        error: { type: string }
+    InstallSourceResult:
+      type: object
+      description: One registry's answer. `count` is null when that source did not answer.
+      properties:
+        source:
+          type: string
+          enum: [vscode, openvsx, pypi, github, npm, crates]
+        label: { type: string }
+        id:
+          type: string
+          description: The package identifier configured for this source.
+        measures:
+          type: string
+          description: What the number counts, for example downloads or installs.
+        window:
+          type: string
+          description: The period it covers, for example all-time or last_month.
+        count: { type: [integer, "null"] }
+        fetchedAt: { type: [string, "null"] }
+        stale:
+          type: boolean
+          description: True when the value came from cache after the upstream failed.
+        ok: { type: boolean }
+        error: { type: string }
+    ComputeInput:
+      type: object
+      description: One variable an expression read, and where its value came from.
+      properties:
+        name: { type: string, examples: ["views.total"] }
+        value: { type: [number, "null"] }
+        scope:
+          type: string
+          enum: [project, instance]
+          description: |
+            `project` for views and installs, `instance` for events, which are
+            not scoped to a project.
+        stale: { type: boolean }
+        partial: { type: boolean }
+        note: { type: string }
+    ShieldsEndpoint:
+      type: object
+      description: https://shields.io/badges/endpoint-badge
+      properties:
+        schemaVersion: { type: integer, const: 1 }
+        label: { type: string }
+        message: { type: string }
+        color: { type: string }
+        isError: { type: boolean }
+        cacheSeconds: { type: integer }

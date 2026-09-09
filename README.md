@@ -203,6 +203,9 @@ npm run test:newman:ci
 - `docs/DEVELOPMENT-GUIDE.md` - development details.
 - `docs/CLOUDFLARE-SETUP.md` - deployment, bindings, custom domain, and the
   CFlair-Counter -> ViewFlare Pages migration steps.
+- `docs/api/README.md` - the OpenAPI spec, and how to generate a client from it.
+- `public/openapi.yaml` - OpenAPI 3.1 for every endpoint, served at
+  `https://your-domain.com/openapi.yaml`.
 - `docs/postman-guide.md` - Postman/Newman collection usage.
 - `docs/BRAND-PROMPTS.md` - image-generation prompts for the logo and banner.
 - `skills/viewflare-integration/SKILL.md` - Claude Code skill. Copy the

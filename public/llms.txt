@@ -5,6 +5,8 @@ on Cloudflare Pages Functions and D1. This file is the short version of the API
 for an agent that lands on a deployed instance. Replace DOMAIN below with the
 host this file was served from.
 
+OpenAPI 3.1 for every endpoint below: https://DOMAIN/openapi.yaml
+
 Full docs: https://github.com/Life-Experimentalist/ViewFlare
 - INTEGRATION.md is the contract for every endpoint, grouped by goal.
 - docs/AI-AGENT-QUICKSTART.md is the short recipe list.

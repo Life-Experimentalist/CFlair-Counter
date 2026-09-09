@@ -272,3 +272,5 @@ Mark complete only when all are true:
 - [ ] README and docs links are up to date.
 - [ ] `https://<your-domain>/llms.txt` is reachable and matches the routes
       the instance actually serves.
+- [ ] `https://<your-domain>/openapi.yaml` is reachable and lists every route
+      the Worker actually serves.
