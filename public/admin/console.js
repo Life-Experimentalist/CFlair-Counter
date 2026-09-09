@@ -64,6 +64,11 @@
 			method: opts.method || "GET",
 			headers: headers,
 			body: opts.body ? JSON.stringify(opts.body) : undefined,
+			// Some of these paths are also public reads that answer with a long
+			// max-age for badges. The password makes the Worker skip its edge
+			// cache, but the browser would still replay its own stored copy, so
+			// the console keeps out of that cache entirely.
+			cache: "no-store",
 		}).then(function (res) {
 			return res.json().then(
 				function (data) {

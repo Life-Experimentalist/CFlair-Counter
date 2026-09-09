@@ -388,9 +388,29 @@ const initDatabase = (db: D1Database): Promise<void> => {
 // rule that avoids those too.
 const edgeCache = (seconds: number) => async (c: any, next: any) => {
 	const cache = (globalThis as any).caches?.default;
+
+	// A signed-in console is asking for the current figure. Handing it a copy
+	// from cache shows the old number straight after an edit, which reads as a
+	// bug rather than as a cache. The password is checked here rather than
+	// merely looked for: a bypass that any caller could trigger by sending a
+	// header would put every badge request back on D1, which is the whole
+	// thing this cache exists to prevent. Every route behind this middleware
+	// is a public read whose body does not depend on who asked, so a hit is
+	// only ever skipped, never served to the wrong caller.
+	const authHeader = c.req.header("Authorization") || "";
+	const presented = authHeader.startsWith("Bearer ")
+		? authHeader.substring(7)
+		: c.req.header("X-Admin-Password");
+	const credentialed = Boolean(presented) && presented === c.env.ADMIN_PASSWORD;
+
 	// ?inc=true makes a badge request a write. Serving that from cache would
 	// silently drop the increment, so it always goes through.
-	if (!cache || c.req.method !== "GET" || c.req.query("inc") === "true") {
+	if (
+		!cache ||
+		c.req.method !== "GET" ||
+		c.req.query("inc") === "true" ||
+		credentialed
+	) {
 		return next();
 	}
 
