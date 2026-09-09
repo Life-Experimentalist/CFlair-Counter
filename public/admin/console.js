@@ -347,6 +347,13 @@
 					'">' +
 					icon("package") +
 					"</button>" +
+					'<button class="btn btn-ghost" data-act="breakdown" data-name="' +
+					name +
+					'" title="Where the views came from" aria-label="Where the views came from for ' +
+					name +
+					'">' +
+					icon("globe") +
+					"</button>" +
 					'<button class="btn btn-ghost" data-act="edit" data-name="' +
 					name +
 					'" title="Edit" aria-label="Edit ' +
@@ -396,6 +403,7 @@
 		if (button.dataset.act === "bump") return bump(name, button);
 		if (button.dataset.act === "badges") return openBadges(name);
 		if (button.dataset.act === "installs") return openInstalls(name);
+		if (button.dataset.act === "breakdown") return openBreakdown(name);
 		if (button.dataset.act === "edit") return openEditor(project);
 		if (button.dataset.act === "delete") return confirmDelete(name);
 	}
@@ -684,5 +692,108 @@
 					busy(button, false);
 				});
 		});
+	}
+
+	// The API sends back two values that are not real ones: null when the
+	// signal was not there at all, and "none" for a request that carried no
+	// Referer. Neither gets dressed up as a country or a site.
+	function breakdownLabel(key, by) {
+		if (key === null || key === undefined) return "unknown, signal missing";
+		if (by === "referrer" && key === "none") return "direct, or referrer hidden";
+		return String(key);
+	}
+
+	function breakdownSection(heading, data, by) {
+		var head =
+			'<h3 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 0.6rem">' +
+			esc(heading) +
+			"</h3>";
+
+		if (!data.buckets || !data.buckets.length) {
+			return (
+				head +
+				'<p class="hint" style="margin-bottom: 1.4rem">Nothing in the last 30 days.</p>'
+			);
+		}
+
+		return (
+			head +
+			'<div style="overflow-x: auto; margin-bottom: 1.4rem">' +
+			"<table><thead><tr><th>" +
+			esc(by === "referrer" ? "Site" : "Country") +
+			"</th><th>Views</th></tr></thead><tbody>" +
+			data.buckets
+				.map(function (bucket) {
+					return (
+						"<tr><td>" +
+						esc(breakdownLabel(bucket.key, by)) +
+						"</td><td>" +
+						esc(num(bucket.views)) +
+						"</td></tr>"
+					);
+				})
+				.join("") +
+			"</tbody></table></div>"
+		);
+	}
+
+	// This route has no admin variant, so these go through the public one. They
+	// still go through api(), because the password it sends is what makes the
+	// edge cache stand aside and answer with the current figures.
+	function openBreakdown(name) {
+		var el = dialog(
+			"Where the views came from: " + name,
+			'<p class="hint" style="margin-bottom: 1.2rem">The last 30 days.</p>' +
+				'<div id="bk-body"><p class="hint">Loading.</p></div>',
+			'<button class="btn btn-secondary" data-close>Close</button>',
+		);
+
+		el.querySelector("[data-close]").addEventListener("click", function () {
+			el.close();
+		});
+
+		var encoded = encodeURIComponent(name);
+		Promise.all(
+			["country", "referrer"].map(function (by) {
+				return api(
+					"/api/views/" + encoded + "/history?series=breakdown&by=" + by,
+				);
+			}),
+		)
+			.then(function (results) {
+				var body = el.querySelector("#bk-body");
+				if (!body) return;
+
+				var recording = results[0].enabled === true;
+				var anyRows = results.some(function (data) {
+					return data.buckets && data.buckets.length;
+				});
+
+				// TRACK_BREAKDOWN is off by default, so this is the ordinary
+				// case rather than a fault. Two empty tables would read as
+				// nobody having visited, which is a different claim.
+				if (!recording && !anyRows) {
+					body.innerHTML =
+						'<p class="hint">This instance is not recording where views come ' +
+						"from, so there is nothing to show. Deploy it with " +
+						"<code>TRACK_BREAKDOWN=true</code> to start, at the cost of one " +
+						"extra D1 write per view.</p>";
+					return;
+				}
+
+				body.innerHTML =
+					(recording
+						? ""
+						: '<p class="hint" style="margin-bottom: 1.2rem">Recording is ' +
+							"switched off now. What is below was collected while it was " +
+							"still on.</p>") +
+					breakdownSection("By country", results[0], "country") +
+					breakdownSection("By referring site", results[1], "referrer");
+			})
+			.catch(function () {
+				var body = el.querySelector("#bk-body");
+				// The read failed, so it says so. It does not fall back to zero.
+				if (body) body.innerHTML = '<p class="hint">unavailable</p>';
+			});
 	}
 })();
