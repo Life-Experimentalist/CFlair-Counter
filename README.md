@@ -78,7 +78,10 @@ npm run deploy
 ### Increment views
 
 ```javascript
-fetch("https://your-domain.com/api/views/my-project", { method: "POST" });
+fetch("https://your-domain.com/api/views/my-project", {
+  method: "POST",
+  keepalive: true,
+}).catch(() => {});
 ```
 
 ### Add a badge
@@ -112,6 +115,9 @@ fetch("https://your-domain.com/api/views/my-project", { method: "POST" });
 | `/api/installs/:project/history` | GET | No | Daily install series with change and per-day rate |
 | `/api/events` | POST | No | Record a named event |
 | `/api/metrics` | GET | No | All-time event rollup, top 100 pairs |
+| `/api/compute/:project?expr=` | GET | No | One number from an expression over views, installs and events |
+| `/api/compute/:project/badge?expr=` | GET | No | SVG badge of that number |
+| `/api/compute/:project/shields.json?expr=` | GET | No | shields.io endpoint badge of that number |
 | `/api/admin/stats` | POST | Password | Admin dashboard stats |
 | `/api/admin/projects` | GET | Password | Admin project listing |
 | `/api/admin/projects/:project` | PUT | Password | Rename or edit a project |
@@ -119,8 +125,8 @@ fetch("https://your-domain.com/api/views/my-project", { method: "POST" });
 | `/api/admin/installs/:project` | PUT | Password | Configure install sources |
 | `/api/admin/installs/snapshot` | POST | Password | Record today's snapshot |
 
-`INTEGRATION.md` has the request and response shapes for the installs, history
-and snapshot endpoints.
+`INTEGRATION.md` has the request and response shapes for the installs, history,
+snapshot and compute endpoints.
 
 Admin auth can be sent via:
 - `X-Admin-Password` header
@@ -143,6 +149,30 @@ Examples:
 /api/views/my-project/badge?style=flat-square&color=brightgreen
 /api/views/my-project/badge?style=for-the-badge&color=%2300bcd4&label=downloads
 ```
+
+## Computed Metrics
+
+`GET /api/compute/:project?expr=...` evaluates a small arithmetic expression
+over the numbers already collected and answers with a single value.
+
+```bash
+curl "https://your-domain.com/api/compute/my-project?expr=views.total%2Binstalls.total"
+```
+
+```text
+/api/compute/my-project/badge?expr=round(pct(views.unique%2Cviews.total),1)&label=unique%20share
+/api/compute/my-project/shields.json?expr=views.total%2Finstalls.total
+```
+
+- Variables: `views.total`, `views.unique`, `installs.total`,
+  `installs.<source>`, `events.<category>`, `events.<category>.<name>`.
+- Operators `+ - * / %`, parentheses, and `min`, `max`, `abs`, `round`,
+  `floor`, `ceil`, `pct`.
+- A `+` in a URL decodes to a space, so write it as `%2B`.
+- If any input is unavailable the whole metric reports unavailable. It never
+  substitutes a zero.
+
+`INTEGRATION.md` Goal 7 has the full contract.
 
 ## Environment Variables
 
@@ -175,6 +205,11 @@ npm run test:newman:ci
   CFlair-Counter -> ViewFlare Pages migration steps.
 - `docs/postman-guide.md` - Postman/Newman collection usage.
 - `docs/BRAND-PROMPTS.md` - image-generation prompts for the logo and banner.
+- `skills/viewflare-integration/SKILL.md` - Claude Code skill. Copy the
+  `skills/viewflare-integration` directory into `~/.claude/skills/` to have an
+  agent wire ViewFlare into a project for you.
+- `public/llms.txt` - served at `https://your-domain.com/llms.txt`, the short
+  version of this API for an agent that lands on the deployed instance.
 
 ## Security Notes
 

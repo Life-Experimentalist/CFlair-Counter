@@ -573,3 +573,192 @@ curl "https://[DOMAIN]/api/metrics"
   `Retry-After` and `X-RateLimit-*` headers. The count is held in memory on
   the Worker instance serving the request, so treat the limit as approximate
   rather than a global guarantee.
+
+## Goal 7: Computing one number
+
+The other endpoints each answer with their own figure: views here, installs
+there, event counts somewhere else. `GET /api/compute/:project` takes an
+arithmetic expression over those figures and answers with a single value.
+
+```bash
+curl "https://[DOMAIN]/api/compute/computedemo?expr=views.total%2Bevents.cli.build_run"
+```
+
+```json
+{
+  "success": true,
+  "project": "computedemo",
+  "expression": "views.total+events.cli.build_run",
+  "value": 8,
+  "formatted": "8",
+  "unavailable": false,
+  "reason": null,
+  "partial": false,
+  "stale": false,
+  "mixedWindows": false,
+  "inputs": [
+    {
+      "name": "events.cli.build_run",
+      "value": 3,
+      "scope": "instance",
+      "stale": false,
+      "partial": false,
+      "note": "the event log is not project scoped"
+    },
+    { "name": "views.total", "value": 5, "scope": "project", "stale": false, "partial": false }
+  ],
+  "timestamp": "2026-09-09T15:29:56.893Z"
+}
+```
+
+### Encode the plus sign
+
+A `+` in a URL query string decodes to a space, so `expr=a+b` arrives as
+`a b` and is rejected. Write it as `%2B`. The error message says so:
+
+```json
+{
+  "success": false,
+  "error": "Two values with no operator between them. A \"+\" in a URL means a space: write it as %2B."
+}
+```
+
+`*`, `-`, `/`, `%`, `(`, `)` and `,` are safe to send literally in most
+clients, though `%` inside a value is safer as `%25`.
+
+### What an expression can contain
+
+| Part | What is allowed |
+| --- | --- |
+| Numbers | `5`, `2.5` |
+| Operators | `+` `-` `*` `/` `%`, and unary minus |
+| Grouping | `( )` |
+| Functions | `min`, `max` (1 to 8 arguments), `abs`, `floor`, `ceil`, `round(x)` or `round(x, digits)`, `pct(part, whole)` |
+| Variables | the names in the next table |
+
+| Variable | Scope | Value |
+| --- | --- | --- |
+| `views.total` | this project | Lifetime view count |
+| `views.unique` | this project | Distinct visitor hashes |
+| `installs.total` | this project | Sum across the configured registries |
+| `installs.<source>` | this project | One registry: `vscode`, `openvsx`, `pypi`, `github`, `npm`, `crates` |
+| `events.<category>` | whole instance | All events in that category |
+| `events.<category>.<name>` | whole instance | One named event |
+
+Event counts are instance wide, not per project: the event log has no project
+column, which is why every event input carries a `scope` of `instance` and
+says so in its `note`. Views and installs are scoped to the project in the URL.
+
+Identifiers are made of letters, digits, underscores and dots, so a category
+or event name containing a hyphen cannot be referenced in an expression.
+
+There is no `eval` behind this. The expression is tokenised and walked by a
+recursive descent parser that knows the pieces above and nothing else.
+Expressions are capped at 200 characters and 24 levels of nesting. Anything
+unrecognised is a 400 that names it:
+
+```json
+{ "success": false, "error": "Unknown variable \"views.bogus\". Try views.total or views.unique." }
+```
+
+### Unavailable beats a made-up number
+
+If any input an expression reads has no value, the whole metric is
+unavailable. It never quietly becomes 0.
+
+```bash
+curl "https://[DOMAIN]/api/compute/computedemo?expr=views.total%2Binstalls.total"
+```
+
+```json
+{
+  "success": true,
+  "value": null,
+  "formatted": "unavailable",
+  "unavailable": true,
+  "reason": "no value for installs.total",
+  "inputs": [
+    {
+      "name": "installs.total",
+      "value": null,
+      "scope": "project",
+      "stale": false,
+      "partial": false,
+      "note": "no install sources configured for this project"
+    },
+    { "name": "views.total", "value": 5, "scope": "project", "stale": false, "partial": false }
+  ]
+}
+```
+
+- A result that is not a finite number is unavailable too, so a divide by zero
+  or a `pct(x, 0)` reports `"the expression does not produce a finite number"`
+  rather than `Infinity` or `NaN`.
+- `partial` is true when `installs.total` was summed from fewer registries than
+  are configured. The count is still returned, and `inputs` says how many of
+  how many answered.
+- `stale` is true when a registry figure came from cache after the upstream
+  failed, matching the `stale` flag on `GET /api/installs/:project`.
+- `mixedWindows` is true when an all-time registry count was added to a rolling
+  window one. Same meaning as on the installs endpoint.
+
+### Badges
+
+Both badge shapes take the same `expr`, so a README badge carries its own
+formula in its URL.
+
+```markdown
+![Activity](https://[DOMAIN]/api/compute/PROJECT/badge?expr=views.total%2Bevents.cli&label=activity)
+```
+
+```text
+/api/compute/PROJECT/badge?expr=...&label=...&color=...&style=...
+/api/compute/PROJECT/shields.json?expr=...&label=...&color=...
+```
+
+```bash
+curl "https://[DOMAIN]/api/compute/computedemo/shields.json?expr=round(pct(events.cli.build_fail%2Cevents.cli),1)&label=fail%20rate"
+```
+
+```json
+{
+  "schemaVersion": 1,
+  "label": "fail rate",
+  "message": "25",
+  "color": "blue",
+  "isError": false,
+  "cacheSeconds": 300
+}
+```
+
+- `label` defaults to `metric` and carries the caveats the number cannot show:
+  `metric (partial)`, `metric (stale)`, `metric (partial, stale, mixed windows)`.
+  A label you pass wins, and the caveats are appended to it.
+- `style` is `flat`, `flat-square` or `for-the-badge`, same as the other badges.
+- `color` defaults to `blue`, or `lightgrey` when the metric is unavailable.
+- A broken expression renders as a grey `invalid expression` badge with HTTP
+  200, rather than a broken image in someone's README. The JSON endpoint
+  answers 400 for the same expression.
+- Whole numbers use the compact form (`1.2k`, `3.4M`); a fraction is cut to two
+  decimal places.
+
+### Caching and limits
+
+- The JSON endpoint is rate limited per IP like the other read endpoints. The
+  two badge shapes are not, for the same reason the view and install badges are
+  not: GitHub's camo proxy fetches from a small pool of IPs.
+- `Cache-Control` is 300 seconds when the expression reads views or events,
+  since those move on every request. An expression that only reads installs
+  holds for 3600 seconds, or 900 when the answer was partial or stale, and 300
+  when it is unavailable.
+
+### Worked examples
+
+```text
+expr=views.total%2Finstalls.total                     views per install
+expr=round(pct(views.unique%2Cviews.total),1)         unique share, one decimal
+expr=max(views.total%2Cinstalls.total)                whichever is larger
+expr=installs.npm%2Binstalls.pypi                     two registries only
+expr=round(views.total%2F30)                          rough views per day over a month
+expr=events.cli.build_run-events.cli.build_fail       net successful builds
+```

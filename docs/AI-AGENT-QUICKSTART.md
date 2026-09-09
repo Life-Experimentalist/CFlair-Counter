@@ -228,6 +228,30 @@ anything that is not a page view.
 ![Views](https://<your-domain>/api/views/my-project/badge?style=flat&color=blue)
 ```
 
+### One number out of several
+
+`GET /api/compute/:project?expr=...` evaluates arithmetic over the numbers
+already collected and answers with a single value. `/badge` and
+`/shields.json` take the same `expr`.
+
+```bash
+curl "https://<your-domain>/api/compute/my-project?expr=views.total%2Binstalls.total"
+```
+
+```md
+![Reach](https://<your-domain>/api/compute/my-project/badge?expr=views.total%2Binstalls.total&label=reach)
+```
+
+Variables are `views.total`, `views.unique`, `installs.total`,
+`installs.<source>`, `events.<category>` and `events.<category>.<name>`.
+Operators are `+ - * / %` with parentheses, plus `min`, `max`, `abs`, `round`,
+`floor`, `ceil` and `pct(part, whole)`.
+
+A `+` in a URL query string decodes to a space, so write it as `%2B`. If any
+input is unavailable the whole metric reports unavailable rather than
+substituting a zero, so read `unavailable` and `reason` before using the value.
+`INTEGRATION.md` Goal 7 has the full contract.
+
 ## Failure Diagnostics
 
 If CI fails, check in this order:
@@ -246,3 +270,5 @@ Mark complete only when all are true:
 - [ ] Badge endpoint returns valid SVG.
 - [ ] Admin endpoints enforce auth correctly.
 - [ ] README and docs links are up to date.
+- [ ] `https://<your-domain>/llms.txt` is reachable and matches the routes
+      the instance actually serves.

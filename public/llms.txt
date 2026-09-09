@@ -1,0 +1,88 @@
+# ViewFlare
+
+Free serverless view counter, install-count aggregator and event log, running
+on Cloudflare Pages Functions and D1. This file is the short version of the API
+for an agent that lands on a deployed instance. Replace DOMAIN below with the
+host this file was served from.
+
+Full docs: https://github.com/Life-Experimentalist/ViewFlare
+- INTEGRATION.md is the contract for every endpoint, grouped by goal.
+- docs/AI-AGENT-QUICKSTART.md is the short recipe list.
+- skills/viewflare-integration/SKILL.md is a Claude Code skill that wires
+  ViewFlare into a project.
+
+## Rules
+
+- Tracking is fire and forget. Swallow the error so a failed call cannot break
+  the page or the job it is measuring, and use a short timeout.
+- A number that could not be fetched is reported as unavailable, never as 0.
+  Read the `unavailable`, `partial` and `stale` fields before using a figure.
+- Read endpoints are rate limited per IP: 60 requests a minute by default.
+  Badge endpoints are not limited.
+- No authentication for anything below except the admin routes.
+
+## Record
+
+- POST /api/views/{project} increments the view count for a project. The
+  project name is any URL-safe slug up to 100 characters. It is created on
+  first use.
+- POST /api/events records something that is not a page view. JSON body
+  {"category": "...", "event": "...", "metadata": {...}}. Category and event
+  are required strings of 64 characters or fewer; metadata is optional and free
+  form. Events are instance wide, not per project.
+
+## Read
+
+- GET /api/views/{project} one project's totals.
+- GET /api/views?names=a,b,c batch read, up to 50 projects, never increments.
+- GET /api/views/{project}/history daily series.
+- GET /api/installs/{project} install counts aggregated across the registries
+  configured for that project, with a per-source breakdown.
+- GET /api/installs/{project}/history daily install series.
+- GET /api/metrics all-time event rollup, top 100 category/event pairs.
+- GET /api/stats totals across every project.
+- GET /health liveness.
+
+## Compute one number
+
+GET /api/compute/{project}?expr=EXPRESSION evaluates arithmetic over the
+numbers above and answers with a single value.
+
+- Variables: views.total, views.unique, installs.total, installs.SOURCE
+  (vscode, openvsx, pypi, github, npm, crates), events.CATEGORY,
+  events.CATEGORY.NAME.
+- Operators + - * / %, parentheses, and the functions min, max, abs, round,
+  floor, ceil, pct(part, whole). round takes an optional second argument for
+  decimal places.
+- A "+" in a URL query string decodes to a space. Write it as %2B.
+- If any input is unavailable the whole metric is unavailable, and `reason`
+  says which input was missing.
+- Views and installs are scoped to the project in the URL. Event counts are
+  instance wide, because the event log has no project column.
+
+Example: /api/compute/my-project?expr=views.total%2Binstalls.total
+
+## Badges
+
+Every badge takes style (flat, flat-square, for-the-badge), color (a name or a
+hex value) and label.
+
+- GET /api/views/{project}/badge
+- GET /api/installs/{project}/badge
+- GET /api/installs/{project}/shields.json
+- GET /api/compute/{project}/badge?expr=...
+- GET /api/compute/{project}/shields.json?expr=...
+
+The shields.json shapes are shields.io endpoint badges.
+
+## Admin
+
+Password-protected, for the instance owner only. Send the password as an
+X-Admin-Password header, an Authorization: Bearer header, or a JSON body field.
+
+- POST /api/admin/stats, GET /api/admin/projects,
+  PUT /api/admin/projects/{project}, DELETE /api/views/{project}
+- PUT /api/admin/installs/{project} configures which registries a project is
+  published on.
+- POST /api/admin/installs/snapshot records today's install snapshot. Pages
+  Functions have no cron, so this is driven by a scheduled GitHub Action.

@@ -1,6 +1,6 @@
 ---
 name: viewflare_integration
-description: Helps the user deploy ViewFlare via Cloudflare Pages and integrate telemetry tracking into their codebase.
+description: Helps the user deploy ViewFlare via Cloudflare Pages, integrate view and event tracking into their codebase, and derive a single computed number from what it collects.
 ---
 
 # ViewFlare AI Integration & Setup Skill
@@ -46,5 +46,24 @@ If the user already has an instance or wants to use an existing domain to track 
      ![Views](https://[DOMAIN]/api/views/[PROJECT_ID]/badge?color=violet&style=flat-square)
      ```
    - Available styles: `flat`, `flat-square`, `for-the-badge`.
+5. **Condense Several Numbers Into One (Optional)**:
+   - `GET /api/compute/[PROJECT_ID]?expr=...` evaluates arithmetic over the
+     numbers ViewFlare already holds and answers with a single value, plus
+     `/badge` and `/shields.json` siblings that take the same `expr`.
+   - Variables are `views.total`, `views.unique`, `installs.total`,
+     `installs.<source>`, `events.<category>` and `events.<category>.<name>`.
+     Operators are `+ - * / %` with parentheses, and the functions are `min`,
+     `max`, `abs`, `round`, `floor`, `ceil` and `pct(part, whole)`.
+   - A `+` in a URL decodes to a space, so always write it as `%2B`:
+     ```markdown
+     ![Reach](https://[DOMAIN]/api/compute/[PROJECT_ID]/badge?expr=views.total%2Binstalls.total&label=reach)
+     ```
+   - If any input is unavailable the whole metric reports unavailable rather
+     than substituting a zero, so check `unavailable` and `reason` before using
+     the value. `INTEGRATION.md` Goal 7 has the full contract.
+
+A deployed instance serves `https://[DOMAIN]/llms.txt`, a short plain-text
+summary of every endpoint above. Read it when working against an instance whose
+repository you do not have.
 
 Always prioritize minimal, non-blocking code when integrating tracking into the user's applications. Validate your changes when done.
