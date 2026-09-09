@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+	One page. Update the domain here, the canonical in index.html and og:url
+	together if this instance moves.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+	<url>
+		<loc>https://counter.vkrishna04.me/</loc>
+		<changefreq>monthly</changefreq>
+		<priority>1.0</priority>
+	</url>
+</urlset>

@@ -1,0 +1,11 @@
+# ViewFlare
+# The console is behind a password, but there is no reason for a crawler to
+# spend a request on it or on the API surface. The landing page is the only
+# thing worth indexing.
+
+User-agent: *
+Disallow: /admin
+Disallow: /admin/
+Disallow: /api/
+
+Sitemap: https://counter.vkrishna04.me/sitemap.xml

@@ -47,6 +47,12 @@ separate flat colours; they are a temperature ramp along a single shape.
 | `docs/public/banner.png` | 1280x640 | 5. Social banner | README header, GitHub social preview |
 | `public/wordmark.svg` | vector | 6. Wordmark, see the warning | header lockup |
 
+Status as of the last pass: `assets/logo.png` and `public/logo.png` carry the
+current mark. `public/logo-dark.png` is still the retired Cloud Counter art at
+the right size, so prompt 2 has not been run yet. Everything below it in the
+table does not exist at all. Nothing in the site references a file that is
+missing, so this is a list of what to generate, not an inventory.
+
 Downscaling is a command, not a prompt. Once `assets/logo.png` is final:
 
 ```bash
