@@ -119,6 +119,13 @@ curl -X POST "https://<your-domain>/api/views/my-project"
 - Auth: none
 - Expected: `200`
 
+Query parameters:
+- `rollup`: `1` or `true` sums this project with every project under it in the
+  dotted hierarchy (`acme` covers `acme.api` and `acme.api.docs`) and returns
+  `members` with the per-project breakdown. Matching is on whole segments, so
+  `acme_other` is not included. `/api/views/:projectName/badge` and
+  `/api/compute/:projectName` take the same parameter.
+
 ### SVG Badge
 
 - Method: `GET`

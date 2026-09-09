@@ -29,7 +29,8 @@ Full docs: https://github.com/Life-Experimentalist/ViewFlare
 
 - POST /api/views/{project} increments the view count for a project. The
   project name is any URL-safe slug up to 100 characters. It is created on
-  first use.
+  first use. A dot makes the name hierarchical: acme.api.docs sits under
+  acme.api, which sits under acme.
 - POST /api/events records something that is not a page view. JSON body
   {"category": "...", "event": "...", "metadata": {...}}. Category and event
   are required strings of 64 characters or fewer; metadata is optional and free
@@ -37,7 +38,10 @@ Full docs: https://github.com/Life-Experimentalist/ViewFlare
 
 ## Read
 
-- GET /api/views/{project} one project's totals.
+- GET /api/views/{project} one project's totals. Add ?rollup=1 to sum this
+  project with every project below it in the dotted hierarchy, and get the
+  per-project breakdown in `members`. Matching is on whole segments, so
+  acme_other is never counted under acme. The badge takes ?rollup=1 too.
 - GET /api/views?names=a,b,c batch read, up to 50 projects, never increments.
 - GET /api/views/{project}/history daily series.
 - GET /api/installs/{project} install counts aggregated across the registries
@@ -63,6 +67,9 @@ numbers above and answers with a single value.
   says which input was missing.
 - Views and installs are scoped to the project in the URL. Event counts are
   instance wide, because the event log has no project column.
+- Add &rollup=1 to make every views.* variable sum the whole dotted subtree.
+  Installs stay scoped to the one project even then, because rolling them up
+  would mean a registry fan-out per descendant.
 
 Example: /api/compute/my-project?expr=views.total%2Binstalls.total
 

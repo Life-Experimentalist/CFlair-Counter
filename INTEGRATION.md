@@ -762,3 +762,94 @@ expr=installs.npm%2Binstalls.pypi                     two registries only
 expr=round(views.total%2F30)                          rough views per day over a month
 expr=events.cli.build_run-events.cli.build_fail       net successful builds
 ```
+
+## Goal 8: Organising many projects under one name
+
+A dot makes a project name a path. `acme.api.docs` sits under `acme.api`, which
+sits under `acme`. Nothing about storage changes: the name is still one string
+in one column, created on first use, and every flat name that exists today keeps
+working exactly as it did.
+
+The dots only matter when a caller asks for a rollup.
+
+### Recording
+
+Nothing special. Track each surface under its own dotted name.
+
+```bash
+curl -X POST "https://your-domain.com/api/views/acme.api.docs"
+curl -X POST "https://your-domain.com/api/views/acme.web.landing"
+curl -X POST "https://your-domain.com/api/views/acme.cli"
+```
+
+### Reading a whole subtree
+
+`?rollup=1` (or `rollup=true`) sums a project with every project below it.
+
+```bash
+curl "https://your-domain.com/api/views/acme?rollup=1"
+```
+
+```json
+{
+  "success": true,
+  "projectName": "acme",
+  "rollup": true,
+  "totalViews": 3140,
+  "uniqueViews": 902,
+  "memberCount": 4,
+  "members": [
+    { "projectName": "acme",            "totalViews": 12,   "uniqueViews": 8 },
+    { "projectName": "acme.api.docs",   "totalViews": 1880, "uniqueViews": 540 },
+    { "projectName": "acme.cli",        "totalViews": 402,  "uniqueViews": 121 },
+    { "projectName": "acme.web.landing","totalViews": 846,  "uniqueViews": 233 }
+  ]
+}
+```
+
+The parent itself is included whether or not anything was ever tracked against
+it directly. `members` is the breakdown, so you get the sum and the parts in one
+request rather than one request per project.
+
+Without `rollup` the response is unchanged from what it has always been:
+`totalViews`, `uniqueViews`, `description`, `createdAt`, for that one project.
+
+### Badges and computed metrics
+
+Both take the same parameter.
+
+```md
+![All of acme](https://your-domain.com/api/views/acme/badge?rollup=1&label=acme)
+```
+
+```bash
+curl "https://your-domain.com/api/compute/acme?expr=views.total&rollup=1"
+```
+
+Under a rollup every `views.*` variable sums the subtree, and the input reports
+`"scope": "subtree"` with a note saying how many projects it covered.
+
+### What rollup does not do
+
+- **Installs stay scoped to the one project.** Rolling them up would mean a
+  separate registry fan-out for every descendant, which is exactly the cost this
+  service is built to avoid. Under a rollup, `installs.total` still reads the
+  sources configured for the project in the URL and says so in its `note`.
+- **Events are unaffected.** The event log has no project column, so event
+  counts are instance wide with or without a rollup.
+
+### Matching rules
+
+Matching is on whole dotted segments. `acme` covers `acme.api` and
+`acme.api.docs`, and never `acme_other` or `acmex`. This matters more than it
+looks: underscores are legal in a name and are a wildcard in SQL `LIKE`, so the
+query uses a range comparison instead, which is also the form that uses the
+existing index.
+
+Renaming accepts the same grammar: letters, digits, `-`, `_`, and `.` between
+segments, up to 100 characters. `PUT /api/admin/projects/{project}` used to
+reject a dot outright, so a hierarchical name could be created but never
+renamed. It no longer does.
+
+There is no depth limit beyond the 100-character name cap, but three or four
+levels is usually enough to stay readable in a badge label.

@@ -26,6 +26,12 @@ If the user already has an instance or wants to use an existing domain to track 
 
 1. **Identify the Domain**: Obtain the ViewFlare API domain (e.g., `https://viewflare.pages.dev`).
 2. **Determine the Project Identifier**: Create a unique URL-safe slug for the specific page/component being tracked (e.g., `readme-views`, `app-homepage`).
+   - For anything with more than a handful of tracked surfaces, use a dotted
+     name: `acme.docs.getting-started`, `acme.api.v2`. Then
+     `GET /api/views/acme?rollup=1` sums the whole tree and returns the
+     per-project breakdown in `members`, and
+     `/api/views/acme/badge?rollup=1` renders that sum. Rollup is opt-in, so a
+     flat name behaves exactly as before.
 3. **Insert Tracking Logic (Silent POST Request)**:
    - Example (browser JavaScript):
      ```javascript

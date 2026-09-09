@@ -137,10 +137,16 @@ paths:
   /api/views/{project}:
     parameters:
       - $ref: "#/components/parameters/Project"
+      - $ref: "#/components/parameters/Rollup"
     get:
       tags: [views]
       summary: One project's totals
-      description: A project that has never been seen reads as zero rather than 404.
+      description: |
+        A project that has never been seen reads as zero rather than 404.
+
+        With `rollup`, the answer covers this project and every project below it
+        in the dotted hierarchy, and carries `members` with the per-project
+        breakdown instead of `description` and `createdAt`.
       operationId: getViews
       responses:
         "200":
@@ -152,8 +158,18 @@ paths:
                 properties:
                   success: { type: boolean }
                   projectName: { type: string }
+                  rollup: { type: boolean }
                   totalViews: { type: integer }
                   uniqueViews: { type: integer }
+                  memberCount: { type: integer }
+                  members:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        projectName: { type: string }
+                        totalViews: { type: integer }
+                        uniqueViews: { type: integer }
                   description: { type: [string, "null"] }
                   createdAt: { type: [string, "null"] }
         "400":
@@ -219,6 +235,7 @@ paths:
   /api/views/{project}/badge:
     parameters:
       - $ref: "#/components/parameters/Project"
+      - $ref: "#/components/parameters/Rollup"
       - $ref: "#/components/parameters/Style"
       - $ref: "#/components/parameters/Color"
       - name: label
@@ -469,6 +486,7 @@ paths:
     parameters:
       - $ref: "#/components/parameters/Project"
       - $ref: "#/components/parameters/Expr"
+      - $ref: "#/components/parameters/Rollup"
     get:
       tags: [compute]
       summary: One number from an expression
@@ -481,6 +499,12 @@ paths:
         `events.<category>`, `events.<category>.<name>`. Views and installs are
         scoped to the project in the URL; event counts are instance wide,
         because the event log has no project column.
+
+        With `rollup`, every `views.*` variable sums the whole dotted subtree and
+        its input reports `scope: subtree`. Installs stay scoped to the one
+        project even under a rollup, because rolling them up would mean a
+        separate registry fan-out for every descendant; the input says so in its
+        `note`.
 
         Operators are `+ - * / %` with parentheses and unary minus. Functions
         are `min` and `max` (1 to 8 arguments), `abs`, `floor`, `ceil`,
@@ -543,6 +567,7 @@ paths:
     parameters:
       - $ref: "#/components/parameters/Project"
       - $ref: "#/components/parameters/Expr"
+      - $ref: "#/components/parameters/Rollup"
       - $ref: "#/components/parameters/Style"
       - $ref: "#/components/parameters/Color"
       - $ref: "#/components/parameters/BadgeLabel"
@@ -571,6 +596,7 @@ paths:
     parameters:
       - $ref: "#/components/parameters/Project"
       - $ref: "#/components/parameters/Expr"
+      - $ref: "#/components/parameters/Rollup"
       - $ref: "#/components/parameters/Color"
       - $ref: "#/components/parameters/BadgeLabel"
     get:
@@ -814,7 +840,10 @@ components:
       name: project
       in: path
       required: true
-      description: URL-safe project slug, at most 100 characters. Created on first use.
+      description: |
+        URL-safe project slug, at most 100 characters. Created on first use.
+        A dot makes the name hierarchical: `acme.api.docs` sits under `acme.api`,
+        which sits under `acme`. That only matters to callers that pass `rollup`.
       schema: { type: string, maxLength: 100 }
       example: my-project
     Expr:
@@ -826,6 +855,15 @@ components:
         so write it as `%2B`.
       schema: { type: string, maxLength: 200 }
       example: views.total+installs.total
+    Rollup:
+      name: rollup
+      in: query
+      description: |
+        Set to `1` or `true` to answer for this project plus every project whose
+        name sits under it, so `acme` covers `acme.api` and `acme.api.docs`.
+        Matching is on whole dotted segments, so `acme_other` is not included.
+        Off by default.
+      schema: { type: string, enum: ["1", "true"] }
     Style:
       name: style
       in: query

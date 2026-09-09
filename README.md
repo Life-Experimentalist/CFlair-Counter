@@ -105,7 +105,7 @@ fetch("https://your-domain.com/api/views/my-project", {
 | `/health` | GET | No | Health check |
 | `/api/stats` | GET | No | Global stats across projects |
 | `/api/views?names=a,b,c` | GET | No | Batch read, up to 50 projects, never increments |
-| `/api/views/:project` | GET | No | Get one project's stats |
+| `/api/views/:project` | GET | No | Get one project's stats, `?rollup=1` to include everything under it |
 | `/api/views/:project` | POST | No | Increment project views |
 | `/api/views/:project/badge` | GET | No | SVG views badge |
 | `/api/views/:project/history` | GET | No | Daily series, `?series=snapshots` for the recorded one |
@@ -171,6 +171,26 @@ curl "https://your-domain.com/api/compute/my-project?expr=views.total%2Binstalls
 - A `+` in a URL decodes to a space, so write it as `%2B`.
 - If any input is unavailable the whole metric reports unavailable. It never
   substitutes a zero.
+- `&rollup=1` makes every `views.*` variable sum the whole dotted subtree.
+
+## Hierarchical Project Names
+
+A dot makes a project name a path. `acme.api.docs` sits under `acme.api`, which
+sits under `acme`. Nothing about storage changes, the name is still one string
+in one column, so every existing name keeps working untouched.
+
+```bash
+curl -X POST "https://your-domain.com/api/views/acme.api.docs"
+curl "https://your-domain.com/api/views/acme?rollup=1"
+```
+
+```md
+![All of acme](https://your-domain.com/api/views/acme/badge?rollup=1&label=acme)
+```
+
+A rollup answer carries `members`, the per-project breakdown, alongside the sum.
+Matching is on whole dotted segments, so `acme_other` is never counted under
+`acme`. Rollup is off by default on every route that offers it.
 
 `INTEGRATION.md` Goal 7 has the full contract.
 

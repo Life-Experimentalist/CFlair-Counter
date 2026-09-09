@@ -39,6 +39,48 @@ const normalizeBadgeColor = (rawColor: string): string | null => {
 	return null;
 };
 
+// A dot makes a project name a path: "acme.api.docs" sits under "acme.api",
+// which sits under "acme". Nothing about storage changes, the name is still one
+// string in one column. The dots only matter when a caller asks for a rollup.
+const PROJECT_NAME_PATTERN = /^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*$/;
+
+const wantsRollup = (c: any): boolean => {
+	const raw = c.req.query("rollup");
+	return raw === "1" || raw === "true";
+};
+
+// Sums a project together with every descendant of it.
+//
+// The range comparison is deliberate. `LIKE 'name.%'` would be wrong here
+// because `_` is a LIKE wildcard and underscores are legal in a name, so
+// `my_org.%` would also match `myXorg.api`. `/` is the byte directly after `.`,
+// so `> name || '.'` and `< name || '/'` is exactly the dotted subtree, and it
+// still uses idx_project_name.
+const readSubtreeViews = async (db: D1Database, projectName: string) => {
+	const rows = await db
+		.prepare(
+			`SELECT project_name, view_count, unique_views
+			FROM project_views
+			WHERE project_name = ?1
+				OR (project_name > ?1 || '.' AND project_name < ?1 || '/')
+			ORDER BY project_name`,
+		)
+		.bind(projectName)
+		.all();
+
+	const members = ((rows.results || []) as any[]).map((row) => ({
+		projectName: String(row.project_name),
+		totalViews: Number(row.view_count) || 0,
+		uniqueViews: Number(row.unique_views) || 0,
+	}));
+
+	return {
+		members,
+		totalViews: members.reduce((sum, m) => sum + m.totalViews, 0),
+		uniqueViews: members.reduce((sum, m) => sum + m.uniqueViews, 0),
+	};
+};
+
 // In-memory rate limiting store (Workers KV would be better for production)
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 
@@ -474,6 +516,21 @@ app.get("/api/views/:projectName", edgeCache(60), async (c) => {
 	await initDatabase(c.env.DB);
 
 	try {
+		// ?rollup=1 answers for this project plus everything under it. Off by
+		// default, so an existing caller sees exactly what it always did.
+		if (wantsRollup(c)) {
+			const subtree = await readSubtreeViews(c.env.DB, projectName);
+			return c.json({
+				success: true,
+				projectName,
+				rollup: true,
+				totalViews: subtree.totalViews,
+				uniqueViews: subtree.uniqueViews,
+				memberCount: subtree.members.length,
+				members: subtree.members,
+			});
+		}
+
 		const result = await c.env.DB.prepare(
 			"SELECT view_count, unique_views, description, created_at FROM project_views WHERE project_name = ?",
 		)
@@ -1310,13 +1367,18 @@ app.get("/api/views/:projectName/badge", edgeCache(60), async (c) => {
 			}
 		}
 
-		const result = await c.env.DB.prepare(
-			"SELECT view_count FROM project_views WHERE project_name = ?",
-		)
-			.bind(projectName)
-			.first();
+		let viewCount: number;
+		if (wantsRollup(c)) {
+			viewCount = (await readSubtreeViews(c.env.DB, projectName)).totalViews;
+		} else {
+			const result = await c.env.DB.prepare(
+				"SELECT view_count FROM project_views WHERE project_name = ?",
+			)
+				.bind(projectName)
+				.first();
+			viewCount = Number(result?.view_count) || 0;
+		}
 
-		const viewCount = Number(result?.view_count) || 0;
 		const valueTextRaw = formatCompactCount(viewCount);
 
 		const badgeColor = resolveBadgeColor(color);
@@ -1760,7 +1822,7 @@ app.put("/api/admin/projects/:projectName", async (c) => {
 		}
 
 		const targetName: string = (newName || originalName).trim();
-		if (!/^[a-zA-Z0-9-_]+$/.test(targetName) || targetName.length > 100) {
+		if (!PROJECT_NAME_PATTERN.test(targetName) || targetName.length > 100) {
 			return c.json({ error: "Invalid project name format" }, 400);
 		}
 		if (viewCount !== undefined && (!Number.isInteger(viewCount) || viewCount < 0)) {
@@ -2789,9 +2851,10 @@ const evaluateComputeNode = (
 type ComputeInput = {
 	name: string;
 	value: number | null;
-	// Views and installs belong to the project in the URL. The event log has no
-	// project column, so event counts are instance wide and say so.
-	scope: "project" | "instance";
+	// Views and installs belong to the project in the URL. A rollup widens views
+	// to the whole dotted subtree. The event log has no project column, so event
+	// counts are instance wide and say so.
+	scope: "project" | "subtree" | "instance";
 	stale: boolean;
 	partial: boolean;
 	note?: string;
@@ -2801,6 +2864,7 @@ const resolveComputeInputs = async (
 	env: Bindings,
 	projectName: string,
 	names: string[],
+	rollup: boolean,
 ): Promise<{ inputs: ComputeInput[]; mixedWindows: boolean }> => {
 	const inputs: ComputeInput[] = [];
 	let mixedWindows = false;
@@ -2811,12 +2875,22 @@ const resolveComputeInputs = async (
 	const wantsInstalls = names.some((name) => name.startsWith("installs."));
 
 	let viewRow: any = null;
+	let rolledMembers = 0;
 	if (wantsViews) {
-		viewRow = await env.DB.prepare(
-			"SELECT view_count, unique_views FROM project_views WHERE project_name = ?",
-		)
-			.bind(projectName)
-			.first();
+		if (rollup) {
+			const subtree = await readSubtreeViews(env.DB, projectName);
+			rolledMembers = subtree.members.length;
+			viewRow = {
+				view_count: subtree.totalViews,
+				unique_views: subtree.uniqueViews,
+			};
+		} else {
+			viewRow = await env.DB.prepare(
+				"SELECT view_count, unique_views FROM project_views WHERE project_name = ?",
+			)
+				.bind(projectName)
+				.first();
+		}
 	}
 
 	let configured = 0;
@@ -2843,7 +2917,16 @@ const resolveComputeInputs = async (
 				parts[1] === "total"
 					? Number(viewRow?.view_count) || 0
 					: Number(viewRow?.unique_views) || 0;
-			inputs.push({ name, value, scope: "project", stale: false, partial: false });
+			inputs.push({
+				name,
+				value,
+				scope: rollup ? "subtree" : "project",
+				stale: false,
+				partial: false,
+				note: rollup
+					? `summed over ${rolledMembers} project${rolledMembers === 1 ? "" : "s"} under "${projectName}"`
+					: undefined,
+			});
 			continue;
 		}
 
@@ -2871,7 +2954,9 @@ const resolveComputeInputs = async (
 							? "no install sources configured for this project"
 							: summary.answered < configured
 								? `${summary.answered} of ${configured} sources answered`
-								: undefined,
+								: rollup
+									? "installs are not rolled up, only this project"
+									: undefined,
 				});
 				continue;
 			}
@@ -2960,6 +3045,7 @@ type ComputeResult = {
 	stale: boolean;
 	mixedWindows: boolean;
 	usesLiveCounters: boolean;
+	rollup: boolean;
 	inputs: ComputeInput[];
 };
 
@@ -2967,6 +3053,7 @@ const resolveComputeMetric = async (
 	env: Bindings,
 	projectName: string,
 	rawExpression: string,
+	rollup = false,
 ): Promise<ComputeResult> => {
 	const node = parseComputeExpression(rawExpression);
 	const referenced = new Set<string>();
@@ -2977,6 +3064,7 @@ const resolveComputeMetric = async (
 		env,
 		projectName,
 		names,
+		rollup,
 	);
 
 	const partial = inputs.some((input) => input.partial);
@@ -2991,6 +3079,7 @@ const resolveComputeMetric = async (
 		stale,
 		mixedWindows,
 		usesLiveCounters,
+		rollup,
 		inputs,
 	};
 
@@ -3064,6 +3153,7 @@ app.get("/api/compute/:projectName", edgeCache(60), customRateLimiter, async (c)
 			c.env,
 			projectName,
 			c.req.query("expr") || "",
+			wantsRollup(c),
 		);
 
 		c.header("Cache-Control", `public, max-age=${computeCacheSeconds(result)}`);
@@ -3071,6 +3161,7 @@ app.get("/api/compute/:projectName", edgeCache(60), customRateLimiter, async (c)
 		return c.json({
 			success: true,
 			project: projectName,
+			rollup: result.rollup,
 			expression: result.expression,
 			value: result.value,
 			formatted: result.formatted,
@@ -3117,6 +3208,7 @@ app.get("/api/compute/:projectName/badge", edgeCache(60), async (c) => {
 				c.env,
 				projectName,
 				c.req.query("expr") || "",
+				wantsRollup(c),
 			);
 			message = result.formatted;
 			unavailable = result.unavailable;
@@ -3180,6 +3272,7 @@ app.get("/api/compute/:projectName/shields.json", edgeCache(60), async (c) => {
 				c.env,
 				projectName,
 				c.req.query("expr") || "",
+				wantsRollup(c),
 			);
 		} catch (error) {
 			if (!(error as any)?.computeError) throw error;
