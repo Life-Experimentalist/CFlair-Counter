@@ -78,7 +78,7 @@ npm run deploy
 **There is no Cloudflare migration.** ViewFlare is the product name. `cflaircounter` is
 the Pages project name, and it stays.
 
-Cloudflare Pages has no rename operation — `wrangler pages project` offers only `list`,
+Cloudflare Pages has no rename operation: `wrangler pages project` offers only `list`,
 `create` and `delete`, and the dashboard has no rename either. Changing `name` in
 `wrangler.toml` does not rename a project; it targets a *different* one, so the next
 `wrangler pages deploy` would create a brand-new empty project and leave the live one
@@ -111,7 +111,7 @@ names still say `cflaircounter`.
    the reverse, so if these commits land while the repo is still `CFlair-Counter`, both
    links 404 until the rename happens.
 2. **Push.**
-3. **Nothing on Cloudflare.** The existing project keeps deploying from the renamed repo —
+3. **Nothing on Cloudflare.** The existing project keeps deploying from the renamed repo.
    GitHub's redirect keeps the Pages build connection working. Confirm the next deploy is
    green and `https://counter.vkrishna04.me/health` still answers.
 
@@ -119,7 +119,7 @@ names still say `cflaircounter`.
 
 It is a create-and-move, and it is only worth it if you have a reason beyond tidiness.
 Create a new `viewflare` project, bind the **existing** `cflaircounter-db` (never a new
-database — that starts the counts at zero), copy the environment variables across with
+database, which starts the counts at zero), copy the environment variables across with
 `ADMIN_PASSWORD` entered as a secret, verify a known count on `viewflare.pages.dev`, and
 only then move `counter.vkrishna04.me` across. There is a window where the hostname 404s.
 

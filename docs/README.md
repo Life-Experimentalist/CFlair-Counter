@@ -1,6 +1,6 @@
 # ViewFlare Documentation Index
 
-Welcome to the documentation for **ViewFlare**—a professional, cost-optimized, and AI-friendly serverless view counter.
+Welcome to the documentation for **ViewFlare**, a professional, cost-optimized, and AI-friendly serverless view counter.
 
 ---
 

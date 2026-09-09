@@ -2,7 +2,7 @@
 
 Paste everything below the line into a fresh Claude Code session opened at
 `V:\Code\ProjectCode\CFlair-Counter`. It is one job in four parts: the rename, the
-install-count aggregator, the shields endpoint, and the brand. Do them in that order —
+install-count aggregator, the shields endpoint, and the brand. Do them in that order,
 part 2 onward assumes the new name is already in place.
 
 ---
@@ -22,12 +22,12 @@ separately and stop for review.
   and Open VSX are added together, the response must carry the breakdown as well as the
   total, and any badge that shows only the total must label it "installs (all registries)".
 - Do not commit secrets. `wrangler.toml` currently has `ADMIN_PASSWORD =
-  "your-secure-admin-password-here"` — that placeholder stays a placeholder; real values
+  "your-secure-admin-password-here"`. That placeholder stays a placeholder; real values
   belong in Cloudflare's dashboard secrets, not the repo.
 - Match the existing code style. This is plain TypeScript on Workers with no framework;
   keep it that way.
 
-## Part 1 — the rename
+## Part 1: the rename
 
 `CFlair`, `cflair`, `CFlairCounter` and `cflaircounter` appear in **11 tracked files**
 (ignore anything under `.wrangler/`, which is build scratch):
@@ -54,23 +54,23 @@ Rules for the pass:
   `ViewFlare.postman_environment.json`, and their internal `info.name` updated too.
 - `wrangler.toml`'s `name = "cflaircounter"` → `name = "viewflare"`. **Flag this to the
   user before they deploy**: renaming a Pages project in `wrangler.toml` does not rename
-  the project in Cloudflare — it targets a *different* project. The custom domain
+  the project in Cloudflare. It targets a *different* project. The custom domain
   `counter.vkrishna04.me` has to be moved to the new project in the Cloudflare dashboard,
   and the D1 binding re-attached. Write those steps into `docs/CLOUDFLARE-SETUP.md` as a
   migration section. Do not attempt the Cloudflare-side move yourself.
 - **Do not change the public URL.** `counter.vkrishna04.me` stays. It is already used by
   the portfolio and by the GitHub profile README badge
   (`counter.vkrishna04.me/api/views/VKrishna04/badge`), and breaking it breaks both. If a
-  second hostname is wanted later, add it as an alias — never as a replacement.
+  second hostname is wanted later, add it as an alias, never as a replacement.
 - Add one line near the top of the README: the project was previously called
   CFlair-Counter. People who bookmarked it should be able to tell it is the same thing.
 - `compatibility_date = "2024-03-20"` is stale. Bump it to the current date and run the
   local dev server to confirm nothing breaks.
 
-## Part 2 — the install-count aggregator
+## Part 2: the install-count aggregator
 
 New capability. ViewFlare should be able to report, for a given project, how many times it
-has actually been installed or downloaded — pulled live from wherever it ships, and added
+has actually been installed or downloaded, pulled live from wherever it ships, and added
 up in one place.
 
 Sources to support, each optional per project:
@@ -79,7 +79,7 @@ Sources to support, each optional per project:
 |---|---|
 | VS Code Marketplace | the Marketplace public extension-query API, `statistics` → `install` |
 | Open VSX | `https://open-vsx.org/api/{namespace}/{extension}` → `downloadCount` |
-| PyPI | the PyPI JSON API, or pypistats for a rolling window — pick one and say which in the response |
+| PyPI | the PyPI JSON API, or pypistats for a rolling window, so pick one and say which in the response |
 | GitHub releases | sum of `assets[].download_count` across releases for the repo |
 | npm | the npm registry downloads endpoint, if a package is configured |
 
@@ -98,30 +98,30 @@ Design requirements:
 - Add a `GET /api/installs/{project}` endpoint and document it in `INTEGRATION.md`
   alongside the existing views API, with a real worked example.
 
-## Part 3 — shields
+## Part 3: shields
 
 The counter already serves SVG badges. Extend that so a user can put their own numbers on
 their own README without a third-party shields.io round-trip.
 
-- `GET /api/installs/{project}/badge` — an SVG badge of the aggregate, same styling
+- `GET /api/installs/{project}/badge`: an SVG badge of the aggregate, same styling
   options the existing view badge supports (colour, label, style).
 - Also expose `GET /api/installs/{project}/shields.json` in
   [shields.io endpoint format](https://shields.io/badges/endpoint-badge)
   (`{schemaVersion, label, message, color}`) so anyone who prefers shields.io can point it
   at ViewFlare as a custom endpoint. Cheap to add, and it makes ViewFlare useful to people
   who are not going to switch badge providers.
-- Every badge route must set sensible `Cache-Control` — GitHub's camo proxy will hammer
+- Every badge route must set sensible `Cache-Control`, because GitHub's camo proxy will hammer
   these otherwise.
 - Document both in `INTEGRATION.md` with copy-pasteable markdown.
 
-## Part 4 — the brand
+## Part 4: the brand
 
 - A logo and a social banner, placed at `docs/public/logo.png` and
   `docs/public/banner.png` to match the convention CogniGate already uses in this
   ecosystem, and referenced from the README header.
 - `public/index.html` is the admin panel; give it the new name and the logo.
 - **Ask the user for the image files rather than generating placeholder art.** There is a
-  set of image-generation prompts in `docs/BRAND-PROMPTS.md` (see below) — the user is
+  set of image-generation prompts in `docs/BRAND-PROMPTS.md` (see below), the user is
   producing the assets from those. Until the files exist, reference them but do not commit
   broken image links to the README; keep the header text-only and add a TODO.
 
@@ -132,16 +132,16 @@ in the repo.
 
 # Image prompts for ViewFlare (for the user to run)
 
-**Logo — square app icon, 1024×1024, transparent background**
+**Logo: square app icon, 1024×1024, transparent background**
 
 > A minimal flat vector app icon for a developer analytics service called ViewFlare. The
-> mark is a stylised eye whose iris is a small solar flare — a rising arc of light with
+> mark is a stylised eye whose iris is a small solar flare, a rising arc of light with
 > three short radiating rays. Geometric, built from clean circles and arcs, no gradient
 > mesh, no photorealism, no text. Two colours only: a warm amber-to-orange flare against a
 > deep indigo eye outline. Flat vector, sharp edges, generous negative space, reads clearly
 > at 32×32. Transparent background.
 
-**Alternate logo — if the eye reads as surveillance rather than analytics**
+**Alternate logo, if the eye reads as surveillance rather than analytics**
 
 > A minimal flat vector app icon for a developer analytics service called ViewFlare. The
 > mark is a bar chart of three ascending bars where the tallest bar erupts into a small
@@ -149,7 +149,7 @@ in the repo.
 > orange flare against a deep indigo base. Flat vector, sharp edges, reads clearly at
 > 32×32. Transparent background.
 
-**Social banner — 1280×640, for the README header and the GitHub social preview**
+**Social banner: 1280×640, for the README header and the GitHub social preview**
 
 > A wide developer-tool banner, 1280 by 640, dark deep-indigo background with a subtle
 > grid of faint dots. On the left, the ViewFlare mark: a stylised eye with a solar-flare
@@ -159,9 +159,9 @@ in the repo.
 > suggesting count pills, in amber. Flat vector illustration, high contrast, lots of empty
 > space, no photorealism, no stock-photo people, no extra text.
 
-**Favicon — 512×512**
+**Favicon: 512×512**
 
-> The ViewFlare mark alone — the solar-flare eye — flat vector, amber flare on deep indigo,
+> The ViewFlare mark alone, the solar-flare eye, flat vector, amber flare on deep indigo,
 > filled circular background rather than transparent, no text, maximum contrast, designed
 > to stay legible at 16×16.
 
