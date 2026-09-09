@@ -11,7 +11,10 @@ Full docs: https://github.com/Life-Experimentalist/ViewFlare
 - INTEGRATION.md is the contract for every endpoint, grouped by goal.
 - docs/AI-AGENT-QUICKSTART.md is the short recipe list.
 - skills/viewflare-integration/SKILL.md is a Claude Code skill that wires
-  ViewFlare into a project.
+  ViewFlare into a project, installable as a plugin with
+  /plugin marketplace add Life-Experimentalist/ViewFlare
+- integrations/agents/ holds the same guidance as a copy-in rules file for
+  Codex, Cursor, Windsurf, Antigravity, Copilot and Kiro.
 
 ## Rules
 

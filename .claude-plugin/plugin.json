@@ -1,0 +1,18 @@
+{
+	"name": "viewflare-integration",
+	"description": "Deploy a ViewFlare instance on the Cloudflare free tier, wire view and event tracking into a codebase, and derive a single computed number from what it collects.",
+	"version": "2.4.0",
+	"author": {
+		"name": "Life-Experimentalist"
+	},
+	"homepage": "https://github.com/Life-Experimentalist/ViewFlare",
+	"repository": "https://github.com/Life-Experimentalist/ViewFlare",
+	"license": "Apache-2.0",
+	"keywords": [
+		"analytics",
+		"view-counter",
+		"cloudflare",
+		"badges",
+		"d1"
+	]
+}

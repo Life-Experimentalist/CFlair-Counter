@@ -194,6 +194,39 @@ Matching is on whole dotted segments, so `acme_other` is never counted under
 
 `INTEGRATION.md` Goal 7 has the full contract.
 
+## Install It Into Your Agent
+
+ViewFlare is built so a coding agent can wire it up without being told the API.
+Every deployment serves `/llms.txt` (the short version) and `/openapi.yaml` (all
+of it), so the file you install into your own project is a short pointer rather
+than a copy of the docs that goes stale.
+
+Claude Code gets a plugin, because a skill can run the deploy as well as write
+the calls:
+
+```
+/plugin marketplace add Life-Experimentalist/ViewFlare
+/plugin install viewflare-integration@viewflare
+```
+
+Every other harness gets a copy-in rules file from `integrations/agents/`:
+
+| Harness                              | Destination in your repo                         |
+| ------------------------------------ | ------------------------------------------------ |
+| Codex, Cursor, Windsurf, Antigravity | `AGENTS.md`                                      |
+| GitHub Copilot                       | `.github/instructions/viewflare.instructions.md` |
+| Amazon Kiro                          | `.kiro/steering/viewflare.md`                    |
+| Anything else with a fetch tool      | no file, point it at `/llms.txt`                 |
+
+`AGENTS.md` usually already exists, so append instead of overwriting:
+
+```bash
+curl -sL https://raw.githubusercontent.com/Life-Experimentalist/ViewFlare/main/integrations/agents/AGENTS.md >> AGENTS.md
+```
+
+`integrations/agents/README.md` has the commands for the other two and explains
+the frontmatter each one needs.
+
 ## Environment Variables
 
 | Variable              | Required            | Default | Description                    |
@@ -229,9 +262,12 @@ npm run test:newman:ci
   `https://your-domain.com/openapi.yaml`.
 - `docs/postman-guide.md` - Postman/Newman collection usage.
 - `docs/BRAND-PROMPTS.md` - image-generation prompts for the logo and banner.
-- `skills/viewflare-integration/SKILL.md` - Claude Code skill. Copy the
-  `skills/viewflare-integration` directory into `~/.claude/skills/` to have an
-  agent wire ViewFlare into a project for you.
+- `skills/viewflare-integration/SKILL.md` - Claude Code skill, shipped as the
+  `viewflare-integration` plugin. Install it with
+  `/plugin marketplace add Life-Experimentalist/ViewFlare`, or copy the
+  directory into `~/.claude/skills/`.
+- `integrations/agents/README.md` - the same guidance as a copy-in rules file
+  for Codex, Cursor, Windsurf, Antigravity, Copilot and Kiro.
 - `public/llms.txt` - served at `https://your-domain.com/llms.txt`, the short
   version of this API for an agent that lands on the deployed instance.
 

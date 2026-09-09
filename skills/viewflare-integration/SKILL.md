@@ -1,5 +1,5 @@
 ---
-name: viewflare_integration
+name: viewflare-integration
 description: Helps the user deploy ViewFlare via Cloudflare Pages, integrate view and event tracking into their codebase, and derive a single computed number from what it collects.
 ---
 
