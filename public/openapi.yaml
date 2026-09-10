@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: ViewFlare
-  version: 2.5.0
+  version: 3.0.0
   summary: View counter, install-count aggregator, event log and computed metrics.
   description: |
     ViewFlare runs as a Cloudflare Worker with a D1 database. Every

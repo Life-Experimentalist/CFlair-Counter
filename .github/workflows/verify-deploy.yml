@@ -7,8 +7,12 @@ name: Verify deployment
 #
 # Deployment happens in Cloudflare Workers Builds, not here, so this workflow
 # does not deploy anything and holds no Cloudflare credentials. It waits for the
-# version at /health to match package.json, which is the signal that the build
-# actually landed, and then confirms the deployed instance is wired up.
+# version at /health to match package.json, then checks that the instance is
+# wired up. Read the poll for what it proves, which is that a build carrying
+# that version is answering, not that this commit is the one answering. If the
+# version did not change in the push, it passes on the first attempt against
+# whatever was already live and proves nothing at all, so bump the version
+# alongside any change worth verifying.
 #
 # It is opt-in and skips cleanly when VIEWFLARE_URL is not set, so a fork gets a
 # green run with no configuration, the same property newman.yml has. To turn it

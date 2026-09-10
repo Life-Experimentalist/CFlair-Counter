@@ -1,6 +1,6 @@
 {
 	"name": "viewflare",
-	"version": "2.5.0",
+	"version": "3.0.0",
 	"description": "Ultra-lightweight serverless telemetry system for headless project tracking. Optimized for minimal Cloudflare costs.",
 	"main": "functions/index.ts",
 	"scripts": {

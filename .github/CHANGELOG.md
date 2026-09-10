@@ -5,6 +5,62 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0]() - 2026-09-11
+
+A major version because the API lost fields. Anything that only reads a view
+count keeps working unchanged. Anything that read a unique count has to change.
+
+### Removed
+- **Unique view tracking, everywhere.** `uniqueViews` is gone from
+  `POST /api/views/{project}`, the `GET /api/views` batch read, `/api/stats`,
+  `/api/views/{project}/rollup` and the admin endpoints. `unique_views` is gone
+  from the admin project rows. `views.unique` is gone from the compute
+  expression language. `analyticsEnabled` is gone from `/api/stats`, and
+  `ENABLE_ANALYTICS` is gone from `wrangler.toml` and both env examples. The
+  number came from a hash of IP and user agent, which is a guess at who a
+  visitor is, and a guess sitting next to a real count reads like a second
+  measurement. A count is a count.
+- **The `visitor_tracking` table and the `unique_views` column**, dropped by
+  `migrations/0001_remove_unique_views.sql`. It rebuilds the table rather than
+  using `ALTER TABLE DROP COLUMN`, because SQLite has no `IF EXISTS` there and
+  the statement would error on a database created from the current schema. As
+  written it is safe on an old database, on a fresh one, and run twice.
+- The default series of `GET /api/views/{project}/history` used to be the
+  visitor-derived approximation. It is now the nightly snapshot, a real running
+  total per day. `?series=snapshots` still works and means the same thing, so
+  existing callers are unaffected.
+
+### Added
+- **`MAX_PROJECTS`, now enforced**, and raised to `1000`. It has been declared
+  since the beginning and read by nothing. At the cap, a project name that does
+  not exist yet is refused with a 409; every project that already exists keeps
+  counting. There is no admin create-project route, so the cap sits on the two
+  paths that create a project implicitly: `POST /api/views/{project}` and the
+  badge with `?inc=true`.
+- **`DAILY_WRITE_BUDGET`**, at `90000`. D1's free tier allows 100,000 rows
+  written a day, and reaching it turns every write into an error with no
+  warning. Past the budget a view POST is refused with a 503 and a `Retry-After`
+  counting down to UTC midnight, while a badge still renders and silently skips
+  the increment, because a badge that errors is a broken image in someone's
+  README. Reads are never shed. The count only happens while `TRACK_USAGE` is
+  `true`, since that is the code doing the counting. `0` turns the budget off.
+
+  This does nothing for the Workers request limit, 100,000 a day on the free
+  plan. Cloudflare stops invoking the worker at that point, so no code inside
+  the worker can answer for it.
+- **`npm run setup` offers to set every `[vars]` value.** It lists the nine
+  settings and asks whether to change any of them, before the deploy rather
+  than after it. The question defaults to no, each prompt defaults to the
+  shipped value, and the whole thing is skipped when there is no terminal, so
+  an unattended or CI install behaves exactly as it did.
+
+### Changed
+- The header comment on `.github/workflows/verify-deploy.yml` said the version
+  poll was "the signal that the build actually landed". It is not. It proves a
+  build carrying that version is answering, and when the version has not
+  changed it passes on the first attempt against whatever was already live. The
+  comment now says so.
+
 ## [2.5.0]() - 2026-09-10
 
 Nothing was recorded here for 2.3.0 or 2.4.0. The git history covers them.
