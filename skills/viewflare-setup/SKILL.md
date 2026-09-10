@@ -73,9 +73,13 @@ change. Step 5 of the setup script prints the list.
 `ENABLE_*` are on unless the value is exactly `"false"`. `TRACK_*` and `DEBUG`
 are off unless it is exactly `"true"`. Anything else leaves the default.
 
-Changing one is an edit plus `npm run deploy`. The commands are identical in
-bash and PowerShell, since both are npm scripts; only the local-dev file copy
-differs (`cp` against `Copy-Item`).
+Changing one is an edit plus `npm run deploy`. Every command in this skill is
+an npm script or a `npx wrangler` call, so it is identical in bash and in
+PowerShell, with two exceptions to watch for on Windows. Copying the local-dev
+file is `cp` against `Copy-Item`. And Windows PowerShell 5.1, the version that
+ships with Windows, has no `&&`, so the `npm install && npm run setup`
+one-liner above is a parser error there: give a Windows user the two commands
+on separate lines instead.
 
 Never suggest setting these in the Cloudflare dashboard. `wrangler deploy`
 replaces the entire deployed variable list with what is in `wrangler.toml`, so a

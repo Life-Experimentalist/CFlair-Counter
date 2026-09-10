@@ -134,8 +134,13 @@ persist = true
 # The build that produces main = "./public/_worker.js" above. Declared here so a
 # bare `wrangler deploy` is self-sufficient: that is what Cloudflare Workers
 # Builds runs when the dashboard's build command is left blank, and it is what
-# someone who forked this and never read package.json will type. `npm run
-# deploy` calls wrangler after building, and wrangler skips this command when
-# the build has already run in the same invocation.
+# someone who forked this and never read package.json will type.
+#
+# Because wrangler runs this itself, `npm run deploy` is just `wrangler deploy`
+# with no build in front of it. There is no mechanism that skips a repeated
+# build, so a script that built first would simply build twice.
+#
+# Note that `wrangler dev` runs this too, which makes a cold start slower than
+# it was before this block existed.
 [build]
 command = "npm run build"

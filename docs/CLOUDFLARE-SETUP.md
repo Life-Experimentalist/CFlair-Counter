@@ -74,12 +74,17 @@ leaves the default in place.
 
 ### Changing a setting
 
-Edit the value in `wrangler.toml`, then deploy. Same two commands in bash and
-in PowerShell, because both are npm scripts:
+Edit the value in `wrangler.toml`, then deploy:
 
 ```bash
-npx wrangler whoami && npm run deploy
+npm run deploy
 ```
+
+That one is identical in bash and in PowerShell, because it is an npm script.
+Where the two shells differ, this file says so. One difference worth knowing up
+front: Windows PowerShell 5.1, the version that ships with Windows, has no `&&`
+operator, so a combined command like `npm install && npm run setup` is a parser
+error there. Run the two parts on separate lines, or use PowerShell 7.
 
 Do not set these in the Cloudflare dashboard. `wrangler deploy` replaces the
 whole deployed variable list with what is in `wrangler.toml`, so a variable

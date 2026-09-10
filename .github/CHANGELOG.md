@@ -49,7 +49,9 @@ Nothing was recorded here for 2.3.0 or 2.4.0. The git history covers them.
   sampling and invocation logs. Declared in the config for the same reason: a
   deploy owns the setting, so an absent block turns it back off.
 - **`[build]`**, so a bare `wrangler deploy` builds the worker first. That is
-  what Cloudflare Workers Builds runs when its build command is blank.
+  what Cloudflare Workers Builds runs when its build command is blank. Because
+  wrangler now runs the build itself, `npm run deploy` dropped its own
+  `npm run build &&` prefix, which had become a second full build.
 - **`.dev.vars.example`**, listing the same names for local `wrangler dev`.
 
 ### Removed

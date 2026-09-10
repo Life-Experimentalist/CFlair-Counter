@@ -5,7 +5,7 @@
 	"main": "functions/index.ts",
 	"scripts": {
 		"dev": "npm run build:worker && wrangler dev",
-		"deploy": "npm run build && wrangler deploy",
+		"deploy": "wrangler deploy",
 		"setup": "node scripts/setup.mjs",
 		"prepare": "node scripts/prepare.mjs",
 		"build": "npm run build:worker && tsc",
