@@ -1,0 +1,176 @@
+name: Verify deployment
+
+# The other half of newman.yml. That one starts a ViewFlare inside the runner
+# and tests the contract; its own header says what it cannot check, which is
+# "the deployment itself: bindings, environment variables, routes". This is
+# that check, and it runs against the real instance after it goes out.
+#
+# Deployment happens in Cloudflare Workers Builds, not here, so this workflow
+# does not deploy anything and holds no Cloudflare credentials. It waits for the
+# version at /health to match package.json, which is the signal that the build
+# actually landed, and then confirms the deployed instance is wired up.
+#
+# It is opt-in and skips cleanly when VIEWFLARE_URL is not set, so a fork gets a
+# green run with no configuration, the same property newman.yml has. To turn it
+# on, set a repository variable (Settings, Secrets and variables, Actions,
+# Variables) named VIEWFLARE_URL.
+#
+# Point it at the *.workers.dev hostname rather than a custom domain. A GitHub
+# runner is a datacenter IP, and if the custom domain's zone has Bot Fight Mode
+# on, some of these requests come back as an HTML challenge page instead of
+# JSON. The workers.dev hostname is not on the zone and is not subject to it.
+#
+# Every check is read-only. Nothing here POSTs a view, because this workflow
+# runs on every push to main and would otherwise inflate the very numbers the
+# instance exists to report.
+
+on:
+    push:
+        branches: [main]
+    workflow_dispatch:
+        inputs:
+            url:
+                description: Instance URL to verify, overriding the VIEWFLARE_URL variable
+                required: false
+
+jobs:
+    verify:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Verify the deployed instance
+              env:
+                  VIEWFLARE_URL: ${{ inputs.url || vars.VIEWFLARE_URL }}
+              run: |
+                  set -euo pipefail
+
+                  if [ -z "${VIEWFLARE_URL:-}" ]; then
+                    echo "VIEWFLARE_URL is not set, so there is no instance to verify."
+                    echo "Set it as a repository variable to turn this check on."
+                    exit 0
+                  fi
+
+                  base="${VIEWFLARE_URL%/}"
+                  want="$(node -p 'require("./package.json").version')"
+                  echo "Expecting version ${want} at ${base}"
+
+                  # Node rather than jq for the JSON work. jq is present on
+                  # GitHub's hosted runners but not on every machine someone
+                  # might run this on, and Node is needed anyway to read the
+                  # version out of package.json, so this drops a dependency
+                  # instead of adding one. Both helpers read stdin.
+
+                  # Print one top-level string field, or nothing if the body is
+                  # not JSON at all, which is what an HTML challenge page is.
+                  json_field() {
+                    node -e '
+                      let raw = "";
+                      process.stdin.on("data", (d) => (raw += d));
+                      process.stdin.on("end", () => {
+                        try {
+                          const value = JSON.parse(raw)[process.argv[1]];
+                          if (value !== undefined && value !== null) process.stdout.write(String(value));
+                        } catch {}
+                      });
+                    ' "$1"
+                  }
+
+                  # Evaluate a boolean expression against the parsed body, where
+                  # `d` is the document. Exit 1 if it is false or unparseable.
+                  json_assert() {
+                    node -e '
+                      let raw = "";
+                      process.stdin.on("data", (d) => (raw += d));
+                      process.stdin.on("end", () => {
+                        let ok = false;
+                        try {
+                          const d = JSON.parse(raw);
+                          ok = Boolean(eval(process.argv[1]));
+                        } catch {}
+                        process.exit(ok ? 0 : 1);
+                      });
+                    ' "$1"
+                  }
+
+                  # Workers Builds starts when the push lands, so this job and
+                  # the deploy race. Poll rather than sleeping a fixed amount:
+                  # a fast build is not punished and a slow one is not failed.
+                  # Ten minutes is longer than a build of this size has taken.
+                  got=""
+                  for attempt in $(seq 1 60); do
+                    body="$(curl -fsS -m 15 "${base}/health" || true)"
+                    got="$(printf '%s' "${body}" | json_field version || true)"
+                    if [ "${got}" = "${want}" ]; then
+                      echo "version ${got} is live (after ${attempt} attempts)"
+                      break
+                    fi
+                    echo "  attempt ${attempt}: /health reports '${got:-nothing}', waiting"
+                    sleep 10
+                  done
+
+                  if [ "${got}" != "${want}" ]; then
+                    echo "::error::The deployed version is '${got:-unreachable}', not ${want}."
+                    echo "The build did not land. Check Workers Builds for this Worker."
+                    exit 1
+                  fi
+
+                  # JSON, not an HTML challenge page. The usual symptom of a bot
+                  # challenge is a body starting with '<', which jq rejects, so
+                  # this catches an edge problem as a clear failure rather than
+                  # as a confusing parse error further down.
+                  check_json() {
+                    path="$1"
+                    expect="$2"
+                    out="$(curl -fsS -m 15 "${base}${path}")" || {
+                      echo "::error::${path} did not answer"
+                      return 1
+                    }
+                    printf '%s' "${out}" | json_assert "${expect}" || {
+                      echo "::error::${path} answered, but not as expected: ${expect}"
+                      printf '%s' "${out}" | head -c 400
+                      echo
+                      return 1
+                    }
+                    echo "  ok ${path}"
+                  }
+
+                  echo "Endpoints:"
+                  check_json /health 'd.success === true && d.status === "ok"'
+
+                  # totalViews comes out of D1, so a number here is the proof
+                  # that the DB binding resolved. That is the single most
+                  # useful check in this file: a Worker with a missing or
+                  # misconfigured binding still serves /health perfectly.
+                  # No project name is used, because a fresh fork has none.
+                  check_json /api/stats 'd.success === true && typeof d.statistics.totalViews === "number"'
+
+                  # Static discovery documents, served from the assets binding.
+                  # If these 404 the ASSETS binding is missing, which is exactly
+                  # the class of problem newman.yml cannot see.
+                  for doc in /llms.txt /openapi.yaml; do
+                    code="$(curl -s -m 15 -o /dev/null -w '%{http_code}' "${base}${doc}")"
+                    [ "${code}" = "200" ] || {
+                      echo "::error::${doc} returned ${code}, so static assets are not served"
+                      exit 1
+                    }
+                    echo "  ok ${doc}"
+                  done
+
+                  # The admin guard is live and fails closed. No password is
+                  # sent and none is needed: the assertion is that the endpoint
+                  # refuses. A 200 here would mean the console is open to
+                  # anyone, so it is worth a check on every deploy.
+                  code="$(curl -s -m 15 -o /dev/null -w '%{http_code}' \
+                    -X POST -H 'Content-Type: application/json' -d '{}' \
+                    "${base}/api/admin/stats")"
+                  if [ "${code}" = "401" ] || [ "${code}" = "403" ]; then
+                    echo "  ok /api/admin/stats refuses an unauthenticated call (${code})"
+                  else
+                    echo "::error::/api/admin/stats returned ${code}, expected 401 or 403."
+                    echo "Either ENABLE_ADMIN is off in a way that changes the status, or"
+                    echo "the ADMIN_PASSWORD secret is unset and the guard is not closing."
+                    exit 1
+                  fi
+
+                  echo "Deployment verified."
