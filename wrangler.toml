@@ -1,33 +1,99 @@
-# This project uses Cloudflare Pages Advanced Mode with a bundled worker.
+# ViewFlare runs as a Cloudflare Worker with static assets.
 # The entry point 'public/_worker.js' is auto-generated via 'npm run build:worker'.
 
-# The Cloudflare Pages project stays "cflaircounter" on purpose. Pages has no
-# rename operation (`wrangler pages project` offers only list/create/delete), so
-# changing this does not rename anything -- it targets a *different* project, and
-# the next deploy would build an empty one. The project name is never seen by a
-# user: the public surface is counter.vkrishna04.me. ViewFlare is the product
-# name, and it does not need to be the infrastructure name.
-name = "cflaircounter"
-main = "_worker.js"
+# Renamed from "cflaircounter" when the project moved off Cloudflare Pages.
+# Pages had no rename operation, so the old name was kept to avoid targeting an
+# empty project. Workers is a different product and this is a new Worker, so the
+# name matches the product for the first time. The public surface is unchanged:
+# counter.vkrishna04.me is attached as a custom domain in the dashboard.
+name = "viewflare"
+
+# Under Pages this file was consumed by the Pages build. Under Workers it is the
+# script itself, and 'assets' below serves everything next to it.
+main = "./public/_worker.js"
+
 # Newest date the pinned toolchain supports (wrangler 4.46.0 bundles workerd
-# 1.20251105.0). A later date makes `wrangler pages dev` fail with
+# 1.20251105.0). A later date makes `wrangler dev` fail with
 # "Compatibility date ... is in the future and unsupported". Bump wrangler first,
 # then this, then package.json's `dev` script, which passes it on the CLI.
 compatibility_date = "2025-11-05"
 
-# Environment variables for production
-[env.production.vars]
-ADMIN_PASSWORD = "your-secure-admin-password-here"
-ENABLE_ADMIN = "true"
-ENABLE_ANALYTICS = "false"  # Disable heavy analytics to save queries
-MAX_PROJECTS = "100"        # Limit projects to control usage
+# Static files. The `binding` is what makes `env.ASSETS.fetch(request)` work in
+# functions/index.ts, which is how every non-/api/ path is served.
+# `.assetsignore` sits in public/ and holds `_worker.js`, without which the
+# bundled worker source would be published and readable at /_worker.js.
+[assets]
+directory = "./public"
+binding = "ASSETS"
 
-# Environment variables for development
-[env.development.vars]
-ADMIN_PASSWORD = ""
+# Non-secret configuration. These were [env.production.vars] under Pages, where
+# "production" named a git branch. Under Workers an [env.X] block declares a
+# separate Worker named viewflare-X, so they belong at the top level instead.
+# ADMIN_PASSWORD is deliberately absent: it is a secret, set once per deployment
+# with `npx wrangler secret put ADMIN_PASSWORD`, never written to this file.
+#
+# THIS BLOCK IS THE ONLY SOURCE OF TRUTH. `wrangler deploy` replaces the whole
+# deployed variable list with what is written here, so a variable added in the
+# Cloudflare dashboard survives only until the next deploy. That is not a
+# theory: TRACK_USAGE was added in the dashboard at 14:48:42 on 2026-09-10 and
+# was gone four seconds later, wiped by the deploy at 14:48:46. Change values
+# here and deploy, not in the dashboard. Secrets are the exception and are
+# never touched by a deploy.
+#
+# Every variable the code reads is listed, set to the same default the code
+# already falls back to, so a fork can see the full surface in one place and
+# change one line instead of hunting for the name. Note the two idioms:
+# ENABLE_* are on unless the value is exactly "false", TRACK_* and DEBUG are
+# off unless the value is exactly "true".
+[vars]
+# Serve the /admin console. Requires the ADMIN_PASSWORD secret to be useful.
 ENABLE_ADMIN = "true"
-ENABLE_ANALYTICS = "true"
+
+# The most projects one instance will create. Projects are made implicitly by
+# the first view posted against a name, so this is what stops a stray script or
+# a typo'd name from filling the database. Projects that already exist keep
+# counting when the cap is reached; only new names are refused. "0" turns it off.
 MAX_PROJECTS = "1000"
+
+# How many tracked writes this instance allows itself in a day before it stops
+# recording new ones and starts answering 503 with a Retry-After. Reads are
+# never shed.
+#
+# It counts requests, not rows, and one recorded view is more than one row: the
+# usage counter, the project row, and the breakdown row when TRACK_BREAKDOWN is
+# on. So 30000 requests is 60,000 rows at these settings and 90,000 with the
+# breakdown on, against the 100,000 D1 row writes a day Cloudflare's free plan
+# allows. Raise it only alongside that arithmetic. "0" turns the ceiling off.
+#
+# It only counts the writes that call the usage tracker, so it does nothing
+# unless TRACK_USAGE below is "true". The daily Workers *request* limit is a
+# different thing that no setting here can help with: past 100,000 requests
+# Cloudflare stops invoking the Worker and answers with its own error page.
+DAILY_WRITE_BUDGET = "30000"
+
+# Rate limit, per client IP: requests allowed per window, and the window in
+# milliseconds. 60 per minute.
+RATE_LIMIT_REQUESTS = "60"
+RATE_LIMIT_WINDOW = "60000"
+
+# How long a fetched install count is reused before the source is polled again,
+# in seconds. 21600 is six hours, which keeps a busy badge well under the free
+# tier's 50 subrequests per invocation.
+INSTALL_CACHE_TTL = "21600"
+
+# One extra D1 write per tracked view into usage_stats. Set to "true" in the
+# dashboard on 2026-09-10 and restored here so it survives deploys. It
+# duplicates request numbers the Cloudflare dashboard already reports, so set
+# it back to "false" if the write volume matters more than having them in D1.
+TRACK_USAGE = "true"
+
+# Per-referrer and per-country rows in view_breakdown. Another write per view,
+# off by default.
+TRACK_BREAKDOWN = "false"
+
+# Verbose console logging. Off outside debugging: with observability below,
+# every line is retained and counts toward the log quota.
+DEBUG = "false"
 
 # Dev server configuration
 [dev]
@@ -35,30 +101,59 @@ ip = "127.0.0.1"
 port = 8788
 local_protocol = "http"
 
+# Nightly install-count snapshot, formerly .github/workflows/snapshot.yml.
+# Running it here means it never crosses the edge, so it is unaffected by Bot
+# Fight Mode and needs no admin password. UTC. `wrangler deploy` replaces the
+# deployed trigger list, so removing this line removes the schedule.
+[triggers]
+crons = ["23 2 * * *"]
+
 # Bindings for D1, R2, KV, etc.
 # Docs: https://developers.cloudflare.com/workers/wrangler/configuration/#bindings
-# NOTE: `database_name` below is deliberately still "cflaircounter-db".
-# D1 has no rename operation, and this is the name of the live database that
-# already holds every recorded view count. Renaming it here would point wrangler
-# at a database that does not exist. The *binding* is `DB` (that is what the code
-# reads) and it is unaffected by the project rename. See docs/CLOUDFLARE-SETUP.md
-# "Migrating the Pages project from cflaircounter to viewflare".
-# A fresh deployment may use any database name; put it here.
+# D1 has no rename operation, so "viewflare-db" is a new database that the
+# contents of "cflaircounter-db" were exported into. The binding is `DB`, which
+# is the name the code reads and which never changed.
+# Forking this repo? `npm run setup` creates your own database and rewrites the
+# database_id below. Do not reuse the one here; it is an account-scoped
+# identifier for someone else's data, not a secret and not useful to you.
 [[d1_databases]]
 binding = "DB"
-database_name = "cflaircounter-db"
-database_id = "" # This will be filled in after you create the DB
-preview_database_id = "cflaircounter-db-preview"
+database_name = "viewflare-db"
+database_id = "41b376ca-8f65-4be9-8443-f7060b60b6ce"
 
-# Pages configuration
-[pages]
-# The "main" branch will be used for production deployments
-branch = "main"
-# The directory containing your static assets (required for Pages)
-pages_build_output_dir = "public"
-# The directory containing your Functions
-functions = "functions"
-# The pattern of Functions to include
-functions-pattern = "[[path]].ts"
-# The pattern of Functions to exclude
-# functions-exclude = "excluded-function.ts"
+# Logs and traces, the TOML form of the block the Cloudflare dashboard offers.
+# This has to live here rather than being toggled in the dashboard for the same
+# reason as [vars]: `wrangler deploy` owns the setting, so with the block absent
+# a deploy turns observability back off.
+#
+# head_sampling_rate = 1 keeps every event. Lower it toward 0 if the free
+# tier's daily log allowance starts to bite; on this traffic it does not.
+# invocation_logs records the request line for each invocation, which is what
+# makes a log searchable by path and status rather than only by console output.
+[observability]
+enabled = true
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true
+persist = true
+
+[observability.traces]
+enabled = true
+head_sampling_rate = 1
+persist = true
+
+# The build that produces main = "./public/_worker.js" above. Declared here so a
+# bare `wrangler deploy` is self-sufficient: that is what Cloudflare Workers
+# Builds runs when the dashboard's build command is left blank, and it is what
+# someone who forked this and never read package.json will type.
+#
+# Because wrangler runs this itself, `npm run deploy` is just `wrangler deploy`
+# with no build in front of it. There is no mechanism that skips a repeated
+# build, so a script that built first would simply build twice.
+#
+# Note that `wrangler dev` runs this too, which makes a cold start slower than
+# it was before this block existed.
+[build]
+command = "npm run build"

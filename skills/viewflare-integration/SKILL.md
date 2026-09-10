@@ -1,76 +1,105 @@
 ---
 name: viewflare-integration
-description: Helps the user deploy ViewFlare via Cloudflare Pages, integrate view and event tracking into their codebase, and derive a single computed number from what it collects.
+description: Use when adding view tracking, event tracking, badges, or a computed metric to a project against an existing ViewFlare instance. Covers the POST snippet, badge markdown, dotted project names and the compute endpoint. For deploying an instance in the first place, use viewflare-setup instead.
 ---
 
-# ViewFlare AI Integration & Setup Skill
+# Wiring ViewFlare into a project
 
-When the user asks to integrate, deploy, or setup ViewFlare, follow these instructions to automate the process for them. ViewFlare is a 100% free serverless view counter built for Cloudflare Pages and D1.
+This assumes an instance already exists. If the user needs one, that is the
+`viewflare-setup` skill, not this one.
 
-## Phase 1: Deploying ViewFlare (If the user needs their own instance)
-If the user wants you to set up ViewFlare for them from scratch without requiring a credit card:
+You need one thing to start: the instance domain, for example
+`https://viewflare.example.workers.dev` or a custom domain. Ask for it if it is
+not obvious from the repository.
 
-1. **Fork/Clone**: Instruct the user to fork the ViewFlare repository or clone it locally.
-2. **Cloudflare Auth**: Run `npx wrangler login` in the terminal to authenticate the user's free Cloudflare account.
-3. **Database Setup**: 
-   - Run `npx wrangler d1 create viewflare-db`.
-   - Wait for the output to provide a `database_id`.
-   - Update `wrangler.toml` by replacing the empty `database_id` under `[[d1_databases]]` with the new ID.
-4. **Schema Initialization**: Run `npm run db:init` to build the required tables in D1.
-5. **Deployment**: Run `npm run deploy`. 
-   - Note the resulting `*.pages.dev` URL provided in the terminal output. This is the user's new API domain.
-6. **Secure Admin**: Ensure the user sets an `ADMIN_PASSWORD` securely via the Cloudflare dashboard or Wrangler secrets.
+## 1. Pick a project identifier
 
-## Phase 2: Integrating ViewFlare into a Codebase
-If the user already has an instance or wants to use an existing domain to track views:
+A URL-safe slug for the surface being tracked: `readme-views`, `app-homepage`.
 
-1. **Identify the Domain**: Obtain the ViewFlare API domain (e.g., `https://viewflare.pages.dev`).
-2. **Determine the Project Identifier**: Create a unique URL-safe slug for the specific page/component being tracked (e.g., `readme-views`, `app-homepage`).
-   - For anything with more than a handful of tracked surfaces, use a dotted
-     name: `acme.docs.getting-started`, `acme.api.v2`. Then
-     `GET /api/views/acme?rollup=1` sums the whole tree and returns the
-     per-project breakdown in `members`, and
-     `/api/views/acme/badge?rollup=1` renders that sum. Rollup is opt-in, so a
-     flat name behaves exactly as before.
-3. **Insert Tracking Logic (Silent POST Request)**:
-   - Example (browser JavaScript):
-     ```javascript
-     fetch('https://[DOMAIN]/api/views/[PROJECT_ID]', { method: 'POST', keepalive: true }).catch(() => {});
-     ```
-   - Swallow the error so a tracking failure cannot break the main application,
-     and set a short timeout away from the browser (`AbortSignal.timeout(3000)`
-     in Node, `-m 3` for curl, `timeout=3` for requests).
-   - `INTEGRATION.md` Goal 2 carries the same snippet for Node, Python, shell,
-     Go and Rust.
-   - To record something other than a page view, such as a signup, a download
-     or a CLI run, `POST /api/events` with `{"category": "...", "event": "..."}`
-     and an optional `metadata` object. `GET /api/metrics` reads the counts
-     back. `INTEGRATION.md` Goal 6 has the full contract.
-4. **Insert the Badge (Markdown/HTML)**:
-   - Example (Markdown):
-     ```markdown
-     ![Views](https://[DOMAIN]/api/views/[PROJECT_ID]/badge?color=violet&style=flat-square)
-     ```
-   - Available styles: `flat`, `flat-square`, `for-the-badge`.
-5. **Condense Several Numbers Into One (Optional)**:
-   - `GET /api/compute/[PROJECT_ID]?expr=...` evaluates arithmetic over the
-     numbers ViewFlare already holds and answers with a single value, plus
-     `/badge` and `/shields.json` siblings that take the same `expr`.
-   - Variables are `views.total`, `views.unique`, `installs.total`,
-     `installs.<source>`, `events.<category>` and `events.<category>.<name>`.
-     Operators are `+ - * / %` with parentheses, and the functions are `min`,
-     `max`, `abs`, `round`, `floor`, `ceil` and `pct(part, whole)`.
-   - A `+` in a URL decodes to a space, so always write it as `%2B`:
-     ```markdown
-     ![Reach](https://[DOMAIN]/api/compute/[PROJECT_ID]/badge?expr=views.total%2Binstalls.total&label=reach)
-     ```
-   - If any input is unavailable the whole metric reports unavailable rather
-     than substituting a zero, so check `unavailable` and `reason` before using
-     the value. `INTEGRATION.md` Goal 7 has the full contract.
+For anything with more than a handful of tracked surfaces, use a dotted name:
+`acme.docs.getting-started`, `acme.api.v2`. Then `GET /api/views/acme?rollup=1`
+sums the whole tree and returns the per-project breakdown in `members`, and
+`/api/views/acme/badge?rollup=1` renders that sum. Rollup is opt-in, so a flat
+name behaves exactly as before.
 
-A deployed instance serves `https://[DOMAIN]/llms.txt`, a short plain-text
-summary of every endpoint above, and `https://[DOMAIN]/openapi.yaml`, the same
-API as OpenAPI 3.1 with request and response shapes. Read one of those when
-working against an instance whose repository you do not have.
+The separator is a dot and not a slash on purpose. Project names are a single
+path segment, and `/api/views/:project/badge`, `/history` and `/shields.json`
+already occupy the space after the next slash. A project literally named
+`acme/badge` would be indistinguishable from the badge of `acme`.
 
-Always prioritize minimal, non-blocking code when integrating tracking into the user's applications. Validate your changes when done.
+## 2. Count a view
+
+```javascript
+fetch('https://[DOMAIN]/api/views/[PROJECT_ID]', { method: 'POST', keepalive: true }).catch(() => {});
+```
+
+Swallow the error so a tracking failure cannot break the application, and set a
+short timeout away from the browser: `AbortSignal.timeout(3000)` in Node, `-m 3`
+for curl, `timeout=3` for requests. `INTEGRATION.md` Goal 2 carries the same
+snippet for Node, Python, shell, Go and Rust.
+
+Reading is separate from counting. `GET /api/views/[PROJECT_ID]` never
+increments, so it is safe on every render, and `GET /api/views?projects=a,b,c`
+reads up to 50 at once instead of making 50 requests.
+
+## 3. Add a badge
+
+```markdown
+![Views](https://[DOMAIN]/api/views/[PROJECT_ID]/badge?color=violet&style=flat-square)
+```
+
+Styles: `flat`, `flat-square`, `for-the-badge`.
+
+## 4. Record something other than a page view
+
+For a signup, a download or a CLI run, `POST /api/events` with
+`{"category": "...", "event": "..."}` and an optional `metadata` object.
+`GET /api/metrics` reads the counts back. `INTEGRATION.md` Goal 6 has the full
+contract.
+
+## 5. Condense several numbers into one (optional)
+
+`GET /api/compute/[PROJECT_ID]?expr=...` evaluates arithmetic over the numbers
+ViewFlare already holds and answers with a single value, plus `/badge` and
+`/shields.json` siblings that take the same `expr`.
+
+Variables are `views.total`, `installs.total`, `installs.<source>`,
+`events.<category>` and `events.<category>.<name>`.
+Operators are `+ - * / %` with parentheses, and the functions are `min`, `max`,
+`abs`, `round`, `floor`, `ceil` and `pct(part, whole)`.
+
+A `+` in a URL decodes to a space, so always write it as `%2B`:
+
+```markdown
+![Reach](https://[DOMAIN]/api/compute/[PROJECT_ID]/badge?expr=views.total%2Binstalls.total&label=reach)
+```
+
+If any input is unavailable the whole metric reports unavailable rather than
+substituting a zero, so check `unavailable` and `reason` before using the value.
+Never fill a gap with an estimate. `INTEGRATION.md` Goal 7 has the full
+contract.
+
+## When a call gets HTML instead of JSON
+
+If a request answers with an HTML page starting `<`, the usual cause is
+Cloudflare's Bot Fight Mode on the instance's zone challenging a datacenter IP.
+It affects CI runners and server-side callers, not browsers, and it is scored
+per request, so it can hit one call and not the next. A `*.workers.dev`
+hostname is not on the zone and is not subject to it. Do not work around it in
+application code and do not suggest a WAF skip rule, which cannot affect Bot
+Fight Mode.
+
+## Working against an instance whose repository you do not have
+
+Every deployment serves `https://[DOMAIN]/llms.txt`, a short plain-text summary
+of every endpoint, and `https://[DOMAIN]/openapi.yaml`, the same API as OpenAPI
+3.1 with request and response shapes. Read one of those rather than guessing.
+
+`GET /health` returns the instance's `version`. If an endpoint described here
+answers 404, check that first: the instance may predate it. The latest version
+is `plugins[0].version` in
+`https://raw.githubusercontent.com/Life-Experimentalist/ViewFlare/main/.claude-plugin/marketplace.json`,
+and upgrading an instance is the `viewflare-setup` skill.
+
+Prefer minimal, non-blocking code when adding tracking to someone's application,
+and validate the change when done.

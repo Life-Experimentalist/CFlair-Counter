@@ -12,7 +12,7 @@ Integrate and validate ViewFlare as a telemetry microservice that can:
 
 ## System Summary
 
-- Runtime: Cloudflare Pages (Advanced Mode) + Worker.
+- Runtime: Cloudflare Workers with static assets.
 - API framework: Hono.
 - Persistence: Cloudflare D1 (`DB` binding).
 - Source entry: `functions/index.ts`.
@@ -31,10 +31,11 @@ Integrate and validate ViewFlare as a telemetry microservice that can:
 
 - `ADMIN_PASSWORD` (required for admin routes)
 - `ENABLE_ADMIN` (`true`/`false`, default enabled)
-- `ENABLE_ANALYTICS` (`true`/`false`, default disabled)
+- `MAX_PROJECTS` (default `1000`, `0` for no cap)
+- `DAILY_WRITE_BUDGET` (default `30000` tracked requests a day, 2 D1 rows each, `0` for no budget)
 - `RATE_LIMIT_REQUESTS` (default `60`)
 - `RATE_LIMIT_WINDOW` (default `60000` ms)
-- `TRACK_USAGE` (`true`/`false`, default disabled)
+- `TRACK_USAGE` (`true`/`false`, `wrangler.toml` ships it as `true`)
 - `DEBUG` (`true`/`false`)
 
 ### D1 Binding
@@ -44,9 +45,8 @@ Integrate and validate ViewFlare as a telemetry microservice that can:
 ```toml
 [[d1_databases]]
 binding = "DB"
-database_name = "cflaircounter-db"
+database_name = "viewflare-db"
 database_id = "<real-database-id>"
-preview_database_id = "<real-preview-database-id>"
 ```
 
 ## API Contract
@@ -90,9 +90,7 @@ Response shape:
   "success": true,
   "statistics": {
     "totalViews": 0,
-    "uniqueViews": 0,
-    "totalProjects": 0,
-    "analyticsEnabled": false
+    "totalProjects": 0
   },
   "timestamp": "..."
 }
@@ -197,12 +195,15 @@ Workflow file: `.github/workflows/newman.yml`
 
 Behavior:
 - Uses `npm ci` for lockfile-safe install.
-- Runs Newman collection with runtime env vars.
-- Defaults `BASE_URL` to `https://viewflare.pages.dev` when secret is missing.
+- Type-checks, builds the worker bundle, then starts `wrangler dev` on port 8788.
+- Runs the Newman collection against that local instance, not a deployed one.
+- Generates a throwaway `ADMIN_PASSWORD` per run into `.dev.vars`.
 
-Required repository secrets:
-- `BASE_URL` (optional but recommended)
-- `ADMIN_PASSWORD` (optional; if absent, admin-positive tests will expect 401)
+Required repository secrets: none. A fork gets a green run with no setup.
+
+The suite is a contract test, so it says nothing about whether a deployment's
+bindings, variables and routes are correct. That needs a separate post-deploy
+check.
 
 ## Integration Recipes
 
@@ -250,8 +251,8 @@ curl "https://<your-domain>/api/compute/my-project?expr=views.total%2Binstalls.t
 ![Reach](https://<your-domain>/api/compute/my-project/badge?expr=views.total%2Binstalls.total&label=reach)
 ```
 
-Variables are `views.total`, `views.unique`, `installs.total`,
-`installs.<source>`, `events.<category>` and `events.<category>.<name>`.
+Variables are `views.total`, `installs.total`, `installs.<source>`,
+`events.<category>` and `events.<category>.<name>`.
 Operators are `+ - * / %` with parentheses, plus `min`, `max`, `abs`, `round`,
 `floor`, `ceil` and `pct(part, whole)`.
 

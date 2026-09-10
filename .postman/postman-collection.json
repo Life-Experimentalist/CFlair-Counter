@@ -173,7 +173,7 @@
 								"{{projectName}}"
 							]
 						},
-						"description": "Track a view for a project. This is the main webhook endpoint.\n\n**Rate Limited:** 60 requests per minute per IP\n\n**Expected Response:**\n```json\n{\n  \"success\": true,\n  \"projectName\": \"test-project\",\n  \"totalViews\": 1,\n  \"uniqueViews\": 0,\n  \"timestamp\": \"2025-11-09T16:10:44.156Z\"\n}\n```\n\n**Use Case:**\n- Track page views\n- Integrate as webhook in GitHub Actions\n- Monitor project traffic"
+						"description": "Track a view for a project. This is the main webhook endpoint.\n\n**Rate Limited:** 60 requests per minute per IP\n\n**Expected Response:**\n```json\n{\n  \"success\": true,\n  \"projectName\": \"test-project\",\n  \"totalViews\": 1,\n  \"timestamp\": \"2025-11-09T16:10:44.156Z\"\n}\n```\n\n**Use Case:**\n- Track page views\n- Integrate as webhook in GitHub Actions\n- Monitor project traffic"
 					},
 					"response": []
 				},
@@ -289,8 +289,7 @@
 									"    pm.expect(jsonData.success).to.eql(true);",
 									"    pm.expect(jsonData.projectName).to.exist;",
 									"    pm.expect(jsonData.totalViews).to.be.a('number');",
-									"    pm.expect(jsonData.uniqueViews).to.be.a('number');",
-									"});",
+																		"});",
 									"",
 									"pm.test('View count is non-negative', function () {",
 									"    var jsonData = pm.response.json();",
@@ -315,7 +314,7 @@
 								"{{projectName}}"
 							]
 						},
-						"description": "Get view statistics for a specific project.\n\n**Expected Response:**\n```json\n{\n  \"success\": true,\n  \"projectName\": \"test-project\",\n  \"totalViews\": 5,\n  \"uniqueViews\": 0,\n  \"description\": \"My Awesome Project\",\n  \"timestamp\": \"2025-11-09T16:10:44.156Z\"\n}\n```\n\n**Use Case:**\n- Check current view count\n- Display statistics in dashboard\n- Monitor project popularity"
+						"description": "Get view statistics for a specific project.\n\n**Expected Response:**\n```json\n{\n  \"success\": true,\n  \"projectName\": \"test-project\",\n  \"totalViews\": 5,\n  \"description\": \"My Awesome Project\",\n  \"timestamp\": \"2025-11-09T16:10:44.156Z\"\n}\n```\n\n**Use Case:**\n- Check current view count\n- Display statistics in dashboard\n- Monitor project popularity"
 					},
 					"response": []
 				},
@@ -333,8 +332,7 @@
 									"pm.test('Response shows zero views', function () {",
 									"    var jsonData = pm.response.json();",
 									"    pm.expect(jsonData.totalViews).to.eql(0);",
-									"    pm.expect(jsonData.uniqueViews).to.eql(0);",
-									"});"
+																		"});"
 								],
 								"type": "text/javascript"
 							}
@@ -657,7 +655,7 @@
 								"stats"
 							]
 						},
-						"description": "Get statistics for all projects. Requires admin password.\n\n**⚠️ Important:** Set the `{{adminPassword}}` collection variable to your actual admin password.\n\n**Setting Admin Password:**\n1. Go to Cloudflare Dashboard\n2. Navigate to Workers & Pages → viewflare\n3. Go to Settings → Environment variables\n4. Add `ADMIN_PASSWORD` for Production environment\n\n**Expected Response (Authenticated):**\n```json\n{\n  \"success\": true,\n  \"totalProjects\": 5,\n  \"totalViews\": 127,\n  \"projects\": [\n    {\n      \"project_name\": \"project-1\",\n      \"view_count\": 42,\n      \"unique_views\": 0,\n      \"description\": \"Project Description\",\n      \"created_at\": \"2025-11-09T16:00:00.000Z\"\n    }\n  ],\n  \"timestamp\": \"2025-11-09T16:10:44.156Z\"\n}\n```\n\n**Expected Response (Unauthorized):**\n```json\n{\n  \"error\": \"Unauthorized\",\n  \"message\": \"Invalid admin password\"\n}\n```"
+						"description": "Get statistics for all projects. Requires admin password.\n\n**⚠️ Important:** Set the `{{adminPassword}}` collection variable to your actual admin password.\n\n**Setting Admin Password:**\n1. Go to Cloudflare Dashboard\n2. Navigate to Workers & Pages → viewflare\n3. Go to Settings → Environment variables\n4. Add `ADMIN_PASSWORD` for Production environment\n\n**Expected Response (Authenticated):**\n```json\n{\n  \"success\": true,\n  \"totalProjects\": 5,\n  \"totalViews\": 127,\n  \"projects\": [\n    {\n      \"project_name\": \"project-1\",\n      \"view_count\": 42,\n      \"description\": \"Project Description\",\n      \"created_at\": \"2025-11-09T16:00:00.000Z\"\n    }\n  ],\n  \"timestamp\": \"2025-11-09T16:10:44.156Z\"\n}\n```\n\n**Expected Response (Unauthorized):**\n```json\n{\n  \"error\": \"Unauthorized\",\n  \"message\": \"Invalid admin password\"\n}\n```"
 					},
 					"response": []
 				},
@@ -774,7 +772,7 @@
 								"{{projectName}}"
 							]
 						},
-						"description": "Delete a project and all its view data. Requires admin password.\n\n**⚠️ Important:** \n- Set the `{{adminPassword}}` collection variable\n- This action is permanent and cannot be undone\n- Deletes from both project_views and visitor_tracking tables\n\n**Expected Response (Success):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Project 'test-project' deleted successfully\",\n  \"projectName\": \"test-project\",\n  \"timestamp\": \"2025-11-09T16:30:00.000Z\"\n}\n```\n\n**Expected Response (Not Found):**\n```json\n{\n  \"success\": false,\n  \"error\": \"Project not found\"\n}\n```\n\n**Expected Response (Unauthorized):**\n```json\n{\n  \"success\": false,\n  \"error\": \"Unauthorized - Invalid admin password\"\n}\n```"
+						"description": "Delete a project and all its view data. Requires admin password.\n\n**⚠️ Important:** \n- Set the `{{adminPassword}}` collection variable\n- This action is permanent and cannot be undone\n- Deletes the project row and its recorded history\n\n**Expected Response (Success):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Project 'test-project' deleted successfully\",\n  \"projectName\": \"test-project\",\n  \"timestamp\": \"2025-11-09T16:30:00.000Z\"\n}\n```\n\n**Expected Response (Not Found):**\n```json\n{\n  \"success\": false,\n  \"error\": \"Project not found\"\n}\n```\n\n**Expected Response (Unauthorized):**\n```json\n{\n  \"success\": false,\n  \"error\": \"Unauthorized - Invalid admin password\"\n}\n```"
 					},
 					"response": []
 				}
@@ -891,7 +889,7 @@
 			"key": "baseUrl",
 			"value": "https://counter.vkrishna04.me",
 			"type": "string",
-			"description": "Base URL of the API. Change this to switch between domains:\n- https://counter.vkrishna04.me (custom domain)\n- https://viewflare.pages.dev (primary domain)"
+			"description": "Base URL of the API, for example https://counter.vkrishna04.me or your own https://viewflare.<subdomain>.workers.dev"
 		},
 		{
 			"key": "projectName",

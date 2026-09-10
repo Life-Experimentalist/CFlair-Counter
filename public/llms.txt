@@ -1,7 +1,7 @@
 # ViewFlare
 
 Free serverless view counter, install-count aggregator and event log, running
-on Cloudflare Pages Functions and D1. This file is the short version of the API
+as a Cloudflare Worker on D1. This file is the short version of the API
 for an agent that lands on a deployed instance. Replace DOMAIN below with the
 host this file was served from.
 
@@ -64,7 +64,7 @@ Full docs: https://github.com/Life-Experimentalist/ViewFlare
 GET /api/compute/{project}?expr=EXPRESSION evaluates arithmetic over the
 numbers above and answers with a single value.
 
-- Variables: views.total, views.unique, installs.total, installs.SOURCE
+- Variables: views.total, installs.total, installs.SOURCE
   (vscode, openvsx, pypi, github, npm, crates), events.CATEGORY,
   events.CATEGORY.NAME.
 - Operators + - * / %, parentheses, and the functions min, max, abs, round,

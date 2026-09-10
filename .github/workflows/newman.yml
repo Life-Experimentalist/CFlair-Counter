@@ -1,5 +1,25 @@
 name: Run Newman tests
 
+# The suite runs against a ViewFlare started inside this runner, not against a
+# deployed one. Two reasons, in order of how much they matter:
+#
+#   1. Every request in the collection is a contract test. None of them read
+#      production data, and all of them pass against an empty database, so
+#      pointing at a real deployment buys nothing and costs a dependency on the
+#      network and on whatever bot protection the zone happens to have on. A
+#      GitHub runner sending PostmanRuntime from an Azure IP looks exactly like
+#      a bot, and Cloudflare's Bot Fight Mode answers it with a challenge page,
+#      which lands in the tests as `Unexpected token '<' at 1:1`.
+#   2. A fork gets a green run with no setup: no repository secrets, no
+#      deployed instance, no account.
+#
+# What this does not check is the deployment itself: bindings, environment
+# variables, routes. That needs a separate post-deploy check.
+#
+# `wrangler dev` reads wrangler.toml for the compatibility date and the
+# bindings, so the only flag it needs here is the port. It was
+# `wrangler pages dev public` until the project moved to Workers.
+
 on:
     push:
         branches: [main]
@@ -24,10 +44,36 @@ jobs:
 
             - name: Run newman collection tests
               env:
-                  BASE_URL: "${{ secrets.BASE_URL }}"
-                  ADMIN_PASSWORD: "${{ secrets.ADMIN_PASSWORD }}"
+                  WRANGLER_SEND_METRICS: "false"
               run: |
-                  if [ -z "$BASE_URL" ]; then
-                    BASE_URL="https://counter.vkrishna04.me"
-                  fi
-                  npm run test:newman:ci -- --env-var "base_url=$BASE_URL" --env-var "admin_password=$ADMIN_PASSWORD"
+                  set -euo pipefail
+
+                  # The collection asserts that the right password returns 200 and
+                  # a wrong one returns 401, so both sides have to agree on a
+                  # value. This one is generated per run and never leaves the
+                  # runner, so there is no secret to configure.
+                  admin_password="ci-$(openssl rand -hex 16)"
+                  printf 'ADMIN_PASSWORD=%s\n' "${admin_password}" > .dev.vars
+
+                  # esbuild strips types without checking them, so without this
+                  # the suite is the only thing standing between a type error and
+                  # a deploy. tsc is already a devDependency and takes seconds.
+                  npm run type-check
+
+                  npm run build:worker
+
+                  npx wrangler dev --port 8788 &
+                  server=$!
+                  trap 'kill "${server}" 2>/dev/null || true' EXIT
+
+                  # /health needs no auth and no database, so it answers as soon
+                  # as the worker is actually serving.
+                  for _ in $(seq 1 60); do
+                    curl -fsS -o /dev/null http://127.0.0.1:8788/health && break
+                    sleep 1
+                  done
+                  curl -fsS -o /dev/null http://127.0.0.1:8788/health
+
+                  npm run test:newman:ci -- \
+                    --env-var "base_url=http://127.0.0.1:8788" \
+                    --env-var "admin_password=${admin_password}"

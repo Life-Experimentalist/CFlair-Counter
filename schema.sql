@@ -5,21 +5,12 @@ CREATE TABLE IF NOT EXISTS project_views (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     project_name TEXT NOT NULL UNIQUE,
     view_count INTEGER DEFAULT 0,
-    unique_views INTEGER DEFAULT 0,
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 -- Only essential indexes to minimize write costs
 CREATE UNIQUE INDEX IF NOT EXISTS idx_project_name ON project_views(project_name);
--- Lightweight visitor tracking - optional for cost control
-CREATE TABLE IF NOT EXISTS visitor_tracking (
-    project_name TEXT NOT NULL,
-    visitor_hash TEXT NOT NULL,
-    last_visit TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    visit_count INTEGER DEFAULT 1,
-    PRIMARY KEY(project_name, visitor_hash)
-);
 -- Usage monitoring table for staying within limits
 CREATE TABLE IF NOT EXISTS usage_stats (
     date TEXT PRIMARY KEY,
@@ -77,14 +68,12 @@ CREATE TABLE IF NOT EXISTS install_snapshots (
 );
 CREATE INDEX IF NOT EXISTS idx_install_snapshots_project ON install_snapshots(project_name, day);
 
--- The same idea for view counts. project_views only holds a running total and
--- visitor_tracking.last_visit is overwritten per visitor, so neither is a real
--- time series.
+-- The same idea for view counts. project_views only holds a running total,
+-- which is not a time series.
 CREATE TABLE IF NOT EXISTS view_snapshots (
     day TEXT NOT NULL,            -- YYYY-MM-DD, UTC
     project_name TEXT NOT NULL,
     view_count INTEGER NOT NULL,
-    unique_views INTEGER NOT NULL DEFAULT 0,
     recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY(day, project_name)
 );

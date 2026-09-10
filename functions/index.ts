@@ -1,4 +1,4 @@
-// Cloudflare Pages Function - Root handler
+// ViewFlare Worker - root handler
 // This handles all API routes for ViewFlare
 
 import { Hono } from "hono";
@@ -9,8 +9,8 @@ type Bindings = {
 	DB: D1Database;
 	ADMIN_PASSWORD?: string;
 	ENABLE_ADMIN?: string;
-	ENABLE_ANALYTICS?: string;
 	MAX_PROJECTS?: string;
+	DAILY_WRITE_BUDGET?: string;
 	RATE_LIMIT_REQUESTS?: string;
 	RATE_LIMIT_WINDOW?: string;
 	INSTALL_CACHE_TTL?: string;
@@ -60,7 +60,7 @@ const wantsRollup = (c: any): boolean => {
 const readSubtreeViews = async (db: D1Database, projectName: string) => {
 	const rows = await db
 		.prepare(
-			`SELECT project_name, view_count, unique_views
+			`SELECT project_name, view_count
 			FROM project_views
 			WHERE project_name = ?1
 				OR (project_name > ?1 || '.' AND project_name < ?1 || '/')
@@ -72,13 +72,11 @@ const readSubtreeViews = async (db: D1Database, projectName: string) => {
 	const members = ((rows.results || []) as any[]).map((row) => ({
 		projectName: String(row.project_name),
 		totalViews: Number(row.view_count) || 0,
-		uniqueViews: Number(row.unique_views) || 0,
 	}));
 
 	return {
 		members,
 		totalViews: members.reduce((sum, m) => sum + m.totalViews, 0),
-		uniqueViews: members.reduce((sum, m) => sum + m.uniqueViews, 0),
 	};
 };
 
@@ -151,6 +149,10 @@ const customRateLimiter = async (c: any, next: any) => {
 // Note: Periodic cleanup removed - Workers don't support setInterval at global scope
 // Rate limit entries will naturally expire when checked
 
+// Must match package.json "version". /health serves it so a deployed
+// instance can be compared against the latest release without guessing.
+const VIEWFLARE_VERSION = "3.0.0";
+
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 // Utility function to generate visitor hash (IP-based, privacy-friendly)
@@ -207,7 +209,6 @@ const runSchemaDdl = async (db: D1Database) => {
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
 				project_name TEXT NOT NULL UNIQUE,
 				view_count INTEGER DEFAULT 0,
-				unique_views INTEGER DEFAULT 0,
 				description TEXT,
 				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -220,21 +221,6 @@ const runSchemaDdl = async (db: D1Database) => {
 		await db
 			.prepare(
 				"CREATE UNIQUE INDEX IF NOT EXISTS idx_project_name ON project_views(project_name)",
-			)
-			.run();
-
-		// Lightweight visitor tracking - optional for cost control
-		await db
-			.prepare(
-				`
-			CREATE TABLE IF NOT EXISTS visitor_tracking (
-				project_name TEXT NOT NULL,
-				visitor_hash TEXT NOT NULL,
-				last_visit TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-				visit_count INTEGER DEFAULT 1,
-				PRIMARY KEY(project_name, visitor_hash)
-			)
-		`,
 			)
 			.run();
 
@@ -326,9 +312,8 @@ const runSchemaDdl = async (db: D1Database) => {
 			)
 			.run();
 
-		// The same idea for view counts. project_views only holds a running total
-		// and visitor_tracking.last_visit is overwritten per visitor, so neither is
-		// a real time series. This is.
+		// The same idea for view counts. project_views only holds a running
+		// total, which is not a time series. This is.
 		await db
 			.prepare(
 				`
@@ -336,7 +321,6 @@ const runSchemaDdl = async (db: D1Database) => {
 				day TEXT NOT NULL,            -- YYYY-MM-DD, UTC
 				project_name TEXT NOT NULL,
 				view_count INTEGER NOT NULL,
-				unique_views INTEGER NOT NULL DEFAULT 0,
 				recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 				PRIMARY KEY(day, project_name)
 			)
@@ -460,10 +444,6 @@ app.get("/health", (c) => {
 	if (c.env.DEBUG === "true") {
 		console.log("🔧 [DEBUG] System Configuration:");
 		console.log("  - Admin Enabled:", enableAdmin);
-		console.log(
-			"  - Analytics Enabled:",
-			c.env.ENABLE_ANALYTICS !== "false",
-		);
 	}
 
 	return c.json({
@@ -471,7 +451,7 @@ app.get("/health", (c) => {
 		status: "ok",
 		timestamp: new Date().toISOString(),
 		worker: "viewflare-api",
-		version: "2.0.0",
+		version: VIEWFLARE_VERSION,
 	});
 });
 
@@ -520,16 +500,14 @@ app.get("/api/views", edgeCache(60), async (c) => {
 	try {
 		const placeholders = requested.map(() => "?").join(",");
 		const rows = await c.env.DB.prepare(
-			`SELECT project_name, view_count, unique_views FROM project_views WHERE project_name IN (${placeholders})`,
+			`SELECT project_name, view_count FROM project_views WHERE project_name IN (${placeholders})`,
 		)
 			.bind(...requested)
 			.all();
 
 		const views: Record<string, number> = {};
-		const unique: Record<string, number> = {};
 		for (const row of (rows.results || []) as any[]) {
 			views[String(row.project_name)] = Number(row.view_count) || 0;
-			unique[String(row.project_name)] = Number(row.unique_views) || 0;
 		}
 
 		// A project that has never been recorded is reported as missing rather
@@ -542,7 +520,6 @@ app.get("/api/views", edgeCache(60), async (c) => {
 		return c.json({
 			success: true,
 			views,
-			uniqueViews: unique,
 			missing,
 			requested: requested.length,
 			found: Object.keys(views).length,
@@ -573,14 +550,13 @@ app.get("/api/views/:projectName", edgeCache(60), async (c) => {
 				projectName,
 				rollup: true,
 				totalViews: subtree.totalViews,
-				uniqueViews: subtree.uniqueViews,
 				memberCount: subtree.members.length,
 				members: subtree.members,
 			});
 		}
 
 		const result = await c.env.DB.prepare(
-			"SELECT view_count, unique_views, description, created_at FROM project_views WHERE project_name = ?",
+			"SELECT view_count, description, created_at FROM project_views WHERE project_name = ?",
 		)
 			.bind(projectName)
 			.first();
@@ -590,7 +566,6 @@ app.get("/api/views/:projectName", edgeCache(60), async (c) => {
 				success: true,
 				projectName,
 				totalViews: 0,
-				uniqueViews: 0,
 				description: null,
 				createdAt: null,
 			});
@@ -600,7 +575,6 @@ app.get("/api/views/:projectName", edgeCache(60), async (c) => {
 			success: true,
 			projectName,
 			totalViews: result.view_count,
-			uniqueViews: result.unique_views,
 			description: result.description,
 			createdAt: result.created_at,
 		});
@@ -618,14 +592,41 @@ app.post("/api/views/:projectName", customRateLimiter, async (c) => {
 		return c.json({ error: "Invalid project name" }, 400);
 	}
 
-	// Generate visitor hash for unique tracking
-	const visitorHash = generateVisitorHash(c.req.raw);
-
 	await initDatabase(c.env.DB);
 
 	try {
-		// Track usage for monitoring
-		await trackUsage(c.env);
+		// Track usage for monitoring. It hands back the running count for today,
+		// which is what the daily write allowance is measured against, so the two
+		// checks below cost one extra query between them and only on a new name.
+		const used = await trackUsage(c.env);
+		const budget = dailyWriteBudget(c.env);
+		if (used !== null && budget > 0 && used > budget) {
+			c.header("Retry-After", String(secondsUntilReset()));
+			return c.json(
+				{
+					success: false,
+					error: "Daily write budget reached",
+					message:
+						"This instance has used its daily allowance for recording new data. Reads are unaffected. The allowance resets at 00:00 UTC.",
+					used,
+					budget,
+				},
+				503,
+			);
+		}
+
+		if (await projectLimitReached(c.env, projectName)) {
+			const limit = maxProjects(c.env);
+			return c.json(
+				{
+					success: false,
+					error: "Project limit reached",
+					message: `This instance already holds its maximum of ${limit} projects, so a new name cannot be created. The projects it already has keep counting. Raise MAX_PROJECTS in wrangler.toml and deploy to allow more.`,
+					limit,
+				},
+				409,
+			);
+		}
 
 		// Single optimized query - Insert or increment in one operation
 		await c.env.DB.prepare(
@@ -639,41 +640,6 @@ app.post("/api/views/:projectName", customRateLimiter, async (c) => {
 		)
 			.bind(projectName)
 			.run();
-
-		let uniqueViews = 0;
-
-		// Optional: Track unique visitors (can be disabled for cost savings)
-		const enableAnalytics = c.env.ENABLE_ANALYTICS !== "false";
-		if (enableAnalytics) {
-			// Efficient visitor tracking with minimal queries
-			await c.env.DB.prepare(
-				`
-				INSERT INTO visitor_tracking (project_name, visitor_hash, last_visit, visit_count)
-				VALUES (?, ?, CURRENT_TIMESTAMP, 1)
-				ON CONFLICT(project_name, visitor_hash) DO UPDATE SET
-					last_visit = CURRENT_TIMESTAMP,
-					visit_count = visit_count + 1
-			`,
-			)
-				.bind(projectName, visitorHash)
-				.run();
-
-			// Get unique count efficiently
-			const uniqueResult = await c.env.DB.prepare(
-				"SELECT COUNT(*) as count FROM visitor_tracking WHERE project_name = ?",
-			)
-				.bind(projectName)
-				.first();
-
-			uniqueViews = Number(uniqueResult?.count) || 0;
-
-			// Update unique views count
-			await c.env.DB.prepare(
-				"UPDATE project_views SET unique_views = ? WHERE project_name = ?",
-			)
-				.bind(uniqueViews, projectName)
-				.run();
-		}
 
 		// Optional: remember where the view came from. Off by default because
 		// it is a second write on every single view.
@@ -705,7 +671,6 @@ app.post("/api/views/:projectName", customRateLimiter, async (c) => {
 			success: true,
 			projectName,
 			totalViews: result?.view_count || 1,
-			uniqueViews,
 			timestamp: new Date().toISOString(),
 		});
 	} catch (error) {
@@ -1384,8 +1349,21 @@ app.get("/api/views/:projectName/badge", edgeCache(60), async (c) => {
 	await initDatabase(c.env.DB);
 
 	try {
-		// Increment the view count only when inc=true query param is explicitly passed
-		const shouldIncrement = c.req.query("inc") === "true";
+		// Increment the view count only when inc=true query param is explicitly
+		// passed. A badge has to answer with an image either way, so when the
+		// instance is out of daily writes or at its project ceiling the increment
+		// is skipped and the current count is drawn rather than an error returned.
+		let shouldIncrement = c.req.query("inc") === "true";
+		if (shouldIncrement) {
+			const used = await trackUsage(c.env);
+			const budget = dailyWriteBudget(c.env);
+			if (
+				(used !== null && budget > 0 && used > budget) ||
+				(await projectLimitReached(c.env, projectName))
+			) {
+				shouldIncrement = false;
+			}
+		}
 		if (shouldIncrement) {
 			await c.env.DB.prepare(
 				`
@@ -1398,40 +1376,6 @@ app.get("/api/views/:projectName/badge", edgeCache(60), async (c) => {
 			)
 				.bind(projectName)
 				.run();
-
-			// Track usage for monitoring
-			await trackUsage(c.env);
-
-			// Track unique visitor if analytics enabled
-			const enableAnalytics = c.env.ENABLE_ANALYTICS !== "false";
-			if (enableAnalytics) {
-				const visitorHash = generateVisitorHash(c.req.raw);
-				await c.env.DB.prepare(
-					`
-					INSERT INTO visitor_tracking (project_name, visitor_hash, last_visit, visit_count)
-					VALUES (?, ?, CURRENT_TIMESTAMP, 1)
-					ON CONFLICT(project_name, visitor_hash) DO UPDATE SET
-						last_visit = CURRENT_TIMESTAMP,
-						visit_count = visit_count + 1
-					`,
-				)
-					.bind(projectName, visitorHash)
-					.run();
-
-				const uniqueResult = await c.env.DB.prepare(
-					"SELECT COUNT(*) as count FROM visitor_tracking WHERE project_name = ?",
-				)
-					.bind(projectName)
-					.first();
-
-				const uniqueViews = Number(uniqueResult?.count) || 0;
-
-				await c.env.DB.prepare(
-					"UPDATE project_views SET unique_views = ? WHERE project_name = ?",
-				)
-					.bind(uniqueViews, projectName)
-					.run();
-			}
 		}
 
 		let viewCount: number;
@@ -1473,43 +1417,6 @@ app.get("/api/views/:projectName/history", edgeCache(300), async (c) => {
 	await initDatabase(c.env.DB)
 
 	try {
-		// series=snapshots reads the daily rows written by
-		// POST /api/admin/installs/snapshot: a real running total per day.
-		// The default stays the visitor-derived view this endpoint has always
-		// returned, so existing callers see the same shape.
-		if (c.req.query("series") === "snapshots") {
-			const days = parseHistoryDays(c.req.query("days"), 90)
-			const bucket = parseHistoryBucket(c.req.query("bucket"))
-			const snapshotRows = await c.env.DB.prepare(`
-				SELECT day, view_count, unique_views
-				FROM view_snapshots
-				WHERE project_name = ?
-					AND day >= DATE('now', ?)
-				ORDER BY day ASC
-			`)
-				.bind(projectName, `-${days} days`)
-				.all()
-
-			const raw = ((snapshotRows.results || []) as any[]).map((row) => ({
-				day: String(row.day),
-				value: Number(row.view_count),
-				uniqueViews: Number(row.unique_views) || 0,
-			}))
-			const points = bucketSeries(raw, bucket)
-
-			c.header("Cache-Control", "public, max-age=900")
-			c.header("Access-Control-Allow-Origin", "*")
-			return c.json({
-				success: true,
-				projectName,
-				series: "snapshots",
-				days,
-				bucket,
-				summary: summariseSeries(points),
-				points,
-			})
-		}
-
 		// series=breakdown reads view_breakdown, which only has rows if the
 		// instance runs with TRACK_BREAKDOWN=true. An instance that never
 		// collected this answers with an empty list and enabled: false, so a
@@ -1553,22 +1460,40 @@ app.get("/api/views/:projectName/history", edgeCache(300), async (c) => {
 			})
 		}
 
-		const rows = await c.env.DB.prepare(`
-			SELECT DATE(last_visit) as date, COUNT(*) as visits
-			FROM visitor_tracking
+		// Everything else, including no series parameter at all, reads the daily
+		// rows written by the snapshot job: a real running total per day. This
+		// used to default to a series derived from visitor rows, which is gone
+		// along with the rest of unique tracking. The snapshot runs nightly, so a
+		// young instance has few points here, which is the honest answer rather
+		// than one reconstructed from a running total that carries no dates.
+		const days = parseHistoryDays(c.req.query("days"), 90)
+		const bucket = parseHistoryBucket(c.req.query("bucket"))
+		const snapshotRows = await c.env.DB.prepare(`
+			SELECT day, view_count
+			FROM view_snapshots
 			WHERE project_name = ?
-				AND last_visit >= datetime('now', '-30 days')
-			GROUP BY DATE(last_visit)
-			ORDER BY date ASC
+				AND day >= DATE('now', ?)
+			ORDER BY day ASC
 		`)
-			.bind(projectName)
+			.bind(projectName, `-${days} days`)
 			.all()
 
+		const raw = ((snapshotRows.results || []) as any[]).map((row) => ({
+			day: String(row.day),
+			value: Number(row.view_count),
+		}))
+		const points = bucketSeries(raw, bucket)
+
+		c.header("Cache-Control", "public, max-age=900")
+		c.header("Access-Control-Allow-Origin", "*")
 		return c.json({
 			success: true,
 			projectName,
-			series: "visitors",
-			history: rows.results,
+			series: "snapshots",
+			days,
+			bucket,
+			summary: summariseSeries(points),
+			points,
 		})
 	} catch (error) {
 		console.error("History error:", error)
@@ -1577,7 +1502,7 @@ app.get("/api/views/:projectName/history", edgeCache(300), async (c) => {
 })
 
 // Where a view came from. Both readers answer "unknown" rather than guessing:
-// CF-IPCountry is absent under `wrangler pages dev` and on some Cloudflare
+// CF-IPCountry is absent under `wrangler dev` and on some Cloudflare
 // plans, and a referrer can be stripped by the browser's referrer policy.
 const readCountry = (request: Request): string => {
 	const raw = (request.headers.get("CF-IPCountry") || "").toUpperCase();
@@ -1599,14 +1524,21 @@ const readReferrerHost = (request: Request): string => {
 // Usage tracking helper
 // One extra D1 write per tracked view, duplicating numbers the Cloudflare
 // dashboard already reports. Off unless TRACK_USAGE is "true".
-const trackUsage = async (env: Bindings) => {
+//
+// Returns the number of tracked writes made today, or null when there is no
+// count to give: either tracking is off, or the counter itself could not be
+// written. Callers read null as "no ceiling to enforce" rather than as zero, so
+// a failure here never blocks a request.
+const trackUsage = async (env: Bindings): Promise<number | null> => {
 	if (env.TRACK_USAGE !== "true") {
-		return;
+		return null;
 	}
 
 	const today = new Date().toISOString().split("T")[0];
 	try {
-		await env.DB
+		// RETURNING hands back the running count from the write that was
+		// happening anyway, so the daily allowance below costs no extra query.
+		const row = await env.DB
 			.prepare(
 				`
 			INSERT INTO usage_stats (date, requests_count, rows_read, rows_written)
@@ -1616,14 +1548,92 @@ const trackUsage = async (env: Bindings) => {
 				rows_read = rows_read + 1,
 				rows_written = rows_written + 1,
 				updated_at = CURRENT_TIMESTAMP
+			RETURNING requests_count
 		`,
 			)
 			.bind(today)
-			.run();
+			.first();
+		return Number(row?.requests_count) || 0;
 	} catch (error) {
 		// Silently fail to avoid impacting main functionality
 		console.warn("Usage tracking failed:", error);
+		return null;
 	}
+};
+
+// How many tracked writes this instance allows itself in a day before it stops
+// recording new ones. It counts requests, not rows, and one recorded view is
+// more than one row: the counter above, the project row, and the breakdown row
+// when TRACK_BREAKDOWN is on. So 30000 requests is 60,000 rows at the shipped
+// settings and 90,000 with the breakdown on, against the 100,000 D1 row writes
+// a day the free plan allows. What is left over covers the nightly snapshot and
+// the counter row that each refused request still writes, since that counter is
+// what says the budget is spent. Raise this only alongside that arithmetic.
+// "0" turns the ceiling off.
+//
+// This is a ceiling the instance keeps for itself, not a reading of the real
+// Cloudflare allowance, which nothing exposes to a running Worker. It counts
+// only the writes that call trackUsage, so it does nothing unless TRACK_USAGE
+// is "true".
+//
+// The daily Workers request limit is a different thing and cannot be handled
+// here at all: past 100,000 requests Cloudflare stops invoking the Worker and
+// answers with its own error page, so no code in this file runs to see it.
+const DEFAULT_DAILY_WRITE_BUDGET = 30000;
+
+const dailyWriteBudget = (env: Bindings): number => {
+	const raw = parseInt(env.DAILY_WRITE_BUDGET || "", 10);
+	return Number.isFinite(raw) && raw >= 0 ? raw : DEFAULT_DAILY_WRITE_BUDGET;
+};
+
+// Seconds until the allowance resets. Cloudflare's daily limits roll over at
+// 00:00 UTC, so that is where Retry-After points.
+const secondsUntilReset = (): number => {
+	const now = new Date();
+	const midnight = Date.UTC(
+		now.getUTCFullYear(),
+		now.getUTCMonth(),
+		now.getUTCDate() + 1,
+	);
+	return Math.max(1, Math.ceil((midnight - now.getTime()) / 1000));
+};
+
+// The most projects one instance will create. Projects are made implicitly by
+// the first view posted against a name, so this is checked there and in the
+// badge's inc=true path, which are the only two places a name can appear for
+// the first time. "0" turns the cap off.
+const DEFAULT_MAX_PROJECTS = 1000;
+
+const maxProjects = (env: Bindings): number => {
+	const raw = parseInt(env.MAX_PROJECTS || "", 10);
+	return Number.isFinite(raw) && raw >= 0 ? raw : DEFAULT_MAX_PROJECTS;
+};
+
+// Cheap because the count can only change when the name is one the database has
+// not seen: an existing project pays a single indexed lookup and nothing else,
+// and only an unseen name pays for the COUNT.
+const projectLimitReached = async (
+	env: Bindings,
+	projectName: string,
+): Promise<boolean> => {
+	const limit = maxProjects(env);
+	if (limit === 0) {
+		return false;
+	}
+
+	const existing = await env.DB.prepare(
+		"SELECT 1 FROM project_views WHERE project_name = ?",
+	)
+		.bind(projectName)
+		.first();
+	if (existing) {
+		return false;
+	}
+
+	const row = await env.DB.prepare(
+		"SELECT COUNT(*) AS count FROM project_views",
+	).first();
+	return (Number(row?.count) || 0) >= limit;
 };
 
 // Public: Get global statistics (no authentication required)
@@ -1636,21 +1646,16 @@ app.get("/api/stats", edgeCache(300), async (c) => {
 			`
 			SELECT
 				COALESCE(SUM(view_count), 0) as total_views,
-				COALESCE(SUM(unique_views), 0) as unique_views,
 				COUNT(*) as total_projects
 			FROM project_views
 		`,
 		).first();
 
-		const enableAnalytics = c.env.ENABLE_ANALYTICS !== "false";
-
 		return c.json({
 			success: true,
 			statistics: {
 				totalViews: stats?.total_views || 0,
-				uniqueViews: enableAnalytics ? stats?.unique_views || 0 : null,
 				totalProjects: stats?.total_projects || 0,
-				analyticsEnabled: enableAnalytics,
 			},
 			timestamp: new Date().toISOString(),
 		});
@@ -1708,7 +1713,6 @@ app.post("/api/admin/stats", async (c) => {
 			`
 			SELECT
 				COALESCE(SUM(view_count), 0) as total_views,
-				COALESCE(SUM(unique_views), 0) as unique_views,
 				COUNT(*) as total_projects
 			FROM project_views
 		`,
@@ -1717,7 +1721,7 @@ app.post("/api/admin/stats", async (c) => {
 		// Get top projects
 		const topProjects = await c.env.DB.prepare(
 			`
-			SELECT project_name, view_count, unique_views, description, updated_at
+			SELECT project_name, view_count, description, updated_at
 			FROM project_views
 			ORDER BY view_count DESC
 			LIMIT 10
@@ -1728,7 +1732,6 @@ app.post("/api/admin/stats", async (c) => {
 			success: true,
 			statistics: {
 				totalViews: stats?.total_views || 0,
-				uniqueViews: stats?.unique_views || 0,
 				totalProjects: stats?.total_projects || 0,
 				uptime: "99.9%", // Static for now
 				name: "VKrishna04",
@@ -1786,7 +1789,6 @@ app.get("/api/admin/projects", async (c) => {
 			`SELECT
 				project_name,
 				view_count,
-				unique_views,
 				description,
 				created_at,
 				updated_at
@@ -1885,15 +1887,8 @@ app.delete("/api/views/:projectName", async (c) => {
 			);
 		}
 
-		// Delete from both tables
 		await c.env.DB.prepare(
 			"DELETE FROM project_views WHERE project_name = ?",
-		)
-			.bind(projectName)
-			.run();
-
-		await c.env.DB.prepare(
-			"DELETE FROM visitor_tracking WHERE project_name = ?",
 		)
 			.bind(projectName)
 			.run();
@@ -1918,7 +1913,7 @@ app.delete("/api/views/:projectName", async (c) => {
 	}
 });
 
-// Admin: Update a project. Rename, change description, set view/unique counts
+// Admin: Update a project. Rename, change description, set the view count
 app.put("/api/admin/projects/:projectName", async (c) => {
 	const originalName = c.req.param("projectName");
 	if (!originalName || originalName.length > 100) {
@@ -1927,7 +1922,7 @@ app.put("/api/admin/projects/:projectName", async (c) => {
 
 	try {
 		const body = await c.req.json();
-		const { newName, description, viewCount, uniqueViews } = body;
+		const { newName, description, viewCount } = body;
 
 		// Extract password from body, or Authorization: Bearer / X-Admin-Password header
 		let password = body.password;
@@ -1958,15 +1953,12 @@ app.put("/api/admin/projects/:projectName", async (c) => {
 		if (viewCount !== undefined && (!Number.isInteger(viewCount) || viewCount < 0)) {
 			return c.json({ error: "viewCount must be a non-negative integer" }, 400);
 		}
-		if (uniqueViews !== undefined && (!Number.isInteger(uniqueViews) || uniqueViews < 0)) {
-			return c.json({ error: "uniqueViews must be a non-negative integer" }, 400);
-		}
 
 		await initDatabase(c.env.DB);
 
 		// Verify project exists
 		const current = await c.env.DB.prepare(
-			"SELECT project_name, view_count, unique_views, description, created_at FROM project_views WHERE project_name = ?"
+			"SELECT project_name, view_count, description, created_at FROM project_views WHERE project_name = ?"
 		).bind(originalName).first();
 
 		if (!current) {
@@ -1974,7 +1966,6 @@ app.put("/api/admin/projects/:projectName", async (c) => {
 		}
 
 		const finalViews = viewCount !== undefined ? viewCount : Number(current.view_count);
-		const finalUnique = uniqueViews !== undefined ? uniqueViews : Number(current.unique_views);
 		const finalDesc = description !== undefined ? description : (current.description as string | null);
 
 		// Check for rename conflict before attempting
@@ -1988,15 +1979,12 @@ app.put("/api/admin/projects/:projectName", async (c) => {
 		}
 
 		if (targetName !== originalName) {
-			// Atomic rename: insert new, migrate visitor_tracking, delete old
+			// Atomic rename: insert new, delete old
 			await c.env.DB.batch([
 				c.env.DB.prepare(
-					`INSERT INTO project_views (project_name, view_count, unique_views, description, created_at, updated_at)
-					 VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
-				).bind(targetName, finalViews, finalUnique, finalDesc, current.created_at),
-				c.env.DB.prepare(
-					"UPDATE visitor_tracking SET project_name = ? WHERE project_name = ?"
-				).bind(targetName, originalName),
+					`INSERT INTO project_views (project_name, view_count, description, created_at, updated_at)
+					 VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)`
+				).bind(targetName, finalViews, finalDesc, current.created_at),
 				c.env.DB.prepare(
 					"DELETE FROM project_views WHERE project_name = ?"
 				).bind(originalName),
@@ -2005,22 +1993,21 @@ app.put("/api/admin/projects/:projectName", async (c) => {
 			// Update in place
 			await c.env.DB.prepare(
 				`UPDATE project_views
-				 SET view_count = ?, unique_views = ?, description = ?, updated_at = CURRENT_TIMESTAMP
+				 SET view_count = ?, description = ?, updated_at = CURRENT_TIMESTAMP
 				 WHERE project_name = ?`
-			).bind(finalViews, finalUnique, finalDesc, originalName).run();
+			).bind(finalViews, finalDesc, originalName).run();
 		}
 
 		await trackUsage(c.env);
 
 		const updated = await c.env.DB.prepare(
-			"SELECT project_name, view_count, unique_views, description, created_at, updated_at FROM project_views WHERE project_name = ?"
+			"SELECT project_name, view_count, description, created_at, updated_at FROM project_views WHERE project_name = ?"
 		).bind(targetName).first();
 
 		return c.json({
 			success: true,
 			projectName: updated?.project_name,
 			totalViews: updated?.view_count,
-			uniqueViews: updated?.unique_views,
 			description: updated?.description,
 			timestamp: new Date().toISOString(),
 		});
@@ -2378,8 +2365,9 @@ app.put("/api/admin/installs/:projectName", async (c) => {
 // The registries only report a current figure, and two of them (npm, pypi)
 // report a rolling last-month window that nothing else can reconstruct later.
 // Charting any of it over time means writing down what was true each day.
-// Pages Functions have no cron trigger, so the schedule lives in
-// .github/workflows/snapshot.yml and calls the endpoint below.
+// The nightly sweep is a Cron Trigger declared in wrangler.toml and handled by
+// scheduled() at the bottom of this file. It calls runSnapshot() directly, so
+// the endpoint below exists only for running a sweep by hand.
 // ---------------------------------------------------------------------------
 
 // The same three ways the other admin routes accept a password: JSON body,
@@ -2395,10 +2383,128 @@ const resolveAdminPassword = (c: any, body: any): string | undefined => {
 	return c.req.header("X-Admin-Password");
 };
 
-// Workers cap the outbound subrequests one incoming request may make, and a
-// full sweep is one fetch per project per source. The endpoint therefore walks
-// a page of projects at a time and hands back the offset to resume from.
+// Workers cap the outbound subrequests one invocation may make: 50 on the free
+// plan. A full sweep is one fetch per project per source, so 20 projects at 3
+// sources is 60 and would exceed it. The sweep therefore walks a page at a time
+// and hands back the offset to resume from. The nightly Cron Trigger makes one
+// pass and reports `done: false` rather than looping, because a loop is what
+// would blow the ceiling.
 const SNAPSHOT_PROJECT_LIMIT = 20;
+
+// The snapshot itself, with no HTTP in it, so the nightly Cron Trigger and the
+// admin endpoint run exactly the same code. `env` rather than a Hono context is
+// the whole point: `scheduled()` never has a request.
+async function runSnapshot(
+	env: Bindings,
+	rawOffset: unknown,
+	rawLimit: unknown,
+) {
+	await initDatabase(env.DB);
+
+	const day = new Date().toISOString().slice(0, 10);
+	const offset = Math.max(0, parseInt(String(rawOffset ?? "0"), 10) || 0);
+	const limit = Math.min(
+		SNAPSHOT_PROJECT_LIMIT,
+		Math.max(1, parseInt(String(rawLimit ?? ""), 10) || SNAPSHOT_PROJECT_LIMIT),
+	);
+
+	// View counts need no upstream call, so the whole set is recorded in one
+	// statement on every run rather than paged.
+	const viewWrite = await env.DB.prepare(
+		`
+		INSERT INTO view_snapshots (day, project_name, view_count)
+		SELECT ?, project_name, view_count
+		FROM project_views
+		-- SQLite cannot tell whether ON CONFLICT belongs to the SELECT or
+		-- the INSERT unless the SELECT has a WHERE clause.
+		WHERE true
+		ON CONFLICT(day, project_name) DO UPDATE SET
+			view_count = excluded.view_count,
+			recorded_at = CURRENT_TIMESTAMP
+		`,
+	)
+		.bind(day)
+		.run();
+
+	const totalRow = await env.DB.prepare(
+		"SELECT COUNT(DISTINCT project_name) AS total FROM install_sources",
+	).first();
+	const totalProjects = Number(totalRow?.total) || 0;
+
+	const projectRows = await env.DB.prepare(
+		"SELECT DISTINCT project_name FROM install_sources ORDER BY project_name LIMIT ? OFFSET ?",
+	)
+		.bind(limit, offset)
+		.all();
+	const projects = ((projectRows.results || []) as any[]).map((row) =>
+		String(row.project_name),
+	);
+
+	const writes: D1PreparedStatement[] = [];
+	const skipped: {
+		project: string;
+		source: string;
+		reason: string;
+		error?: string;
+	}[] = [];
+
+	for (const projectName of projects) {
+		const { results } = await collectInstallCounts(env, projectName);
+		for (const result of results) {
+			// A stale figure is an older number wearing today's date, and a
+			// failed source has no number at all. Neither gets written.
+			if (!result.ok || result.count === null) {
+				skipped.push({
+					project: projectName,
+					source: result.source,
+					reason: "source unavailable",
+					error: result.error,
+				});
+				continue;
+			}
+			if (result.stale) {
+				skipped.push({
+					project: projectName,
+					source: result.source,
+					reason: "cached figure is stale, not recorded as today",
+					error: result.error,
+				});
+				continue;
+			}
+			writes.push(
+				env.DB.prepare(
+					`
+					INSERT INTO install_snapshots (day, project_name, source, value, "window")
+					VALUES (?, ?, ?, ?, ?)
+					ON CONFLICT(day, project_name, source) DO UPDATE SET
+						value = excluded.value,
+						"window" = excluded."window",
+						recorded_at = CURRENT_TIMESTAMP
+					`,
+				).bind(day, projectName, result.source, result.count, result.window),
+			);
+		}
+	}
+
+	if (writes.length > 0) await env.DB.batch(writes);
+
+	const nextOffset = offset + projects.length;
+	const done = projects.length === 0 || nextOffset >= totalProjects;
+
+	return {
+		success: true,
+		day,
+		projectsScanned: projects.length,
+		projectsTotal: totalProjects,
+		offset,
+		nextOffset: done ? null : nextOffset,
+		done,
+		installRowsWritten: writes.length,
+		viewRowsWritten: viewWrite.meta?.changes ?? null,
+		skipped,
+		timestamp: new Date().toISOString(),
+	};
+}
 
 app.post("/api/admin/installs/snapshot", async (c) => {
 	let body: any = {};
@@ -2423,115 +2529,7 @@ app.post("/api/admin/installs/snapshot", async (c) => {
 	}
 
 	try {
-		await initDatabase(c.env.DB);
-
-		const day = new Date().toISOString().slice(0, 10);
-		const offset = Math.max(0, parseInt(String(body.offset ?? "0"), 10) || 0);
-		const limit = Math.min(
-			SNAPSHOT_PROJECT_LIMIT,
-			Math.max(
-				1,
-				parseInt(String(body.limit ?? ""), 10) || SNAPSHOT_PROJECT_LIMIT,
-			),
-		);
-
-		// View counts need no upstream call, so the whole set is recorded in one
-		// statement on every run rather than paged.
-		const viewWrite = await c.env.DB.prepare(
-			`
-			INSERT INTO view_snapshots (day, project_name, view_count, unique_views)
-			SELECT ?, project_name, view_count, COALESCE(unique_views, 0)
-			FROM project_views
-			-- SQLite cannot tell whether ON CONFLICT belongs to the SELECT or
-			-- the INSERT unless the SELECT has a WHERE clause.
-			WHERE true
-			ON CONFLICT(day, project_name) DO UPDATE SET
-				view_count = excluded.view_count,
-				unique_views = excluded.unique_views,
-				recorded_at = CURRENT_TIMESTAMP
-			`,
-		)
-			.bind(day)
-			.run();
-
-		const totalRow = await c.env.DB.prepare(
-			"SELECT COUNT(DISTINCT project_name) AS total FROM install_sources",
-		).first();
-		const totalProjects = Number(totalRow?.total) || 0;
-
-		const projectRows = await c.env.DB.prepare(
-			"SELECT DISTINCT project_name FROM install_sources ORDER BY project_name LIMIT ? OFFSET ?",
-		)
-			.bind(limit, offset)
-			.all();
-		const projects = ((projectRows.results || []) as any[]).map((row) =>
-			String(row.project_name),
-		);
-
-		const writes: D1PreparedStatement[] = [];
-		const skipped: {
-			project: string;
-			source: string;
-			reason: string;
-			error?: string;
-		}[] = [];
-
-		for (const projectName of projects) {
-			const { results } = await collectInstallCounts(c.env, projectName);
-			for (const result of results) {
-				// A stale figure is an older number wearing today's date, and a
-				// failed source has no number at all. Neither gets written.
-				if (!result.ok || result.count === null) {
-					skipped.push({
-						project: projectName,
-						source: result.source,
-						reason: "source unavailable",
-						error: result.error,
-					});
-					continue;
-				}
-				if (result.stale) {
-					skipped.push({
-						project: projectName,
-						source: result.source,
-						reason: "cached figure is stale, not recorded as today",
-						error: result.error,
-					});
-					continue;
-				}
-				writes.push(
-					c.env.DB.prepare(
-						`
-						INSERT INTO install_snapshots (day, project_name, source, value, "window")
-						VALUES (?, ?, ?, ?, ?)
-						ON CONFLICT(day, project_name, source) DO UPDATE SET
-							value = excluded.value,
-							"window" = excluded."window",
-							recorded_at = CURRENT_TIMESTAMP
-						`,
-					).bind(day, projectName, result.source, result.count, result.window),
-				);
-			}
-		}
-
-		if (writes.length > 0) await c.env.DB.batch(writes);
-
-		const nextOffset = offset + projects.length;
-		const done = projects.length === 0 || nextOffset >= totalProjects;
-
-		return c.json({
-			success: true,
-			day,
-			projectsScanned: projects.length,
-			projectsTotal: totalProjects,
-			offset,
-			nextOffset: done ? null : nextOffset,
-			done,
-			installRowsWritten: writes.length,
-			viewRowsWritten: viewWrite.meta?.changes ?? null,
-			skipped,
-			timestamp: new Date().toISOString(),
-		});
+		return c.json(await runSnapshot(c.env, body.offset, body.limit));
 	} catch (error) {
 		console.error("Snapshot error:", error);
 		return c.json({ success: false, error: "Snapshot failed" }, 500);
@@ -3010,13 +3008,10 @@ const resolveComputeInputs = async (
 		if (rollup) {
 			const subtree = await readSubtreeViews(env.DB, projectName);
 			rolledMembers = subtree.members.length;
-			viewRow = {
-				view_count: subtree.totalViews,
-				unique_views: subtree.uniqueViews,
-			};
+			viewRow = { view_count: subtree.totalViews };
 		} else {
 			viewRow = await env.DB.prepare(
-				"SELECT view_count, unique_views FROM project_views WHERE project_name = ?",
+				"SELECT view_count FROM project_views WHERE project_name = ?",
 			)
 				.bind(projectName)
 				.first();
@@ -3039,14 +3034,11 @@ const resolveComputeInputs = async (
 		const parts = name.split(".");
 
 		if (parts[0] === "views") {
-			if (parts.length !== 2 || (parts[1] !== "total" && parts[1] !== "unique")) {
-				computeFail(`Unknown variable "${name}". Try views.total or views.unique.`);
+			if (parts.length !== 2 || parts[1] !== "total") {
+				computeFail(`Unknown variable "${name}". Try views.total.`);
 			}
 			// An unseen project reads 0 here, matching GET /api/views/:project.
-			const value =
-				parts[1] === "total"
-					? Number(viewRow?.view_count) || 0
-					: Number(viewRow?.unique_views) || 0;
+			const value = Number(viewRow?.view_count) || 0;
 			inputs.push({
 				name,
 				value,
@@ -3151,7 +3143,7 @@ const resolveComputeInputs = async (
 		}
 
 		computeFail(
-			`Unknown variable "${name}". Available: views.total, views.unique, installs.total, installs.<source>, events.<category>[.<name>].`,
+			`Unknown variable "${name}". Available: views.total, installs.total, installs.<source>, events.<category>[.<name>].`,
 		);
 	}
 
@@ -3440,12 +3432,13 @@ app.get("/api/compute/:projectName/shields.json", edgeCache(60), async (c) => {
 	}
 });
 
-// Cloudflare Pages export format with static file handling
+// Worker entry point: HTTP requests and the nightly scheduled trigger.
 export default {
 	async fetch(request: Request, env: any, ctx: any) {
 		const url = new URL(request.url);
 
-		// Handle static files - pass to Cloudflare Pages.
+		// Anything that is not an API route is a static file, served by the
+		// ASSETS binding declared in wrangler.toml.
 		// /api/ is always the worker's: /api/installs/x/shields.json ends in
 		// .json but is a route, not an asset.
 		// Extensionless pages have to be listed by name. /admin is one, and
@@ -3465,5 +3458,41 @@ export default {
 
 		// Handle API routes through Hono
 		return app.fetch(request, env, ctx);
+	},
+
+	// Nightly install-count snapshot, scheduled by [triggers] in wrangler.toml.
+	// This runs inside Cloudflare with the DB binding already in hand, so it
+	// never makes a request to its own public hostname and is unaffected by any
+	// edge protection on the zone. It replaced a GitHub Actions workflow that
+	// could not reliably reach the site from a datacenter IP.
+	async scheduled(
+		_controller: ScheduledController,
+		env: Bindings,
+		ctx: ExecutionContext,
+	) {
+		ctx.waitUntil(
+			runSnapshot(env, 0, SNAPSHOT_PROJECT_LIMIT)
+				.then((result) => {
+					// A partial sweep is not a failure, but it is worth saying out
+					// loud: nothing resumes it before tomorrow's run.
+					if (!result.done) {
+						console.warn(
+							`Snapshot covered ${result.projectsScanned} of ${result.projectsTotal} projects. The rest are not recorded for ${result.day}.`,
+						);
+					}
+					if (result.skipped.length > 0) {
+						console.warn(
+							`Snapshot skipped ${result.skipped.length} source(s):`,
+							result.skipped,
+						);
+					}
+					console.log(
+						`Snapshot ${result.day}: ${result.viewRowsWritten} view rows, ${result.installRowsWritten} install rows.`,
+					);
+				})
+				.catch((error) => {
+					console.error("Scheduled snapshot failed:", error);
+				}),
+		);
 	},
 };

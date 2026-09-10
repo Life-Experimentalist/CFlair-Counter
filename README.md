@@ -7,11 +7,11 @@
 
 # ViewFlare
 
-Serverless, low-cost telemetry counter for projects, docs, and deploy workflows. Built for Cloudflare Pages + D1 with a lightweight Hono API and SVG badge support.
+Serverless, low-cost telemetry counter for projects, docs, and deploy workflows. Runs as a Cloudflare Worker on D1, with a Hono API and SVG badges. Free tier, no credit card.
 
 [![Newman CI](https://github.com/Life-Experimentalist/ViewFlare/actions/workflows/newman.yml/badge.svg)](https://github.com/Life-Experimentalist/ViewFlare/actions/workflows/newman.yml)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Cloudflare Pages](https://img.shields.io/badge/Cloudflare-Pages-F38020?logo=cloudflare&logoColor=white)](https://pages.cloudflare.com/)
+[![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare&logoColor=white)](https://workers.cloudflare.com/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE.md)
 
 > **Previously called CFlair-Counter.** Same project, same API, same public URL
@@ -29,7 +29,7 @@ Provide a fast, low-cost telemetry API that can be integrated in minutes and run
 ### Action
 This project implements:
 - A Cloudflare Worker API for view tracking and stats.
-- D1-backed persistence with optional unique-visitor analytics.
+- D1-backed persistence with a project cap and a daily write budget.
 - SVG badge generation with style and color customization.
 - Admin endpoints for protected project-level operations.
 - CI health checks via Postman/Newman.
@@ -41,37 +41,59 @@ You get a production-ready counter service that is:
 - Cost-efficient: minimal infra overhead on Cloudflare.
 - Automated: CI verifies endpoint behavior continuously.
 
-## Quick Start
-
-### 1. Install dependencies
+## Run Your Own
 
 ```bash
-npm ci
+git clone https://github.com/Life-Experimentalist/ViewFlare.git
+cd ViewFlare
+npm install
+npm run setup
 ```
 
-### 2. Configure `wrangler.toml`
+`npm run setup` checks your Cloudflare login, creates a D1 database, writes its
+id into `wrangler.toml`, applies the schema, lists the nine settings and offers
+to change any of them, prompts for an admin password through
+`wrangler secret put` (it never sees the value itself), deploys, and prints your
+URL. Answering nothing to the settings question keeps every shipped value, so
+the whole thing is two Enters if you want the defaults. Every step is
+idempotent, so re-run it if it stops partway.
 
-Make sure `[[d1_databases]]` has valid IDs:
+Two commands rather than one because Windows PowerShell 5.1 has no `&&`.
 
-```toml
-[[d1_databases]]
-binding = "DB"
-database_name = "cflaircounter-db"
-database_id = "<your-d1-database-id>"
-preview_database_id = "<your-preview-d1-database-id>"
-```
+The only prerequisite is a free Cloudflare account. If wrangler is not logged in
+yet the script says so and stops; `npx wrangler login` fixes it.
 
-### 3. Run locally
+A custom domain is optional and is the one step the script does not do: the
+`*.workers.dev` URL works immediately. To use your own, once the zone is on the
+same Cloudflare account:
 
 ```bash
-npm run dev
+npx wrangler deploy --domains counter.example.com
 ```
 
-### 4. Deploy
+That creates the DNS record too, and later `npm run deploy` runs keep it
+attached. Pass it as a flag rather than committing a `routes` entry, so a fork
+never tries to claim your hostname.
+
+Then day to day:
 
 ```bash
-npm run deploy
+npm run dev      # local instance on http://127.0.0.1:8788
+npm run deploy   # build, type-check and ship
 ```
+
+`docs/CLOUDFLARE-SETUP.md` has the manual version of every step, and the
+migration path if you deployed an older version on Cloudflare Pages.
+
+### Warning about bot protection
+
+If you put ViewFlare on a domain with Cloudflare's Bot Fight Mode on, requests
+from datacenter IPs can be challenged, and a challenge page arrives at a caller
+as HTML where it expected JSON. It is scored on IP reputation and request
+signature, so it is intermittent rather than a flat block. That affects CI runners and server-side callers,
+not browsers. The `*.workers.dev` hostname is not on your zone, so it is not
+subject to it. Bot Fight Mode is zone-level and outside the Ruleset Engine, so a
+WAF skip rule cannot exempt a path from it.
 
 ## Integration (Fast Path)
 
@@ -108,7 +130,7 @@ fetch("https://your-domain.com/api/views/my-project", {
 | `/api/views/:project` | GET | No | Get one project's stats, `?rollup=1` to include everything under it |
 | `/api/views/:project` | POST | No | Increment project views |
 | `/api/views/:project/badge` | GET | No | SVG views badge |
-| `/api/views/:project/history` | GET | No | Daily series, `?series=snapshots` for the recorded one |
+| `/api/views/:project/history` | GET | No | Daily series from the nightly snapshot, `?series=breakdown` for country and referrer |
 | `/api/installs/:project` | GET | No | Aggregated install counts across registries |
 | `/api/installs/:project/badge` | GET | No | SVG installs badge |
 | `/api/installs/:project/shields.json` | GET | No | shields.io endpoint badge |
@@ -160,12 +182,12 @@ curl "https://your-domain.com/api/compute/my-project?expr=views.total%2Binstalls
 ```
 
 ```text
-/api/compute/my-project/badge?expr=round(pct(views.unique%2Cviews.total),1)&label=unique%20share
+/api/compute/my-project/badge?expr=round(pct(installs.npm%2Cinstalls.total),1)&label=npm%20share
 /api/compute/my-project/shields.json?expr=views.total%2Finstalls.total
 ```
 
-- Variables: `views.total`, `views.unique`, `installs.total`,
-  `installs.<source>`, `events.<category>`, `events.<category>.<name>`.
+- Variables: `views.total`, `installs.total`, `installs.<source>`,
+  `events.<category>`, `events.<category>.<name>`.
 - Operators `+ - * / %`, parentheses, and `min`, `max`, `abs`, `round`,
   `floor`, `ceil`, `pct`.
 - A `+` in a URL decodes to a space, so write it as `%2B`.
@@ -201,8 +223,9 @@ Every deployment serves `/llms.txt` (the short version) and `/openapi.yaml` (all
 of it), so the file you install into your own project is a short pointer rather
 than a copy of the docs that goes stale.
 
-Claude Code gets a plugin, because a skill can run the deploy as well as write
-the calls:
+Claude Code gets a plugin carrying two skills: `viewflare-setup`, which deploys
+and upgrades your own instance, and `viewflare-integration`, the smaller one
+that wires tracking into a project you already have.
 
 ```
 /plugin marketplace add Life-Experimentalist/ViewFlare
@@ -231,10 +254,10 @@ the frontmatter each one needs.
 
 | Variable              | Required            | Default | Description                    |
 | --------------------- | ------------------- | ------- | ------------------------------ |
-| `ADMIN_PASSWORD`      | Yes (for admin use) | empty   | Password for admin endpoints   |
+| `ADMIN_PASSWORD`      | Yes (for admin use) | empty   | Set with `npx wrangler secret put ADMIN_PASSWORD`. It is a secret, never a `[vars]` entry |
 | `ENABLE_ADMIN`        | No                  | `true`  | Toggle admin APIs              |
-| `ENABLE_ANALYTICS`    | No                  | `false` | Enable unique-visitor tracking |
-| `MAX_PROJECTS`        | No                  | `100`   | Soft project cap               |
+| `MAX_PROJECTS`        | No                  | `1000`  | Most projects this instance will create. A new name is refused with a 409 at the cap; existing ones keep counting. `0` turns it off |
+| `DAILY_WRITE_BUDGET`  | No                  | `30000` | Tracked requests allowed a day before new views get a 503 and a `Retry-After`. One recorded view is 2 D1 rows, 3 with `TRACK_BREAKDOWN`, against a free-tier 100,000 rows a day. Reads are never shed. Counts only while `TRACK_USAGE` is `true`. `0` turns it off |
 | `RATE_LIMIT_REQUESTS` | No                  | `60`    | Requests per window            |
 | `RATE_LIMIT_WINDOW`   | No                  | `60000` | Rate-limit window in ms        |
 | `TRACK_USAGE`         | No                  | `false` | Write a daily row to `usage_stats`. Off because it costs one extra D1 write per view and duplicates the Cloudflare dashboard |
@@ -244,29 +267,35 @@ the frontmatter each one needs.
 ## Development Commands
 
 ```bash
-npm run dev
-npm run build
+npm run setup      # one-time: create the database and deploy
+npm run dev        # local worker on 127.0.0.1:8788
+npm run build      # bundle plus type-check
+npm run deploy     # build and ship
 npm run type-check
 npm run test:newman
-npm run test:newman:ci
 ```
+
+`npm run test:newman` runs against `base_url` from the Postman environment,
+which is a deployed instance. To point it at a local one, pass
+`--env-var "base_url=http://127.0.0.1:8788"`. CI does exactly that.
 
 ## Documentation Map
 
 - `INTEGRATION.md` - integration checklist and automation flow.
 - `docs/AI-AGENT-QUICKSTART.md` - give this to coding agents.
 - `docs/DEVELOPMENT-GUIDE.md` - development details.
-- `docs/CLOUDFLARE-SETUP.md` - deployment, bindings, custom domain, and the
-  CFlair-Counter -> ViewFlare Pages migration steps.
+- `docs/CLOUDFLARE-SETUP.md` - deployment, bindings, custom domain, and moving
+  an older Pages deployment to Workers.
 - `docs/api/README.md` - the OpenAPI spec, and how to generate a client from it.
 - `public/openapi.yaml` - OpenAPI 3.1 for every endpoint, served at
   `https://your-domain.com/openapi.yaml`.
 - `docs/postman-guide.md` - Postman/Newman collection usage.
 - `docs/BRAND-PROMPTS.md` - image-generation prompts for the logo and banner.
-- `skills/viewflare-integration/SKILL.md` - Claude Code skill, shipped as the
-  `viewflare-integration` plugin. Install it with
-  `/plugin marketplace add Life-Experimentalist/ViewFlare`, or copy the
-  directory into `~/.claude/skills/`.
+- `skills/viewflare-setup/SKILL.md` and `skills/viewflare-integration/SKILL.md`
+  - the two Claude Code skills, shipped together as the `viewflare-integration`
+  plugin in the `viewflare` marketplace. Install with the two commands under
+  [Install It Into Your Agent](#install-it-into-your-agent), or copy the directories into
+  `~/.claude/skills/`.
 - `integrations/agents/README.md` - the same guidance as a copy-in rules file
   for Codex, Cursor, Windsurf, Antigravity, Copilot and Kiro.
 - `public/llms.txt` - served at `https://your-domain.com/llms.txt`, the short
@@ -274,7 +303,8 @@ npm run test:newman:ci
 
 ## Security Notes
 
-- Never commit real `ADMIN_PASSWORD` values.
+- `ADMIN_PASSWORD` is a Workers secret, not a variable. It never belongs in
+  `wrangler.toml`, and a secret cannot be read back once set, only replaced.
 - Rotate admin secrets if exposed.
 - Restrict admin endpoint access at the edge where possible.
 

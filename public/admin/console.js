@@ -186,7 +186,6 @@
 		if (!grid || !stats) return;
 		var cells = [
 			["Total views", stats.totalViews],
-			["Unique views", stats.uniqueViews],
 			["Projects", stats.totalProjects],
 		];
 		grid.innerHTML = cells
@@ -250,7 +249,6 @@
 	var COLUMNS = [
 		{ key: "project_name", label: "Project" },
 		{ key: "view_count", label: "Views", num: true },
-		{ key: "unique_views", label: "Unique", num: true },
 		{ key: "updated_at", label: "Updated" },
 	];
 
@@ -318,9 +316,6 @@
 					"</td>" +
 					'<td class="num">' +
 					esc(num(project.view_count)) +
-					"</td>" +
-					'<td class="num">' +
-					esc(num(project.unique_views)) +
 					"</td>" +
 					"<td>" +
 					esc(project.updated_at || "unavailable") +
@@ -481,16 +476,10 @@
 				'<input type="text" id="f-desc" value="' +
 				esc(isNew ? "" : project.description || "") +
 				'" /></div>' +
-				'<div class="row">' +
 				'<div class="field"><label for="f-views">Total views</label>' +
 				'<input type="number" id="f-views" min="0" value="' +
 				esc(isNew ? 0 : project.view_count) +
-				'" /></div>' +
-				'<div class="field"><label for="f-unique">Unique views</label>' +
-				'<input type="number" id="f-unique" min="0" value="' +
-				esc(isNew ? 0 : project.unique_views || 0) +
-				'" /></div>' +
-				"</div>",
+				'" /></div>',
 			'<button class="btn btn-secondary" data-close>Cancel</button>' +
 				'<button class="btn btn-primary" data-save>Save</button>',
 		);
@@ -510,7 +499,6 @@
 				newName: name,
 				description: el.querySelector("#f-desc").value.trim(),
 				viewCount: Number(el.querySelector("#f-views").value) || 0,
-				uniqueViews: Number(el.querySelector("#f-unique").value) || 0,
 			};
 
 			busy(button, true);

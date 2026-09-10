@@ -1,7 +1,7 @@
 {
 	"name": "viewflare-integration",
-	"description": "Deploy a ViewFlare instance on the Cloudflare free tier, wire view and event tracking into a codebase, and derive a single computed number from what it collects.",
-	"version": "2.4.0",
+	"description": "Two skills: viewflare-setup deploys and updates your own instance on the Cloudflare free tier, viewflare-integration wires view tracking, events, badges and computed metrics into a codebase.",
+	"version": "3.0.0",
 	"author": {
 		"name": "Life-Experimentalist"
 	},

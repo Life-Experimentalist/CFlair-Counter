@@ -2,27 +2,47 @@
 
 > **🤖 AI Agents & Coding Assistants**: 
 > You have been directed to this file to help the user deploy and/or integrate **ViewFlare**. 
-> Read the instructions carefully. ViewFlare is designed to be 100% free using Cloudflare Pages and D1 (no credit card required).
+> Read the instructions carefully. ViewFlare is designed to be 100% free using Cloudflare Workers and D1 (no credit card required).
 
 ## Goal 1: Auto-Deploying a new ViewFlare Instance for the User
 If the user wants you to "setup" or "deploy" ViewFlare for them from scratch:
 
-1. **Fork & Clone**: Have the user fork this repository to their GitHub account, or clone it directly if you are running in their workspace.
-2. **Cloudflare Setup (Free)**:
-   - Ask the user to log in to Cloudflare and authorize `wrangler` by running `npx wrangler login`.
-   - Ask them to run `npx wrangler d1 create viewflare-db` (any name works - put
-     whichever name they choose into `database_name` in `wrangler.toml`).
-   - Take the `database_id` from the output and update `wrangler.toml` in the `[[d1_databases]]` section.
-3. **Initialize DB**: Run `npm run db:init` to create the SQL tables.
-4. **Deploy**: Run `npm run deploy`. Cloudflare Pages will build the worker and give you a free `*.pages.dev` domain (e.g., `https://viewflare.pages.dev`).
-5. **Secure Admin**: In `wrangler.toml` or via Cloudflare Dashboard, set `ADMIN_PASSWORD` so the user can access their dashboard securely.
+1. **Fork & Clone**: Have the user fork this repository, or clone it directly if you are running in their workspace.
+2. **Run the setup script**: `npm install`, then `npm run setup`, on two lines
+   because Windows PowerShell 5.1 has no `&&`. It checks the Cloudflare login,
+   creates a `viewflare-db` D1 database, writes the returned `database_id` into
+   `wrangler.toml`, applies `schema.sql` to the remote database, lists the nine
+   settings and offers to change any of them, prompts for the admin password,
+   deploys, and prints the `*.workers.dev` URL. The settings question defaults
+   to no and is skipped entirely off a terminal, so it does not block an
+   unattended run. Every step is idempotent, so re-run it after a failure
+   rather than unpicking it.
+3. **If it stops at the login check**: the user runs `npx wrangler login` and
+   approves it in a browser. Wait for them. Do not try to authenticate for them.
+4. **Never handle the password yourself**. The script hands the terminal to
+   `npx wrangler secret put ADMIN_PASSWORD`, which prompts the user directly.
+   `ADMIN_PASSWORD` is a Workers secret and never belongs in `wrangler.toml`.
+5. **Custom domain (optional)**: the `*.workers.dev` URL works immediately. To
+   add your own, with the zone on the same account, run
+   `npx wrangler deploy --domains counter.example.com`. It creates the DNS
+   record, and later plain deploys keep it. Never commit the hostname as a
+   `routes` entry: a fork's first deploy would try to claim it.
+
+### If you put it on a custom domain
+
+Cloudflare's Bot Fight Mode can challenge requests from datacenter IPs, and the
+challenge reaches the caller as an HTML page where it expected JSON
+(`Unexpected token '<' at 1:1`). Browsers are unaffected; CI jobs and
+server-side callers are not. The `*.workers.dev` hostname is not on the zone, so
+point automated callers there. Bot Fight Mode does not run on the Ruleset
+Engine, so a WAF skip rule cannot exempt a path from it.
 
 ---
 
 ## Goal 2: Integrating ViewFlare into the User's Existing Project
 If the user already has a deployed instance of ViewFlare (or is using the public one) and wants you to integrate it into their codebase:
 
-1. **Ask for the Domain**: If the user hasn't provided their ViewFlare domain, ask for it (e.g., `https://counter.vkrishna04.me` or `https://viewflare.pages.dev`).
+1. **Ask for the Domain**: If the user hasn't provided their ViewFlare domain, ask for it (e.g., `https://counter.vkrishna04.me` or `https://viewflare.your-subdomain.workers.dev`).
 2. **Determine the Project Name**: Create a URL-safe slug for the page or component being tracked (e.g., `portfolio-home`, `docs-api`).
 3. **Log a View (Code Integration)**:
    - Insert a silent background POST request when the tracked page loads. Treat
@@ -73,7 +93,7 @@ If the user already has a deployed instance of ViewFlare (or is using the public
      ```
    - The response is JSON and carries the new count, so any of these can read
      it back instead of discarding it:
-     `{"success": true, "projectName": "...", "totalViews": 2, "uniqueViews": 1}`.
+     `{"success": true, "projectName": "...", "totalViews": 2}`.
 4. **Display a Badge (Markdown / HTML)**:
    - Insert an image pointing to the badge generator endpoint.
    - **Markdown**:
@@ -96,7 +116,6 @@ curl "https://counter.vkrishna04.me/api/views?names=ViewFlare,RanobeGemini,does-
 {
   "success": true,
   "views": { "ViewFlare": 2481, "RanobeGemini": 190 },
-  "uniqueViews": { "ViewFlare": 1204, "RanobeGemini": 88 },
   "missing": ["does-not-exist"],
   "requested": 3,
   "found": 2,
@@ -347,8 +366,12 @@ A registry only ever reports what is true right now, and two of the sources
 (`npm`, `pypi`) report a rolling last-month window that nothing can reconstruct
 afterwards. Charting any of it means writing down what was true each day.
 
-Cloudflare Pages Functions have no cron trigger, so the schedule lives in
-`.github/workflows/snapshot.yml`.
+The schedule is a Cloudflare Cron Trigger, declared in `wrangler.toml` under
+`[triggers]` and handled by `scheduled()` in `functions/index.ts`. It runs
+inside Cloudflare with the D1 binding already in hand, so it never makes a
+request to its own public hostname and no admin password is involved. It used to
+be a GitHub Actions workflow, which could not reliably reach the site from a
+datacenter IP.
 
 ### `POST /api/admin/installs/snapshot`
 
@@ -446,13 +469,12 @@ Sources are deliberately not summed here. They measure different things over
 different windows; `GET /api/installs/{project}` is the endpoint that carries
 the labelled aggregate.
 
-### `GET /api/views/{project}/history?series=snapshots`
+### `GET /api/views/{project}/history`
 
-The default response of this endpoint is unchanged: a visitor-derived daily
-count for the last 30 days, from `visitor_tracking`. That table stores one row
-per visitor with the *last* visit time, so it is an approximation, not a series.
-
-`series=snapshots` reads the real thing, recorded by the same nightly job:
+One row per project per night, written by the nightly snapshot job: a real
+running total per day rather than something reconstructed. `series=snapshots`
+is accepted and means the same thing, so existing callers keep working. A young
+instance has few points here, which is the honest answer.
 
 ```bash
 curl "https://counter.vkrishna04.me/api/views/MyProject/history?series=snapshots&days=90&bucket=week"
@@ -467,7 +489,7 @@ curl "https://counter.vkrishna04.me/api/views/MyProject/history?series=snapshots
   "bucket": "day",
   "summary": { "points": 1, "first": 2, "last": 2,
                "change": null, "changePercent": null, "perDay": null },
-  "points": [ { "day": "2026-09-08", "value": 2, "uniqueViews": 1 } ]
+  "points": [ { "day": "2026-09-08", "value": 2 } ]
 }
 ```
 
@@ -507,7 +529,7 @@ Three things to read carefully:
   on every view. `enabled: false` with an empty `buckets` means nothing was
   recorded, which is not the same as nobody visiting.
 - `"key": null` means the signal was missing, not that the value is zero or
-  unknown-but-real. For countries that happens under `wrangler pages dev` and
+  unknown-but-real. For countries that happens under `wrangler dev` and
   wherever Cloudflare does not set `CF-IPCountry`; for referrers it happens when
   a `Referer` was sent but could not be parsed. No country code is ever guessed
   from anything else.
@@ -686,7 +708,6 @@ clients, though `%` inside a value is safer as `%25`.
 | Variable | Scope | Value |
 | --- | --- | --- |
 | `views.total` | this project | Lifetime view count |
-| `views.unique` | this project | Distinct visitor hashes |
 | `installs.total` | this project | Sum across the configured registries |
 | `installs.<source>` | this project | One registry: `vscode`, `openvsx`, `pypi`, `github`, `npm`, `crates` |
 | `events.<category>` | whole instance | All events in that category |
@@ -705,7 +726,7 @@ Expressions are capped at 200 characters and 24 levels of nesting. Anything
 unrecognised is a 400 that names it:
 
 ```json
-{ "success": false, "error": "Unknown variable \"views.bogus\". Try views.total or views.unique." }
+{ "success": false, "error": "Unknown variable \"views.bogus\". Try views.total." }
 ```
 
 ### Unavailable beats a made-up number
@@ -803,7 +824,7 @@ curl "https://[DOMAIN]/api/compute/computedemo/shields.json?expr=round(pct(event
 
 ```text
 expr=views.total%2Finstalls.total                     views per install
-expr=round(pct(views.unique%2Cviews.total),1)         unique share, one decimal
+expr=round(pct(installs.npm%2Cinstalls.total),1)       npm share of installs, one decimal
 expr=max(views.total%2Cinstalls.total)                whichever is larger
 expr=installs.npm%2Binstalls.pypi                     two registries only
 expr=round(views.total%2F30)                          rough views per day over a month
@@ -843,13 +864,12 @@ curl "https://your-domain.com/api/views/acme?rollup=1"
   "projectName": "acme",
   "rollup": true,
   "totalViews": 3140,
-  "uniqueViews": 902,
   "memberCount": 4,
   "members": [
-    { "projectName": "acme",            "totalViews": 12,   "uniqueViews": 8 },
-    { "projectName": "acme.api.docs",   "totalViews": 1880, "uniqueViews": 540 },
-    { "projectName": "acme.cli",        "totalViews": 402,  "uniqueViews": 121 },
-    { "projectName": "acme.web.landing","totalViews": 846,  "uniqueViews": 233 }
+    { "projectName": "acme",             "totalViews": 12 },
+    { "projectName": "acme.api.docs",    "totalViews": 1880 },
+    { "projectName": "acme.cli",         "totalViews": 402 },
+    { "projectName": "acme.web.landing", "totalViews": 846 }
   ]
 }
 ```
@@ -859,7 +879,7 @@ it directly. `members` is the breakdown, so you get the sum and the parts in one
 request rather than one request per project.
 
 Without `rollup` the response is unchanged from what it has always been:
-`totalViews`, `uniqueViews`, `description`, `createdAt`, for that one project.
+`totalViews`, `description`, `createdAt`, for that one project.
 
 ### Badges and computed metrics
 

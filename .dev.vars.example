@@ -1,0 +1,31 @@
+# Local development only. `wrangler dev` reads this file instead of the [vars]
+# block in wrangler.toml, so values here never reach a deployed instance and a
+# deployed instance never reads this file.
+#
+# Copy it and edit the copy:
+#     cp .dev.vars.example .dev.vars          bash
+#     Copy-Item .dev.vars.example .dev.vars   PowerShell
+#
+# .dev.vars is gitignored and must stay that way. It is the one place in this
+# repo where a real password is expected to sit, so it must never be committed.
+
+# The admin console password for the local instance only. Pick anything; it is
+# not the production secret, which lives in Cloudflare and is set with
+# `npx wrangler secret put ADMIN_PASSWORD`.
+ADMIN_PASSWORD=change-me
+
+# The rest match the defaults in wrangler.toml's [vars] block. Uncomment and
+# change the ones you want to exercise locally. ENABLE_* are on unless the
+# value is exactly "false"; TRACK_* and DEBUG are off unless it is exactly
+# "true".
+# ENABLE_ADMIN=true
+# MAX_PROJECTS=1000
+# DAILY_WRITE_BUDGET=30000
+# RATE_LIMIT_REQUESTS=60
+# RATE_LIMIT_WINDOW=60000
+# INSTALL_CACHE_TTL=21600
+# TRACK_USAGE=true
+# TRACK_BREAKDOWN=false
+
+# Useful locally, noisy in production.
+# DEBUG=true
