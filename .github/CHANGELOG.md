@@ -13,8 +13,8 @@ count keeps working unchanged. Anything that read a unique count has to change.
 ### Removed
 - **Unique view tracking, everywhere.** `uniqueViews` is gone from
   `POST /api/views/{project}`, the `GET /api/views` batch read, `/api/stats`,
-  `/api/views/{project}/rollup` and the admin endpoints. `unique_views` is gone
-  from the admin project rows. `views.unique` is gone from the compute
+  `GET /api/views/{project}?rollup=1` and the admin endpoints. `unique_views`
+  is gone from the admin project rows. `views.unique` is gone from the compute
   expression language. `analyticsEnabled` is gone from `/api/stats`, and
   `ENABLE_ANALYTICS` is gone from `wrangler.toml` and both env examples. The
   number came from a hash of IP and user agent, which is a guess at who a
