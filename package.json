@@ -1,6 +1,6 @@
 {
 	"name": "viewflare",
-	"version": "3.0.0",
+	"version": "3.0.1",
 	"description": "Ultra-lightweight serverless telemetry system for headless project tracking. Optimized for minimal Cloudflare costs.",
 	"main": "functions/index.ts",
 	"scripts": {
@@ -38,7 +38,7 @@
 		"url": "https://github.com/Life-Experimentalist/ViewFlare/issues"
 	},
 	"dependencies": {
-		"hono": "^4.9.4",
+		"hono": "^4.13.7",
 		"playwright": "^1.61.0"
 	},
 	"devDependencies": {

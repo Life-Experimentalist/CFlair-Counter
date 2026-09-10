@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.1]() - 2026-09-11
+
+### Changed
+- hono 4.10.4 to 4.13.7, and the declared range from `^4.9.4` to `^4.13.7`.
+  Fifteen advisories were open against the old version. None of them reach this
+  Worker, which imports `hono` and `hono/cors` and nothing else: the CORS
+  credential bypass needs `credentials: true` and this sets it to `false`, and
+  the rest are in `bodyLimit`, `serveStatic`, the cache middleware, `setCookie`,
+  `parseBody`, JSX, JWT, `basicAuth`, `bearerAuth`, the `Accept` header helper
+  and the Lambda adapters, none of which this code loads. Upgraded anyway so
+  the advisory list is empty and a fork that does add one of those starts from
+  a patched base. No source change was needed and behaviour is unchanged.
+
 ## [3.0.0]() - 2026-09-11
 
 A major version because the API lost fields. Anything that only reads a view
