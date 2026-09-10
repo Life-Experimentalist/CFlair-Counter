@@ -8,11 +8,14 @@
 If the user wants you to "setup" or "deploy" ViewFlare for them from scratch:
 
 1. **Fork & Clone**: Have the user fork this repository, or clone it directly if you are running in their workspace.
-2. **Run the setup script**: `npm install && npm run setup`. It checks the
-   Cloudflare login, creates a `viewflare-db` D1 database, writes the returned
-   `database_id` into `wrangler.toml`, applies `schema.sql` to the remote
-   database, prompts for the admin password, deploys, and prints the
-   `*.workers.dev` URL. Every step is idempotent, so re-run it after a failure
+2. **Run the setup script**: `npm install`, then `npm run setup`, on two lines
+   because Windows PowerShell 5.1 has no `&&`. It checks the Cloudflare login,
+   creates a `viewflare-db` D1 database, writes the returned `database_id` into
+   `wrangler.toml`, applies `schema.sql` to the remote database, lists the nine
+   settings and offers to change any of them, prompts for the admin password,
+   deploys, and prints the `*.workers.dev` URL. The settings question defaults
+   to no and is skipped entirely off a terminal, so it does not block an
+   unattended run. Every step is idempotent, so re-run it after a failure
    rather than unpicking it.
 3. **If it stops at the login check**: the user runs `npx wrangler login` and
    approves it in a browser. Wait for them. Do not try to authenticate for them.

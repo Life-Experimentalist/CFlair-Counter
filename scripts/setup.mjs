@@ -16,6 +16,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { createInterface } from "node:readline/promises";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -38,6 +39,58 @@ function die(msg, hint) {
 	console.error(`\nSetup stopped: ${msg}`);
 	if (hint) console.error(`\n${hint}`);
 	process.exit(1);
+}
+
+/** Read the NAME = "value" lines out of the [vars] block, in file order. */
+function readVars(text) {
+	const lines = text.split(/\r?\n/);
+	const at = lines.findIndex((line) => line.trim() === "[vars]");
+	const found = [];
+	for (let i = at + 1; at !== -1 && i < lines.length; i++) {
+		if (lines[i].startsWith("[")) break;
+		const match = lines[i].match(/^([A-Z][A-Z0-9_]*)\s*=\s*"(.*?)"/);
+		if (match) found.push({ name: match[1], value: match[2] });
+	}
+	return found;
+}
+
+/** Replace one NAME = "value" line, leaving the comments around it alone. */
+function setVar(text, name, value) {
+	return text.replace(
+		new RegExp(`^${name}\\s*=\\s*".*?"`, "m"),
+		`${name} = "${value}"`,
+	);
+}
+
+/**
+ * Ask for one setting until the answer fits the shape of the value it replaces.
+ * A boolean stays true or false and a number stays a number, because neither
+ * the code nor Cloudflare rejects a typo here: an unrecognised value silently
+ * falls back to the default and the setting looks like it did nothing.
+ */
+async function askValue(rl, setting) {
+	const boolish = setting.value === "true" || setting.value === "false";
+	const numeric = /^\d+$/.test(setting.value);
+	const hint = boolish ? "true/false" : numeric ? "number" : "text";
+	for (;;) {
+		const raw = (
+			await rl.question(`    ${setting.name} (${hint}) [${setting.value}]: `)
+		).trim();
+		if (!raw) return setting.value;
+		if (boolish && raw !== "true" && raw !== "false") {
+			info('   needs to be exactly "true" or "false"');
+			continue;
+		}
+		if (numeric && !/^\d+$/.test(raw)) {
+			info("   needs to be a whole number");
+			continue;
+		}
+		if (raw.includes('"')) {
+			info("   a double quote would break the config line");
+			continue;
+		}
+		return raw;
+	}
 }
 
 /** Run wrangler and capture its output. */
@@ -167,32 +220,64 @@ if (schema.code !== 0) {
 ok("schema applied, existing tables left as they were");
 
 // ---------------------------------------------------------- 5. configuration
-// Nothing to prompt for. Every variable the code reads is already in [vars]
-// with the value the code falls back to, so an instance is configured by
-// editing a line rather than by discovering a name. This step exists to show
-// the list, because a fork that does not know a setting exists cannot use it.
+// Every variable the code reads is already in [vars] with the value the code
+// falls back to, so an instance is configured by editing a line rather than by
+// discovering a name. This step shows the list, because a fork that does not
+// know a setting exists cannot use it, and on a real terminal offers to set
+// them now while the deploy in step 7 is still ahead. Answering nothing keeps
+// every shipped value, so the one-line install stays one line.
 say("Configuration");
-const tomlLines = patched.split(/\r?\n/);
-const varsAt = tomlLines.findIndex((line) => line.trim() === "[vars]");
-const settings = [];
-for (let i = varsAt + 1; varsAt !== -1 && i < tomlLines.length; i++) {
-	if (tomlLines[i].startsWith("[")) break;
-	const match = tomlLines[i].match(/^([A-Z][A-Z0-9_]*)\s*=\s*(".*?")/);
-	if (match) settings.push(`${match[1]} = ${match[2]}`);
-}
-if (settings.length) {
-	info(`${settings.length} settings, already initialised in wrangler.toml:`);
-	for (const line of settings) info(`    ${line}`);
-	info("");
-	info("ENABLE_* are on unless the value is exactly \"false\".");
-	info("TRACK_* and DEBUG are off unless it is exactly \"true\".");
-	info("");
-	info("To change one: edit that line, then `npm run deploy`.");
-	info("Do not set these in the Cloudflare dashboard. A deploy replaces the");
-	info("whole list, so a dashboard-only variable vanishes with no error.");
-} else {
+let tomlText = patched;
+const settings = readVars(tomlText);
+
+if (!settings.length) {
 	info("No [vars] block found in wrangler.toml, which is unexpected.");
 	info("The code falls back to its own defaults, so this is not fatal.");
+} else {
+	info(`${settings.length} settings, already initialised in wrangler.toml:`);
+	for (const s of settings) info(`    ${s.name} = "${s.value}"`);
+	info("");
+	info('ENABLE_* are on unless the value is exactly "false".');
+	info('TRACK_* and DEBUG are off unless it is exactly "true".');
+	info("");
+
+	if (process.stdin.isTTY) {
+		const rl = createInterface({
+			input: process.stdin,
+			output: process.stdout,
+		});
+		const changed = [];
+		try {
+			const answer = (
+				await rl.question("    Change any of them now? [y/N] ")
+			)
+				.trim()
+				.toLowerCase();
+			if (answer === "y" || answer === "yes") {
+				info("Enter keeps the value in brackets.");
+				for (const s of settings) {
+					const next = await askValue(rl, s);
+					if (next !== s.value) changed.push({ name: s.name, value: next });
+				}
+			}
+		} finally {
+			rl.close();
+		}
+		if (changed.length) {
+			for (const c of changed) tomlText = setVar(tomlText, c.name, c.value);
+			writeFileSync(TOML, tomlText, "utf8");
+			for (const c of changed) ok(`${c.name} = "${c.value}"`);
+		} else {
+			ok("kept every shipped value");
+		}
+	} else {
+		info("Not an interactive terminal, so the shipped values are kept.");
+	}
+
+	info("");
+	info("To change one later: edit that line, then `npm run deploy`.");
+	info("Do not set these in the Cloudflare dashboard. A deploy replaces the");
+	info("whole list, so a dashboard-only variable vanishes with no error.");
 }
 
 // --------------------------------------------------------------- 6. password

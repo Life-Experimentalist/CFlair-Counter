@@ -15,14 +15,23 @@ project is a separate, smaller skill: `viewflare-integration`.
 From a clone of the repository:
 
 ```bash
-npm install && npm run setup
+npm install
+npm run setup
 ```
 
 `scripts/setup.mjs` does every step: checks the Cloudflare login, creates a D1
 database named `viewflare-db` if the account does not already have one, writes
 the returned `database_id` into `wrangler.toml`, applies `schema.sql` to the
-remote database, prompts for the admin password through `wrangler secret put`,
-deploys, and prints the `*.workers.dev` URL.
+remote database, lists the nine settings in the table below and offers to change
+any of them before the deploy, prompts for the admin password through
+`wrangler secret put`, deploys, and prints the `*.workers.dev` URL.
+
+The settings question defaults to no, and each prompt inside it defaults to the
+shipped value, so a user who wants the defaults answers nothing. Off a terminal
+the whole question is skipped and the shipped values are used, which keeps the
+script usable from CI and from an agent harness.
+
+Two lines rather than one because Windows PowerShell 5.1 has no `&&`.
 
 Every step is idempotent. If it stops partway, run it again rather than
 unpicking it by hand.
@@ -70,6 +79,15 @@ change. Step 5 of the setup script prints the list.
 | `TRACK_BREAKDOWN` | `false` | Per-referrer and per-country rows. Another write per view |
 | `DEBUG` | `false` | Verbose console logging |
 
+Most of these are safe to change at any time: a wrong value costs a redeploy,
+not data. Three are worth a second thought. `RATE_LIMIT_REQUESTS` set high
+removes the only thing standing between a script and your write quota.
+`TRACK_BREAKDOWN` set to `true` adds a second D1 write to every view, so it
+roughly doubles what `DAILY_WRITE_BUDGET` is measuring. And `DEBUG` set to
+`true` puts request detail in the logs, which is fine while you are watching
+them and untidy if you forget. None of them can lose a count, and the admin
+password is never one of these values.
+
 `ENABLE_*` are on unless the value is exactly `"false"`. `TRACK_*` and `DEBUG`
 are off unless it is exactly `"true"`. Anything else leaves the default.
 
@@ -77,9 +95,8 @@ Changing one is an edit plus `npm run deploy`. Every command in this skill is
 an npm script or a `npx wrangler` call, so it is identical in bash and in
 PowerShell, with two exceptions to watch for on Windows. Copying the local-dev
 file is `cp` against `Copy-Item`. And Windows PowerShell 5.1, the version that
-ships with Windows, has no `&&`, so the `npm install && npm run setup`
-one-liner above is a parser error there: give a Windows user the two commands
-on separate lines instead.
+ships with Windows, has no `&&`, so never join two commands with it: give the
+user separate lines, the way the setup block above is written.
 
 Never suggest setting these in the Cloudflare dashboard. `wrangler deploy`
 replaces the entire deployed variable list with what is in `wrangler.toml`, so a

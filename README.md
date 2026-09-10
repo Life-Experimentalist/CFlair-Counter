@@ -46,13 +46,19 @@ You get a production-ready counter service that is:
 ```bash
 git clone https://github.com/Life-Experimentalist/ViewFlare.git
 cd ViewFlare
-npm install && npm run setup
+npm install
+npm run setup
 ```
 
 `npm run setup` checks your Cloudflare login, creates a D1 database, writes its
-id into `wrangler.toml`, applies the schema, prompts for an admin password
-through `wrangler secret put` (it never sees the value itself), deploys, and
-prints your URL. Every step is idempotent, so re-run it if it stops partway.
+id into `wrangler.toml`, applies the schema, lists the nine settings and offers
+to change any of them, prompts for an admin password through
+`wrangler secret put` (it never sees the value itself), deploys, and prints your
+URL. Answering nothing to the settings question keeps every shipped value, so
+the whole thing is two Enters if you want the defaults. Every step is
+idempotent, so re-run it if it stops partway.
+
+Two commands rather than one because Windows PowerShell 5.1 has no `&&`.
 
 The only prerequisite is a free Cloudflare account. If wrangler is not logged in
 yet the script says so and stops; `npx wrangler login` fixes it.

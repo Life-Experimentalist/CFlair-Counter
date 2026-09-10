@@ -7,13 +7,19 @@ Follow this guide to bind your database, configure the admin password, set envir
 ## 1. The whole setup, in one command
 
 ```bash
-npm install && npm run setup
+npm install
+npm run setup
 ```
 
 `scripts/setup.mjs` checks your Cloudflare login, creates a D1 database named
 `viewflare-db` if your account does not have one, writes the returned
-`database_id` into `wrangler.toml`, applies `schema.sql`, prompts for the admin
-password, deploys, and prints your `*.workers.dev` URL.
+`database_id` into `wrangler.toml`, applies `schema.sql`, lists the nine
+settings and offers to change any of them, prompts for the admin password,
+deploys, and prints your `*.workers.dev` URL. Answering nothing to the settings
+question keeps every shipped value.
+
+Two lines rather than one because Windows PowerShell 5.1 has no `&&`, which is
+the first of the shell differences below.
 
 It is idempotent. If it stops partway, run it again.
 
@@ -67,6 +73,15 @@ name. All nine:
 | `TRACK_BREAKDOWN` | `false` | Write per-referrer and per-country rows. Another write per view |
 | `DEBUG` | `false` | Verbose console logging |
 
+Most of these are safe to change at any time: a wrong value costs a redeploy,
+not data. Three are worth a second thought. `RATE_LIMIT_REQUESTS` set high
+removes the only thing standing between a script and your write quota.
+`TRACK_BREAKDOWN` set to `true` adds a second D1 write to every view, so it
+roughly doubles what `DAILY_WRITE_BUDGET` is measuring. And `DEBUG` set to
+`true` puts request detail in the logs, which is fine while you are watching
+them and untidy if you forget. None of them can lose a count, and the admin
+password is never one of these values.
+
 Two different idioms, worth knowing before you set one: `ENABLE_*` are on
 unless the value is exactly `"false"`, and `TRACK_*` and `DEBUG` are off unless
 the value is exactly `"true"`. Anything else, including `"1"` and `"yes"`,
@@ -84,7 +99,8 @@ That one is identical in bash and in PowerShell, because it is an npm script.
 Where the two shells differ, this file says so. One difference worth knowing up
 front: Windows PowerShell 5.1, the version that ships with Windows, has no `&&`
 operator, so a combined command like `npm install && npm run setup` is a parser
-error there. Run the two parts on separate lines, or use PowerShell 7.
+error there. Every multi-command block in this file is already split across
+lines for that reason. PowerShell 7 and bash accept either form.
 
 Do not set these in the Cloudflare dashboard. `wrangler deploy` replaces the
 whole deployed variable list with what is in `wrangler.toml`, so a variable
