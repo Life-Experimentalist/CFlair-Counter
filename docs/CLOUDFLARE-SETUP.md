@@ -4,124 +4,138 @@ Follow this guide to bind your database, configure the admin password, set envir
 
 ---
 
-## 🚀 1. Database Creation & Bindings
+## 1. The whole setup, in one command
 
-### Create D1 Database (CLI)
 ```bash
-# Create the D1 database binding
-npm run db:create
-
-# Initialize the schema tables (project_views, visitor_tracking, usage_stats)
-npm run db:init
+npm install && npm run setup
 ```
 
-### Bind D1 to Cloudflare Pages (Dashboard)
-To allow the worker to write view counts, it must be bound to D1:
-1. Log in to the [Cloudflare Dashboard](https://dash.cloudflare.com).
-2. Go to **Workers & Pages** → **viewflare** → **Settings** → **Functions**.
-3. Scroll to **"D1 database bindings"** and click **"Add binding"**.
-4. Set:
-   - **Variable name:** `DB`
-   - **D1 database:** Select `cflaircounter-db` from the dropdown list. (That is
-     the existing production database. D1 has no rename operation, so it keeps
-     the old name even though the project is now ViewFlare - see the migration
-     section at the end of this guide.)
-5. Click **"Save"**.
-6. **Redeploy** the page (Deployments → Retry deployment) to apply the binding.
+`scripts/setup.mjs` checks your Cloudflare login, creates a D1 database named
+`viewflare-db` if your account does not have one, writes the returned
+`database_id` into `wrangler.toml`, applies `schema.sql`, prompts for the admin
+password, deploys, and prints your `*.workers.dev` URL.
 
----
+It is idempotent. If it stops partway, run it again.
 
-## 🔑 2. Admin Password Configuration
+The rest of this section is what that command does, for when you want to do a
+step by hand or something failed.
 
-By default, development environments use `admin123`. You must change this on production!
+### Database
 
-### Set Password in Environment variables:
-1. Go to **Settings** → **Environment variables** in your Pages project dashboard.
-2. Under **Environment variables**, click **Add variable**.
-3. Set the name to `ADMIN_PASSWORD` and enter your secure password as the value.
-4. Set another variable `ENABLE_ADMIN` to `true`.
-5. Set `ENABLE_ANALYTICS` to `true` (or `false` to save 50%+ on D1 write costs).
-6. Click **Save** and **Redeploy** the project.
-
-Alternatively, you can set secrets using the Wrangler CLI:
 ```bash
-npx wrangler pages secret put ADMIN_PASSWORD
+npm run db:create   # wrangler d1 create viewflare-db
+npm run db:init     # applies schema.sql to the remote database
 ```
 
----
+`db:create` prints a `database_id`. Put it in `wrangler.toml` under
+`[[d1_databases]]`. That is the entire binding step: the Worker reads its
+bindings from `wrangler.toml` at deploy time, so there is nothing to click in
+the dashboard and nothing to re-bind after a redeploy. Under Pages this was a
+dashboard form that had to be filled in again whenever the project was
+recreated.
 
-## 🌐 3. Custom Domain Mapping
+### Admin password
 
-Map a custom subdomain (e.g. `counter.vkrishna04.me`) to your counter:
-1. In your Cloudflare Pages dashboard, go to the **Custom domains** tab.
-2. Click **Set up a custom domain**.
-3. Enter your domain name (e.g., `counter.vkrishna04.me`).
-4. Click **Continue**. Cloudflare will automatically configure DNS records if the domain is on your Cloudflare account.
-5. Wait 5-10 minutes for DNS propagation and SSL certificate issuance.
+The password is a secret, not an environment variable. It never goes in
+`wrangler.toml`.
 
----
-
-## 🔄 Password Recovery & Rotation
-
-- **Recovery:** Passwords are held in Pages environment variables (encrypted at rest), not hashed in SQL. You can view or reset your password directly from the **Environment variables** page of the Cloudflare dashboard.
-- **Rotation:** We recommend rotating the `ADMIN_PASSWORD` every 90 days.
 ```bash
-# Rotate CLI secret
-npx wrangler pages secret put ADMIN_PASSWORD
-npm run deploy
+npx wrangler secret put ADMIN_PASSWORD
 ```
 
+Wrangler prompts you and sends the value straight to Cloudflare. To rotate it,
+run the same command again with a new value; a redeploy is not needed for a
+secret to take effect. Rotating every 90 days is a reasonable habit.
+
+A secret cannot be read back, by you or by anyone else. If you lose it, set a
+new one. There is no recovery, which is the point.
+
+The non-secret settings live in `[vars]` in `wrangler.toml` and are applied by
+`npm run deploy`:
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `ENABLE_ADMIN` | `true` | Serve the admin console and admin API at all |
+| `ENABLE_ANALYTICS` | `false` | Heavier analytics queries. `false` saves D1 reads |
+| `MAX_PROJECTS` | `100` | Cap on distinct tracked projects |
+
+### Custom domain
+
+The `*.workers.dev` URL works immediately and needs no DNS. To use your own
+hostname:
+
+1. Cloudflare dashboard, **Workers & Pages**, the **viewflare** Worker.
+2. **Settings**, **Domains & Routes**, **Add**, **Custom domain**.
+3. Enter the hostname, for example `counter.vkrishna04.me`. The zone must
+   already be on your Cloudflare account.
+4. Cloudflare creates the DNS record and issues the certificate. Allow a few
+   minutes.
+
+Do not put `routes` in `wrangler.toml`. A fork's `npm run deploy` would then try
+to claim your hostname and fail.
+
 ---
 
-## 🚚 The rename, and why Cloudflare is not part of it
+## 2. Moving an existing Pages deployment to Workers
 
-**There is no Cloudflare migration.** ViewFlare is the product name. `cflaircounter` is
-the Pages project name, and it stays.
+Relevant if you deployed ViewFlare before version 2.5.0, when it ran on
+Cloudflare Pages as a project named `cflaircounter` with a database named
+`cflaircounter-db`.
 
-Cloudflare Pages has no rename operation: `wrangler pages project` offers only `list`,
-`create` and `delete`, and the dashboard has no rename either. Changing `name` in
-`wrangler.toml` does not rename a project; it targets a *different* one, so the next
-`wrangler pages deploy` would create a brand-new empty project and leave the live one
-serving traffic. That is a migration, not a rename, and it would put every recorded view
-count at risk for no benefit.
+Earlier versions of this guide argued that the Cloudflare names should stay as
+they were, on the grounds that Pages has no rename operation and the project
+name is not a public surface. Both of those remain true. What changed is that
+the deployment target itself moved to Workers, which needs a new Worker either
+way. Renaming during a move that was happening regardless costs nothing extra,
+so the names now match the product.
 
-The benefit is nil because **the project name is not a public surface**. Visitors, the
-portfolio and the profile badge all reach the service at `counter.vkrishna04.me`, plus the
-`me.krishnagsvv.workers.dev` mirror, which points at the same counter. Neither hostname
-contains the project name. Nobody outside the Cloudflare dashboard can tell what it is
-called.
+D1 has no rename operation either: `wrangler d1` offers `create`, `delete`,
+`export`, `execute` and `time-travel`, and nothing that renames. So the database
+rename is a copy, and the order matters.
 
-So the rename is a GitHub and branding change only:
+1. **Record a restore point.** `npx wrangler d1 time-travel info cflaircounter-db`
+   prints a bookmark you can restore to for 30 days. Keep it.
+2. **Create and fill the new database.**
+   ```bash
+   npx wrangler d1 create viewflare-db
+   npx wrangler d1 export cflaircounter-db --remote --output=dump.sql
+   npx wrangler d1 execute viewflare-db --remote --file=dump.sql
+   ```
+   Put the new `database_id` in `wrangler.toml`. Keep `dump.sql` out of the
+   repository.
+3. **Check the copy before trusting it.** Run the same query against both and
+   compare:
+   ```bash
+   npx wrangler d1 execute <db> --remote --command "SELECT COUNT(*) AS rows, SUM(view_count) AS views FROM project_views"
+   ```
+4. **Deploy the Worker.** `npm run deploy`. It lands on `*.workers.dev`, which is
+   not your zone, so it is reachable regardless of any bot protection on the
+   domain. Verify `/health`, a known view count, and that `/_worker.js` returns
+   404.
+5. **Re-declare the settings.** Pages kept environment variables in the
+   dashboard, and a Worker does not inherit them. `[vars]` in `wrangler.toml`
+   covers the non-secret ones. Set `ADMIN_PASSWORD` with
+   `npx wrangler secret put ADMIN_PASSWORD`. Check the Pages project's
+   **Settings, Environment variables** page for anything else you had set.
+6. **Move the domain.** Remove the custom domain from the Pages project first,
+   then add it to the Worker. The hostname is unreachable in between, so do the
+   two steps together. Move it rather than dropping it: every badge already
+   published on the internet points at that hostname.
+7. **Only then delete the old things**, and only after the domain has been
+   answering correctly for a while. Delete the Pages project first, because it
+   still holds a binding to the old database, then
+   `npx wrangler d1 delete cflaircounter-db`. Both are irreversible.
 
-| Renamed | Left alone |
-|---|---|
-| The GitHub repository, `CFlair-Counter` → `ViewFlare` | The Pages project, `cflaircounter` |
-| README, docs, package name, Postman collections | The D1 database, `cflaircounter-db` |
-| `.portfolio/project.json` | `counter.vkrishna04.me` and the workers.dev mirror |
-| The display name everywhere a human reads it | `project_views.project_name` keys |
+**The write window.** Anything recorded between the export in step 2 and the
+domain move in step 6 lands in the old database and is not in the new one.
+There is no way to avoid this with a copy, only to keep it short. Re-running the
+import later does not fix it: the rows conflict on their primary keys. If the
+gap ran long enough to matter, recreate `viewflare-db` and import a fresh
+export rather than layering one import on another.
 
-### Order of operations
-
-Done as of commit `28e7aa6`. Kept here because it explains why the Cloudflare
-names still say `cflaircounter`.
-
-1. **Rename the GitHub repository first** (`CFlair-Counter` → `ViewFlare`), *before*
-   pushing. The README badge and `.portfolio/project.json` already point at
-   `Life-Experimentalist/ViewFlare`. GitHub redirects an old name to a new one and never
-   the reverse, so if these commits land while the repo is still `CFlair-Counter`, both
-   links 404 until the rename happens.
-2. **Push.**
-3. **Nothing on Cloudflare.** The existing project keeps deploying from the renamed repo.
-   GitHub's redirect keeps the Pages build connection working. Confirm the next deploy is
-   green and `https://counter.vkrishna04.me/health` still answers.
-
-### If you ever do want the project renamed
-
-It is a create-and-move, and it is only worth it if you have a reason beyond tidiness.
-Create a new `viewflare` project, bind the **existing** `cflaircounter-db` (never a new
-database, which starts the counts at zero), copy the environment variables across with
-`ADMIN_PASSWORD` entered as a secret, verify a known count on `viewflare.pages.dev`, and
-only then move `counter.vkrishna04.me` across. There is a window where the hostname 404s.
+**What does not change.** The binding name is `DB` in both, which is what the
+code reads, so no application code changes. Project names in `project_views`
+are untouched, so every existing badge URL keeps working.
 
 ## Staying inside the free tier
 
@@ -163,5 +177,5 @@ setting, not code:
 2. Create a rule matching `(starts_with(http.request.uri.path, "/api/") and ends_with(http.request.uri.path, "/badge"))`.
 3. Set **Eligible for cache**, **Edge TTL** to "Use cache-control header if present", and **Browser TTL** to respect origin.
 
-This only works on a zone you control, so it applies to `counter.vkrishna04.me`
-and not to the `*.pages.dev` hostname.
+This only works on a zone you control, so it applies to a custom domain and
+not to the `*.workers.dev` hostname.

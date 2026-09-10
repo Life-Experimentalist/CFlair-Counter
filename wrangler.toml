@@ -1,33 +1,40 @@
-# This project uses Cloudflare Pages Advanced Mode with a bundled worker.
+# ViewFlare runs as a Cloudflare Worker with static assets.
 # The entry point 'public/_worker.js' is auto-generated via 'npm run build:worker'.
 
-# The Cloudflare Pages project stays "cflaircounter" on purpose. Pages has no
-# rename operation (`wrangler pages project` offers only list/create/delete), so
-# changing this does not rename anything -- it targets a *different* project, and
-# the next deploy would build an empty one. The project name is never seen by a
-# user: the public surface is counter.vkrishna04.me. ViewFlare is the product
-# name, and it does not need to be the infrastructure name.
-name = "cflaircounter"
-main = "_worker.js"
+# Renamed from "cflaircounter" when the project moved off Cloudflare Pages.
+# Pages had no rename operation, so the old name was kept to avoid targeting an
+# empty project. Workers is a different product and this is a new Worker, so the
+# name matches the product for the first time. The public surface is unchanged:
+# counter.vkrishna04.me is attached as a custom domain in the dashboard.
+name = "viewflare"
+
+# Under Pages this file was consumed by the Pages build. Under Workers it is the
+# script itself, and 'assets' below serves everything next to it.
+main = "./public/_worker.js"
+
 # Newest date the pinned toolchain supports (wrangler 4.46.0 bundles workerd
-# 1.20251105.0). A later date makes `wrangler pages dev` fail with
+# 1.20251105.0). A later date makes `wrangler dev` fail with
 # "Compatibility date ... is in the future and unsupported". Bump wrangler first,
 # then this, then package.json's `dev` script, which passes it on the CLI.
 compatibility_date = "2025-11-05"
 
-# Environment variables for production
-[env.production.vars]
-ADMIN_PASSWORD = "your-secure-admin-password-here"
+# Static files. The `binding` is what makes `env.ASSETS.fetch(request)` work in
+# functions/index.ts, which is how every non-/api/ path is served.
+# `.assetsignore` sits in public/ and holds `_worker.js`, without which the
+# bundled worker source would be published and readable at /_worker.js.
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# Non-secret configuration. These were [env.production.vars] under Pages, where
+# "production" named a git branch. Under Workers an [env.X] block declares a
+# separate Worker named viewflare-X, so they belong at the top level instead.
+# ADMIN_PASSWORD is deliberately absent: it is a secret, set once per deployment
+# with `npx wrangler secret put ADMIN_PASSWORD`, never written to this file.
+[vars]
 ENABLE_ADMIN = "true"
 ENABLE_ANALYTICS = "false"  # Disable heavy analytics to save queries
 MAX_PROJECTS = "100"        # Limit projects to control usage
-
-# Environment variables for development
-[env.development.vars]
-ADMIN_PASSWORD = ""
-ENABLE_ADMIN = "true"
-ENABLE_ANALYTICS = "true"
-MAX_PROJECTS = "1000"
 
 # Dev server configuration
 [dev]
@@ -35,30 +42,22 @@ ip = "127.0.0.1"
 port = 8788
 local_protocol = "http"
 
+# Nightly install-count snapshot, formerly .github/workflows/snapshot.yml.
+# Running it here means it never crosses the edge, so it is unaffected by Bot
+# Fight Mode and needs no admin password. UTC. `wrangler deploy` replaces the
+# deployed trigger list, so removing this line removes the schedule.
+[triggers]
+crons = ["23 2 * * *"]
+
 # Bindings for D1, R2, KV, etc.
 # Docs: https://developers.cloudflare.com/workers/wrangler/configuration/#bindings
-# NOTE: `database_name` below is deliberately still "cflaircounter-db".
-# D1 has no rename operation, and this is the name of the live database that
-# already holds every recorded view count. Renaming it here would point wrangler
-# at a database that does not exist. The *binding* is `DB` (that is what the code
-# reads) and it is unaffected by the project rename. See docs/CLOUDFLARE-SETUP.md
-# "Migrating the Pages project from cflaircounter to viewflare".
-# A fresh deployment may use any database name; put it here.
+# D1 has no rename operation, so "viewflare-db" is a new database that the
+# contents of "cflaircounter-db" were exported into. The binding is `DB`, which
+# is the name the code reads and which never changed.
+# Forking this repo? `npm run setup` creates your own database and rewrites the
+# database_id below. Do not reuse the one here; it is an account-scoped
+# identifier for someone else's data, not a secret and not useful to you.
 [[d1_databases]]
 binding = "DB"
-database_name = "cflaircounter-db"
-database_id = "" # This will be filled in after you create the DB
-preview_database_id = "cflaircounter-db-preview"
-
-# Pages configuration
-[pages]
-# The "main" branch will be used for production deployments
-branch = "main"
-# The directory containing your static assets (required for Pages)
-pages_build_output_dir = "public"
-# The directory containing your Functions
-functions = "functions"
-# The pattern of Functions to include
-functions-pattern = "[[path]].ts"
-# The pattern of Functions to exclude
-# functions-exclude = "excluded-function.ts"
+database_name = "viewflare-db"
+database_id = "01d8ff35-5211-4bb3-bc3d-eeb4a77a3f95"

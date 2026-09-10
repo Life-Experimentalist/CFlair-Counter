@@ -891,7 +891,7 @@
 			"key": "baseUrl",
 			"value": "https://counter.vkrishna04.me",
 			"type": "string",
-			"description": "Base URL of the API. Change this to switch between domains:\n- https://counter.vkrishna04.me (custom domain)\n- https://viewflare.pages.dev (primary domain)"
+			"description": "Base URL of the API, for example https://counter.vkrishna04.me or your own https://viewflare.<subdomain>.workers.dev"
 		},
 		{
 			"key": "projectName",

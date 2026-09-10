@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0]() - 2026-09-10
+
+Nothing was recorded here for 2.3.0 or 2.4.0. The git history covers them.
+
+### Changed
+- **Moved from Cloudflare Pages to Cloudflare Workers.** `wrangler.toml` now
+  declares `main`, `[assets]` and the D1 binding directly, so a deployment no
+  longer depends on anything configured in the dashboard. The public API,
+  every route and every existing badge URL are unchanged.
+- **Renamed the D1 database** from `cflaircounter-db` to `viewflare-db`. D1 has
+  no rename operation, so this was an export into a new database. The binding
+  is still `DB`, which is the name the code reads.
+- The Worker name is `viewflare`, matching the product for the first time.
+- `npm run db:init` and `npm run db:migrate` now pass `--remote`. Without it
+  they silently wrote to a local SQLite file instead of the real database.
+
+### Added
+- **`npm run setup`**, a one-command install: login check, database creation,
+  `database_id` written into `wrangler.toml`, schema applied, admin password
+  prompt handed to `wrangler secret put`, deploy. Idempotent throughout.
+- **`scripts/prepare.mjs`**, which runs after `npm install` and points at
+  `npm run setup`. Git has no post-clone hook; this is the nearest thing.
+- **A nightly Cron Trigger** for the install-count snapshot, declared in
+  `[triggers]` and handled by `scheduled()` in `functions/index.ts`. It runs
+  inside Cloudflare with the D1 binding in hand, so it never crosses the edge.
+- **A second Claude Code skill.** `viewflare-setup` deploys and upgrades an
+  instance and checks whether one is out of date; `viewflare-integration` is
+  the smaller one that wires tracking into an existing project.
+- `/health` reports the running `version`, so a deployed instance can be
+  compared against the latest release.
+- `public/.assetsignore`, without which Workers static assets would publish the
+  bundled worker source at `/_worker.js`.
+
+### Removed
+- **`.github/workflows/snapshot.yml`.** It called the deployed instance over
+  the public internet from a GitHub runner, which Cloudflare's Bot Fight Mode
+  answered with a challenge page. It had not completed a run since 2026-09-08.
+  The Cron Trigger replaces it.
+
+### Fixed
+- The Newman CI job now runs `wrangler dev` inside the runner and tests against
+  that, instead of a deployed instance. A fork gets a green run with no
+  repository secrets and no account. It also type-checks before building,
+  because esbuild strips types without checking them.
+
 ## [2.2.0]() - 2025-01-14
 
 ### Added

@@ -1,4 +1,4 @@
-// Cloudflare Pages Function - Root handler
+// ViewFlare Worker - root handler
 // This handles all API routes for ViewFlare
 
 import { Hono } from "hono";
@@ -150,6 +150,10 @@ const customRateLimiter = async (c: any, next: any) => {
 
 // Note: Periodic cleanup removed - Workers don't support setInterval at global scope
 // Rate limit entries will naturally expire when checked
+
+// Must match package.json "version". /health serves it so a deployed
+// instance can be compared against the latest release without guessing.
+const VIEWFLARE_VERSION = "2.5.0";
 
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -471,7 +475,7 @@ app.get("/health", (c) => {
 		status: "ok",
 		timestamp: new Date().toISOString(),
 		worker: "viewflare-api",
-		version: "2.0.0",
+		version: VIEWFLARE_VERSION,
 	});
 });
 
@@ -1577,7 +1581,7 @@ app.get("/api/views/:projectName/history", edgeCache(300), async (c) => {
 })
 
 // Where a view came from. Both readers answer "unknown" rather than guessing:
-// CF-IPCountry is absent under `wrangler pages dev` and on some Cloudflare
+// CF-IPCountry is absent under `wrangler dev` and on some Cloudflare
 // plans, and a referrer can be stripped by the browser's referrer policy.
 const readCountry = (request: Request): string => {
 	const raw = (request.headers.get("CF-IPCountry") || "").toUpperCase();
@@ -2395,10 +2399,129 @@ const resolveAdminPassword = (c: any, body: any): string | undefined => {
 	return c.req.header("X-Admin-Password");
 };
 
-// Workers cap the outbound subrequests one incoming request may make, and a
-// full sweep is one fetch per project per source. The endpoint therefore walks
-// a page of projects at a time and hands back the offset to resume from.
+// Workers cap the outbound subrequests one invocation may make: 50 on the free
+// plan. A full sweep is one fetch per project per source, so 20 projects at 3
+// sources is 60 and would exceed it. The sweep therefore walks a page at a time
+// and hands back the offset to resume from. The nightly Cron Trigger makes one
+// pass and reports `done: false` rather than looping, because a loop is what
+// would blow the ceiling.
 const SNAPSHOT_PROJECT_LIMIT = 20;
+
+// The snapshot itself, with no HTTP in it, so the nightly Cron Trigger and the
+// admin endpoint run exactly the same code. `env` rather than a Hono context is
+// the whole point: `scheduled()` never has a request.
+async function runSnapshot(
+	env: Bindings,
+	rawOffset: unknown,
+	rawLimit: unknown,
+) {
+	await initDatabase(env.DB);
+
+	const day = new Date().toISOString().slice(0, 10);
+	const offset = Math.max(0, parseInt(String(rawOffset ?? "0"), 10) || 0);
+	const limit = Math.min(
+		SNAPSHOT_PROJECT_LIMIT,
+		Math.max(1, parseInt(String(rawLimit ?? ""), 10) || SNAPSHOT_PROJECT_LIMIT),
+	);
+
+	// View counts need no upstream call, so the whole set is recorded in one
+	// statement on every run rather than paged.
+	const viewWrite = await env.DB.prepare(
+		`
+		INSERT INTO view_snapshots (day, project_name, view_count, unique_views)
+		SELECT ?, project_name, view_count, COALESCE(unique_views, 0)
+		FROM project_views
+		-- SQLite cannot tell whether ON CONFLICT belongs to the SELECT or
+		-- the INSERT unless the SELECT has a WHERE clause.
+		WHERE true
+		ON CONFLICT(day, project_name) DO UPDATE SET
+			view_count = excluded.view_count,
+			unique_views = excluded.unique_views,
+			recorded_at = CURRENT_TIMESTAMP
+		`,
+	)
+		.bind(day)
+		.run();
+
+	const totalRow = await env.DB.prepare(
+		"SELECT COUNT(DISTINCT project_name) AS total FROM install_sources",
+	).first();
+	const totalProjects = Number(totalRow?.total) || 0;
+
+	const projectRows = await env.DB.prepare(
+		"SELECT DISTINCT project_name FROM install_sources ORDER BY project_name LIMIT ? OFFSET ?",
+	)
+		.bind(limit, offset)
+		.all();
+	const projects = ((projectRows.results || []) as any[]).map((row) =>
+		String(row.project_name),
+	);
+
+	const writes: D1PreparedStatement[] = [];
+	const skipped: {
+		project: string;
+		source: string;
+		reason: string;
+		error?: string;
+	}[] = [];
+
+	for (const projectName of projects) {
+		const { results } = await collectInstallCounts(env, projectName);
+		for (const result of results) {
+			// A stale figure is an older number wearing today's date, and a
+			// failed source has no number at all. Neither gets written.
+			if (!result.ok || result.count === null) {
+				skipped.push({
+					project: projectName,
+					source: result.source,
+					reason: "source unavailable",
+					error: result.error,
+				});
+				continue;
+			}
+			if (result.stale) {
+				skipped.push({
+					project: projectName,
+					source: result.source,
+					reason: "cached figure is stale, not recorded as today",
+					error: result.error,
+				});
+				continue;
+			}
+			writes.push(
+				env.DB.prepare(
+					`
+					INSERT INTO install_snapshots (day, project_name, source, value, "window")
+					VALUES (?, ?, ?, ?, ?)
+					ON CONFLICT(day, project_name, source) DO UPDATE SET
+						value = excluded.value,
+						"window" = excluded."window",
+						recorded_at = CURRENT_TIMESTAMP
+					`,
+				).bind(day, projectName, result.source, result.count, result.window),
+			);
+		}
+	}
+
+	if (writes.length > 0) await env.DB.batch(writes);
+
+	const nextOffset = offset + projects.length;
+	const done = projects.length === 0 || nextOffset >= totalProjects;
+
+	return {
+		success: true,
+		day,
+		projectsScanned: projects.length,
+		projectsTotal: totalProjects,
+		offset,
+		nextOffset: done ? null : nextOffset,
+		done,
+		installRowsWritten: writes.length,
+		viewRowsWritten: viewWrite.meta?.changes ?? null,
+		skipped,
+		timestamp: new Date().toISOString(),
+	};
+}
 
 app.post("/api/admin/installs/snapshot", async (c) => {
 	let body: any = {};
@@ -2423,115 +2546,7 @@ app.post("/api/admin/installs/snapshot", async (c) => {
 	}
 
 	try {
-		await initDatabase(c.env.DB);
-
-		const day = new Date().toISOString().slice(0, 10);
-		const offset = Math.max(0, parseInt(String(body.offset ?? "0"), 10) || 0);
-		const limit = Math.min(
-			SNAPSHOT_PROJECT_LIMIT,
-			Math.max(
-				1,
-				parseInt(String(body.limit ?? ""), 10) || SNAPSHOT_PROJECT_LIMIT,
-			),
-		);
-
-		// View counts need no upstream call, so the whole set is recorded in one
-		// statement on every run rather than paged.
-		const viewWrite = await c.env.DB.prepare(
-			`
-			INSERT INTO view_snapshots (day, project_name, view_count, unique_views)
-			SELECT ?, project_name, view_count, COALESCE(unique_views, 0)
-			FROM project_views
-			-- SQLite cannot tell whether ON CONFLICT belongs to the SELECT or
-			-- the INSERT unless the SELECT has a WHERE clause.
-			WHERE true
-			ON CONFLICT(day, project_name) DO UPDATE SET
-				view_count = excluded.view_count,
-				unique_views = excluded.unique_views,
-				recorded_at = CURRENT_TIMESTAMP
-			`,
-		)
-			.bind(day)
-			.run();
-
-		const totalRow = await c.env.DB.prepare(
-			"SELECT COUNT(DISTINCT project_name) AS total FROM install_sources",
-		).first();
-		const totalProjects = Number(totalRow?.total) || 0;
-
-		const projectRows = await c.env.DB.prepare(
-			"SELECT DISTINCT project_name FROM install_sources ORDER BY project_name LIMIT ? OFFSET ?",
-		)
-			.bind(limit, offset)
-			.all();
-		const projects = ((projectRows.results || []) as any[]).map((row) =>
-			String(row.project_name),
-		);
-
-		const writes: D1PreparedStatement[] = [];
-		const skipped: {
-			project: string;
-			source: string;
-			reason: string;
-			error?: string;
-		}[] = [];
-
-		for (const projectName of projects) {
-			const { results } = await collectInstallCounts(c.env, projectName);
-			for (const result of results) {
-				// A stale figure is an older number wearing today's date, and a
-				// failed source has no number at all. Neither gets written.
-				if (!result.ok || result.count === null) {
-					skipped.push({
-						project: projectName,
-						source: result.source,
-						reason: "source unavailable",
-						error: result.error,
-					});
-					continue;
-				}
-				if (result.stale) {
-					skipped.push({
-						project: projectName,
-						source: result.source,
-						reason: "cached figure is stale, not recorded as today",
-						error: result.error,
-					});
-					continue;
-				}
-				writes.push(
-					c.env.DB.prepare(
-						`
-						INSERT INTO install_snapshots (day, project_name, source, value, "window")
-						VALUES (?, ?, ?, ?, ?)
-						ON CONFLICT(day, project_name, source) DO UPDATE SET
-							value = excluded.value,
-							"window" = excluded."window",
-							recorded_at = CURRENT_TIMESTAMP
-						`,
-					).bind(day, projectName, result.source, result.count, result.window),
-				);
-			}
-		}
-
-		if (writes.length > 0) await c.env.DB.batch(writes);
-
-		const nextOffset = offset + projects.length;
-		const done = projects.length === 0 || nextOffset >= totalProjects;
-
-		return c.json({
-			success: true,
-			day,
-			projectsScanned: projects.length,
-			projectsTotal: totalProjects,
-			offset,
-			nextOffset: done ? null : nextOffset,
-			done,
-			installRowsWritten: writes.length,
-			viewRowsWritten: viewWrite.meta?.changes ?? null,
-			skipped,
-			timestamp: new Date().toISOString(),
-		});
+		return c.json(await runSnapshot(c.env, body.offset, body.limit));
 	} catch (error) {
 		console.error("Snapshot error:", error);
 		return c.json({ success: false, error: "Snapshot failed" }, 500);
@@ -3440,12 +3455,13 @@ app.get("/api/compute/:projectName/shields.json", edgeCache(60), async (c) => {
 	}
 });
 
-// Cloudflare Pages export format with static file handling
+// Worker entry point: HTTP requests and the nightly scheduled trigger.
 export default {
 	async fetch(request: Request, env: any, ctx: any) {
 		const url = new URL(request.url);
 
-		// Handle static files - pass to Cloudflare Pages.
+		// Anything that is not an API route is a static file, served by the
+		// ASSETS binding declared in wrangler.toml.
 		// /api/ is always the worker's: /api/installs/x/shields.json ends in
 		// .json but is a route, not an asset.
 		// Extensionless pages have to be listed by name. /admin is one, and
@@ -3465,5 +3481,41 @@ export default {
 
 		// Handle API routes through Hono
 		return app.fetch(request, env, ctx);
+	},
+
+	// Nightly install-count snapshot, scheduled by [triggers] in wrangler.toml.
+	// This runs inside Cloudflare with the DB binding already in hand, so it
+	// never makes a request to its own public hostname and is unaffected by any
+	// edge protection on the zone. It replaced a GitHub Actions workflow that
+	// could not reliably reach the site from a datacenter IP.
+	async scheduled(
+		_controller: ScheduledController,
+		env: Bindings,
+		ctx: ExecutionContext,
+	) {
+		ctx.waitUntil(
+			runSnapshot(env, 0, SNAPSHOT_PROJECT_LIMIT)
+				.then((result) => {
+					// A partial sweep is not a failure, but it is worth saying out
+					// loud: nothing resumes it before tomorrow's run.
+					if (!result.done) {
+						console.warn(
+							`Snapshot covered ${result.projectsScanned} of ${result.projectsTotal} projects. The rest are not recorded for ${result.day}.`,
+						);
+					}
+					if (result.skipped.length > 0) {
+						console.warn(
+							`Snapshot skipped ${result.skipped.length} source(s):`,
+							result.skipped,
+						);
+					}
+					console.log(
+						`Snapshot ${result.day}: ${result.viewRowsWritten} view rows, ${result.installRowsWritten} install rows.`,
+					);
+				})
+				.catch((error) => {
+					console.error("Scheduled snapshot failed:", error);
+				}),
+		);
 	},
 };

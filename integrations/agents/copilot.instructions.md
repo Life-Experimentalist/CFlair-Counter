@@ -5,7 +5,7 @@ applyTo: "**"
 # ViewFlare
 
 This project reports view counts, install counts and events to a ViewFlare
-instance: a small counter API running on Cloudflare Pages Functions and D1.
+instance: a small counter API running as a Cloudflare Worker on D1.
 
 ## Read the contract first
 

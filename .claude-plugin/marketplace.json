@@ -1,7 +1,7 @@
 {
 	"$schema": "https://json.schemastore.org/claude-code-marketplace.json",
 	"name": "viewflare",
-	"description": "ViewFlare, a free serverless view counter, install-count aggregator and event log for Cloudflare Pages and D1.",
+	"description": "ViewFlare, a free serverless view counter, install-count aggregator and event log for Cloudflare Workers and D1.",
 	"owner": {
 		"name": "Life-Experimentalist"
 	},
@@ -10,8 +10,8 @@
 			"name": "viewflare-integration",
 			"source": "./",
 			"displayName": "ViewFlare Integration",
-			"description": "Deploy a ViewFlare instance on the Cloudflare free tier, wire view and event tracking into a codebase, and derive a single computed number from what it collects.",
-			"version": "2.4.0",
+			"description": "Two skills: viewflare-setup deploys and updates your own instance on the Cloudflare free tier, viewflare-integration wires view tracking, events, badges and computed metrics into a codebase.",
+			"version": "2.5.0",
 			"author": {
 				"name": "Life-Experimentalist"
 			},

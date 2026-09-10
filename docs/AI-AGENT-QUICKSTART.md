@@ -12,7 +12,7 @@ Integrate and validate ViewFlare as a telemetry microservice that can:
 
 ## System Summary
 
-- Runtime: Cloudflare Pages (Advanced Mode) + Worker.
+- Runtime: Cloudflare Workers with static assets.
 - API framework: Hono.
 - Persistence: Cloudflare D1 (`DB` binding).
 - Source entry: `functions/index.ts`.
@@ -44,9 +44,8 @@ Integrate and validate ViewFlare as a telemetry microservice that can:
 ```toml
 [[d1_databases]]
 binding = "DB"
-database_name = "cflaircounter-db"
+database_name = "viewflare-db"
 database_id = "<real-database-id>"
-preview_database_id = "<real-preview-database-id>"
 ```
 
 ## API Contract
@@ -197,12 +196,15 @@ Workflow file: `.github/workflows/newman.yml`
 
 Behavior:
 - Uses `npm ci` for lockfile-safe install.
-- Runs Newman collection with runtime env vars.
-- Defaults `BASE_URL` to `https://viewflare.pages.dev` when secret is missing.
+- Type-checks, builds the worker bundle, then starts `wrangler dev` on port 8788.
+- Runs the Newman collection against that local instance, not a deployed one.
+- Generates a throwaway `ADMIN_PASSWORD` per run into `.dev.vars`.
 
-Required repository secrets:
-- `BASE_URL` (optional but recommended)
-- `ADMIN_PASSWORD` (optional; if absent, admin-positive tests will expect 401)
+Required repository secrets: none. A fork gets a green run with no setup.
+
+The suite is a contract test, so it says nothing about whether a deployment's
+bindings, variables and routes are correct. That needs a separate post-deploy
+check.
 
 ## Integration Recipes
 

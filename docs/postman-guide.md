@@ -4,58 +4,59 @@ Complete guide for testing the ViewFlare API using Postman.
 
 ---
 
-## 🚀 Quick Start
+## Two collections, and which one is real
 
-### 1. Import Collection
+`postman/ViewFlare.postman_collection.json` with
+`postman/ViewFlare.postman_environment.json` is the pair that `npm run test:newman`
+and CI actually run.
 
-**Option A: Import from File**
-1. Open Postman
-2. Click **Import** button (top left)
-3. Select **File** tab
-4. Choose `postman-collection.json` from the project root
-5. Click **Import**
+`.postman/postman-collection.json` is an older, larger collection kept around
+for manual exploration. It is not wired to anything, and it uses different
+variable names, so do not mix the two.
 
-**Option B: Import from URL** (if hosted on GitHub)
+| | `postman/` (used by CI) | `.postman/` (manual only) |
+| --- | --- | --- |
+| Base URL | `base_url` | `baseUrl` |
+| Project | `project` | `projectName` |
+| Admin password | `admin_password` | `adminPassword` |
+
+The names matter more than they look. Newman does not warn about an unknown
+`--env-var`: passing `baseUrl` to the `postman/` collection silently creates an
+unused variable, leaves `base_url` at its default, and runs the whole suite
+against whatever that default points at. The rest of this guide describes the
+`.postman/` collection and uses its camelCase names.
+
+## Quick Start
+
+### 1. Run it without Postman
+
+```bash
+npm run test:newman -- --env-var "base_url=http://127.0.0.1:8788"
 ```
-https://raw.githubusercontent.com/Life-Experimentalists/ViewFlare/main/postman-collection.json
+
+Start a local instance first with `npm run dev`. Without the override,
+`base_url` is whatever is in the environment file, which is a deployed
+instance.
+
+### 2. Import into Postman
+
+1. **Import**, **File**, then pick both
+   `postman/ViewFlare.postman_collection.json` and
+   `postman/ViewFlare.postman_environment.json`.
+2. Select the environment in the top-right dropdown.
+3. Set `base_url` to your instance and `admin_password` to your admin password.
+
+### 3. The admin password
+
+It is a Workers secret, set from a terminal:
+
+```bash
+npx wrangler secret put ADMIN_PASSWORD
 ```
 
-### 2. Configure Variables
-
-After importing, configure the collection variables:
-
-1. Click on the **ViewFlare API** collection
-2. Go to the **Variables** tab
-3. Update the following variables:
-
-| Variable | Default Value | Description |
-|----------|---------------|-------------|
-| `baseUrl` | `https://counter.vkrishna04.me` | Your API domain |
-| `projectName` | `test-project` | Project identifier for testing |
-| `adminPassword` | *(empty)* | Your admin password (set this!) |
-
-#### Available Domains
-
-You can use any of these domains for `baseUrl`:
-
-- **Custom Domain**: `https://counter.vkrishna04.me`
-- **Primary Domain**: `https://viewflare.pages.dev`
-- **Specific Deployment**: `https://7918ecb1.viewflare.pages.dev`
-
-Simply change the `baseUrl` variable to switch between domains!
-
-### 3. Set Admin Password
-
-⚠️ **Important:** To use admin endpoints, you must:
-
-1. **Set the password in Cloudflare Dashboard:**
-   - Go to [Cloudflare Dashboard](https://dash.cloudflare.com/)
-   - Navigate to **Workers & Pages** → **viewflare**
-   - Go to **Settings** → **Environment variables**
-   - Add `ADMIN_PASSWORD` for Production environment
-
-2. **Update the Postman variable:**
-   - Set the `adminPassword` collection variable to match
+It cannot be read back afterwards, so the value you put into `admin_password`
+in Postman has to be one you already know. If you have lost it, set a new one
+with the same command.
 
 ---
 
@@ -401,18 +402,11 @@ projectName: production-test
 adminPassword: your-secure-password
 ```
 
-**Pages.dev Environment:**
-```
-baseUrl: https://viewflare.pages.dev
-projectName: pages-test
-adminPassword: your-secure-password
-```
-
 **Local Development:**
 ```
-baseUrl: http://localhost:8787
+baseUrl: http://127.0.0.1:8788
 projectName: local-test
-adminPassword: test-password
+adminPassword: whatever is in .dev.vars
 ```
 
 ---

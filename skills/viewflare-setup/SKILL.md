@@ -1,0 +1,141 @@
+---
+name: viewflare-setup
+description: Use when the user wants their own ViewFlare instance deployed, forked, or upgraded. Creates a free Cloudflare Worker and D1 database, applies the schema, sets the admin secret, and checks whether an existing deployment is out of date. For wiring an existing instance into a codebase, use viewflare-integration instead.
+---
+
+# Deploying a ViewFlare instance
+
+ViewFlare is a serverless view counter, install-count aggregator and event log
+that runs on the Cloudflare free tier. It needs no credit card. This skill
+covers standing up an instance and keeping it current. Wiring tracking into a
+project is a separate, smaller skill: `viewflare-integration`.
+
+## The whole setup
+
+From a clone of the repository:
+
+```bash
+npm install && npm run setup
+```
+
+`scripts/setup.mjs` does every step: checks the Cloudflare login, creates a D1
+database named `viewflare-db` if the account does not already have one, writes
+the returned `database_id` into `wrangler.toml`, applies `schema.sql` to the
+remote database, prompts for the admin password through `wrangler secret put`,
+deploys, and prints the `*.workers.dev` URL.
+
+Every step is idempotent. If it stops partway, run it again rather than
+unpicking it by hand.
+
+Two things it does not do, both deliberate:
+
+- It never handles the admin password itself. It hands the terminal to
+  `wrangler secret put ADMIN_PASSWORD`, which prompts the user directly. Do not
+  offer to type a password for the user, do not put one in `wrangler.toml`, and
+  do not read it back out afterwards.
+- It does not attach a custom domain. That is a dashboard step: Workers & Pages,
+  the `viewflare` Worker, Settings, Domains & Routes. The `*.workers.dev` URL
+  works immediately without it.
+
+If `npm run setup` reports that wrangler is not logged in, the fix is
+`npx wrangler login`, which opens a browser for the user to approve. Wait for
+them; do not try to authenticate on their behalf.
+
+## When something fails
+
+The script prints the failing wrangler output rather than a summary of it. Read
+that output before changing anything. The common causes:
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| `wrangler is not logged in` | no Cloudflare session | `npx wrangler login` |
+| `could not create the database` | a `viewflare-db` already exists under a different account, or the free D1 limit is reached | `npx wrangler d1 list` to see what is there |
+| deploy fails on `_worker.js` | the bundle was not built | `npm run build:worker`, then retry |
+| admin console returns 401 | `ADMIN_PASSWORD` secret is not set | `npx wrangler secret put ADMIN_PASSWORD` |
+
+## Checking for updates
+
+Three versions can drift apart, and they are checked differently.
+
+**The deployed instance.** `GET https://[DOMAIN]/health` returns a `version`
+field. Compare it against the latest release:
+
+```bash
+curl -s https://[DOMAIN]/health
+curl -s https://raw.githubusercontent.com/Life-Experimentalist/ViewFlare/main/package.json
+```
+
+If the deployed `version` is lower than the repository's `version`, the instance
+is behind. Upgrading is a pull and a redeploy:
+
+```bash
+git pull && npm run deploy
+```
+
+That is safe to run against a live instance. The schema uses
+`CREATE TABLE IF NOT EXISTS` and the deploy replaces the script, not the data.
+Check `/health` again afterwards and confirm the version moved.
+
+**This skill and the plugin.** Compare the installed plugin against the
+marketplace:
+
+```bash
+curl -s https://raw.githubusercontent.com/Life-Experimentalist/ViewFlare/main/.claude-plugin/marketplace.json
+```
+
+Read `plugins[0].version`. If it is ahead of the installed plugin:
+
+```
+/plugin marketplace update viewflare
+/plugin install viewflare-integration@viewflare
+```
+
+**A fork's own copy.** A fork that has diverged will not fast-forward. Say so
+plainly rather than forcing it, and offer to show `git log --oneline HEAD..upstream/main`
+so the user can decide what to take.
+
+Do not run any of these checks unprompted on every invocation. Check when the
+user asks about updates, when they report behaviour that the current version
+does not have, or when a deploy has just failed in a way a version gap would
+explain.
+
+## Bot protection on a custom domain
+
+If the instance sits on a zone with Cloudflare's Bot Fight Mode turned on,
+requests from datacenter IPs get challenged, and the challenge arrives at the
+caller as an HTML page where it expected JSON. The usual symptom is
+`Unexpected token '<' at 1:1` from a CI job or a server-side caller. Browsers
+are unaffected.
+
+Two things worth knowing before suggesting a fix:
+
+- Bot Fight Mode is zone-level and does not run on the Ruleset Engine, so a WAF
+  Skip, Bypass or Allow rule cannot exempt a path from it on any plan. Do not
+  suggest one.
+- The `*.workers.dev` hostname is not on the zone, so it is not subject to it.
+  That is the right target for CI and for automated callers.
+
+Do not change application code to route around an edge challenge, and do not
+turn off a protection the user chose, unless they ask.
+
+## Ongoing jobs
+
+The nightly install-count snapshot runs as a Cloudflare Cron Trigger, declared
+in `wrangler.toml` under `[triggers]` and handled by `scheduled()` in
+`functions/index.ts`. It runs inside Cloudflare with the database binding
+already in hand, so it never makes a request to its own public hostname and is
+unaffected by any bot protection on the zone.
+
+It is deployed by `wrangler deploy` along with everything else. `wrangler deploy`
+replaces the deployed trigger list, so removing the `[triggers]` block and
+deploying removes the schedule.
+
+To test it locally: `npx wrangler dev --test-scheduled`, then
+`curl "http://127.0.0.1:8788/__scheduled?cron=23+2+*+*+*"`.
+
+One limit worth knowing: the free plan allows 50 outbound subrequests per
+invocation, and a full sweep makes one fetch per project per install source. The
+handler makes a single pass and reports `done: false` rather than looping,
+because a loop is what would exceed the ceiling. An instance tracking install
+counts for more than about sixteen projects will not finish a sweep in one
+night.

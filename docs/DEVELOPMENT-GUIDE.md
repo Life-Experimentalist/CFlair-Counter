@@ -12,7 +12,7 @@ npm run deploy
 ```
 This script automatically:
 1. Bundles the worker backend: `functions/index.ts` → `public/_worker.js` (using `esbuild`)
-2. Deploys static assets and functions to Cloudflare Pages.
+2. Deploys the worker bundle and static assets to Cloudflare Workers.
 3. Automatically maps to your custom domain (e.g., `https://counter.vkrishna04.me`).
 
 ### Local Development
@@ -97,8 +97,8 @@ Verify database sizes and query counts directly:
 
 ```bash
 # Get D1 DB size (Free tier limit is 500MB)
-npx wrangler d1 execute cflaircounter-db --command "SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size();" --remote
+npx wrangler d1 execute viewflare-db --command "SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size();" --remote
 
 # List top 10 projects by view count
-npx wrangler d1 execute cflaircounter-db --command "SELECT project_name, view_count FROM project_views ORDER BY view_count DESC LIMIT 10" --remote
+npx wrangler d1 execute viewflare-db --command "SELECT project_name, view_count FROM project_views ORDER BY view_count DESC LIMIT 10" --remote
 ```

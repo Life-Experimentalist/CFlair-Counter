@@ -76,3 +76,10 @@ ignore.devprune.json
 
 # Local wrangler dev secrets
 .dev.vars
+
+# Local marker written by scripts/setup.mjs
+.viewflare/
+
+# Newman run artifacts
+postman/newman-report.json
+postman/newman-junit.xml

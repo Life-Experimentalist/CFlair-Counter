@@ -15,6 +15,10 @@ name: Run Newman tests
 #
 # What this does not check is the deployment itself: bindings, environment
 # variables, routes. That needs a separate post-deploy check.
+#
+# `wrangler dev` reads wrangler.toml for the compatibility date and the
+# bindings, so the only flag it needs here is the port. It was
+# `wrangler pages dev public` until the project moved to Workers.
 
 on:
     push:
@@ -51,9 +55,14 @@ jobs:
                   admin_password="ci-$(openssl rand -hex 16)"
                   printf 'ADMIN_PASSWORD=%s\n' "${admin_password}" > .dev.vars
 
+                  # esbuild strips types without checking them, so without this
+                  # the suite is the only thing standing between a type error and
+                  # a deploy. tsc is already a devDependency and takes seconds.
+                  npm run type-check
+
                   npm run build:worker
 
-                  npx wrangler pages dev public --compatibility-date=2025-11-05 --port 8788 &
+                  npx wrangler dev --port 8788 &
                   server=$!
                   trap 'kill "${server}" 2>/dev/null || true' EXIT
 
