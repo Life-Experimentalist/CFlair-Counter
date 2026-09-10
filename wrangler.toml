@@ -60,4 +60,4 @@ crons = ["23 2 * * *"]
 [[d1_databases]]
 binding = "DB"
 database_name = "viewflare-db"
-database_id = "01d8ff35-5211-4bb3-bc3d-eeb4a77a3f95"
+database_id = "41b376ca-8f65-4be9-8443-f7060b60b6ce"
