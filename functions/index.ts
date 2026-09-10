@@ -151,7 +151,7 @@ const customRateLimiter = async (c: any, next: any) => {
 
 // Must match package.json "version". /health serves it so a deployed
 // instance can be compared against the latest release without guessing.
-const VIEWFLARE_VERSION = "3.0.0";
+const VIEWFLARE_VERSION = "3.0.1";
 
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
