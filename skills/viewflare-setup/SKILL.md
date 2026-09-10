@@ -33,9 +33,20 @@ Two things it does not do, both deliberate:
   `wrangler secret put ADMIN_PASSWORD`, which prompts the user directly. Do not
   offer to type a password for the user, do not put one in `wrangler.toml`, and
   do not read it back out afterwards.
-- It does not attach a custom domain. That is a dashboard step: Workers & Pages,
-  the `viewflare` Worker, Settings, Domains & Routes. The `*.workers.dev` URL
-  works immediately without it.
+- It does not attach a custom domain, because most instances do not need one.
+  The `*.workers.dev` URL works immediately. If the user does want their own
+  hostname, and the zone is already on the same Cloudflare account, it is one
+  command rather than a dashboard trip:
+
+  ```bash
+  npx wrangler deploy --domains counter.example.com
+  ```
+
+  That creates the DNS record as well. It has to be a flag rather than a
+  `[[routes]]` block in `wrangler.toml`, because a committed hostname would make
+  every fork's first deploy try to claim someone else's domain. The attachment
+  survives later plain `npm run deploy` runs, so the upgrade path below does not
+  drop it.
 
 If `npm run setup` reports that wrangler is not logged in, the fix is
 `npx wrangler login`, which opens a browser for the user to approve. Wait for

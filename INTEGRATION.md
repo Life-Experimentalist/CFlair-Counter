@@ -19,9 +19,11 @@ If the user wants you to "setup" or "deploy" ViewFlare for them from scratch:
 4. **Never handle the password yourself**. The script hands the terminal to
    `npx wrangler secret put ADMIN_PASSWORD`, which prompts the user directly.
    `ADMIN_PASSWORD` is a Workers secret and never belongs in `wrangler.toml`.
-5. **Custom domain (optional)**: the `*.workers.dev` URL works immediately. A
-   custom domain is a dashboard step: Workers & Pages, the `viewflare` Worker,
-   Settings, Domains & Routes.
+5. **Custom domain (optional)**: the `*.workers.dev` URL works immediately. To
+   add your own, with the zone on the same account, run
+   `npx wrangler deploy --domains counter.example.com`. It creates the DNS
+   record, and later plain deploys keep it. Never commit the hostname as a
+   `routes` entry: a fork's first deploy would try to claim it.
 
 ### If you put it on a custom domain
 

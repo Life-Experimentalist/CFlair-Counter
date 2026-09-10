@@ -48,6 +48,18 @@ Nothing was recorded here for 2.3.0 or 2.4.0. The git history covers them.
   `npm run setup` replaces it on every platform and never handles the password.
 
 ### Fixed
+
+- **OS metadata files were being published.** `wrangler deploy` uploads whatever
+  sits in `public/`, so a deploy from Windows served `desktop.ini` and one from
+  macOS would have served `.DS_Store`. Both are gitignored, so they never arrive
+  through the repository, but they were reaching production from the deploying
+  machine. `public/.assetsignore` now excludes them.
+- **The docs said a custom domain was dashboard only.** `wrangler deploy` takes
+  a `--domains` flag, which attaches the hostname and creates the DNS record in
+  one command. The attachment lives on the Worker, so later plain `npm run
+  deploy` runs keep it, which is what makes it safe to leave `routes` out of the
+  committed `wrangler.toml` and keep forks from claiming someone else's
+  hostname.
 - The Newman CI job now runs `wrangler dev` inside the runner and tests against
   that, instead of a deployed instance. A fork gets a green run with no
   repository secrets and no account. It also type-checks before building,

@@ -211,5 +211,6 @@ if (url) {
 		"\nwrangler printed no URL. Run `npx wrangler deployments list` to find it.",
 	);
 }
-console.log("\nTo use your own domain: Cloudflare dashboard, Workers & Pages,");
-console.log("viewflare, Settings, Domains & Routes.");
+console.log("\nTo put it on your own domain (the zone must be on this account):");
+console.log("  npx wrangler deploy --domains counter.example.com");
+console.log("That adds the DNS record too, and later deploys keep it.");

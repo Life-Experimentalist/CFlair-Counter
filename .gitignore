@@ -83,3 +83,7 @@ ignore.devprune.json
 # Newman run artifacts
 postman/newman-report.json
 postman/newman-junit.xml
+
+# Cloudflare firewall event exports, downloaded for debugging. They contain
+# visitor IP addresses and user agents and must not be committed.
+firewall-events-*.json

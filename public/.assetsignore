@@ -1,1 +1,11 @@
+# The Worker bundle itself. It is uploaded as the script, not as an asset, so
+# serving it publicly would just expose the source.
 _worker.js
+
+# Operating system folder metadata. These are gitignored, so they never reach a
+# fork through the repository, but `wrangler deploy` uploads whatever is in this
+# directory on the machine running it. Without these lines a deploy from Windows
+# publishes desktop.ini and one from macOS publishes .DS_Store.
+desktop.ini
+Thumbs.db
+.DS_Store

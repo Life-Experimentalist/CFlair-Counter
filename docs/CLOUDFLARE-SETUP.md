@@ -62,17 +62,20 @@ The non-secret settings live in `[vars]` in `wrangler.toml` and are applied by
 ### Custom domain
 
 The `*.workers.dev` URL works immediately and needs no DNS. To use your own
-hostname:
+hostname, with the zone already on your Cloudflare account:
 
-1. Cloudflare dashboard, **Workers & Pages**, the **viewflare** Worker.
-2. **Settings**, **Domains & Routes**, **Add**, **Custom domain**.
-3. Enter the hostname, for example `counter.vkrishna04.me`. The zone must
-   already be on your Cloudflare account.
-4. Cloudflare creates the DNS record and issues the certificate. Allow a few
-   minutes.
+```bash
+npx wrangler deploy --domains counter.example.com
+```
 
-Do not put `routes` in `wrangler.toml`. A fork's `npm run deploy` would then try
-to claim your hostname and fail.
+Cloudflare creates the DNS record and issues the certificate; allow a few
+minutes for the certificate. The attachment is stored on the Worker, not in the
+deploy command, so later plain `npm run deploy` runs keep it. The dashboard
+route is still there if you prefer it: Workers & Pages, the **viewflare**
+Worker, **Settings**, **Domains & Routes**, **Add**, **Custom domain**.
+
+Pass the hostname as a flag; do not put `routes` in `wrangler.toml`. A fork's
+`npm run deploy` would then try to claim your hostname and fail.
 
 ---
 

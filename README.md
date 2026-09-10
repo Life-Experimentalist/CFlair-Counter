@@ -58,8 +58,16 @@ The only prerequisite is a free Cloudflare account. If wrangler is not logged in
 yet the script says so and stops; `npx wrangler login` fixes it.
 
 A custom domain is optional and is the one step the script does not do: the
-`*.workers.dev` URL works immediately. To use your own, go to Workers & Pages,
-the `viewflare` Worker, Settings, Domains & Routes.
+`*.workers.dev` URL works immediately. To use your own, once the zone is on the
+same Cloudflare account:
+
+```bash
+npx wrangler deploy --domains counter.example.com
+```
+
+That creates the DNS record too, and later `npm run deploy` runs keep it
+attached. Pass it as a flag rather than committing a `routes` entry, so a fork
+never tries to claim your hostname.
 
 Then day to day:
 
