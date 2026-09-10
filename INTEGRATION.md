@@ -25,7 +25,7 @@ If the user wants you to "setup" or "deploy" ViewFlare for them from scratch:
 
 ### If you put it on a custom domain
 
-Cloudflare's Bot Fight Mode challenges requests from datacenter IPs, and the
+Cloudflare's Bot Fight Mode can challenge requests from datacenter IPs, and the
 challenge reaches the caller as an HTML page where it expected JSON
 (`Unexpected token '<' at 1:1`). Browsers are unaffected; CI jobs and
 server-side callers are not. The `*.workers.dev` hostname is not on the zone, so

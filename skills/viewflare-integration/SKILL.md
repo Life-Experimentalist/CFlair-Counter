@@ -83,7 +83,8 @@ contract.
 
 If a request answers with an HTML page starting `<`, the usual cause is
 Cloudflare's Bot Fight Mode on the instance's zone challenging a datacenter IP.
-It affects CI runners and server-side callers, not browsers. A `*.workers.dev`
+It affects CI runners and server-side callers, not browsers, and it is scored
+per request, so it can hit one call and not the next. A `*.workers.dev`
 hostname is not on the zone and is not subject to it. Do not work around it in
 application code and do not suggest a WAF skip rule, which cannot affect Bot
 Fight Mode.

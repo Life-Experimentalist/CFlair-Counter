@@ -14,7 +14,7 @@
  * directly and sends it to Cloudflare without it passing through here.
  */
 import { spawnSync } from "node:child_process";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -22,8 +22,12 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const TOML = join(ROOT, "wrangler.toml");
 const MARKER = join(ROOT, ".viewflare", "setup-complete");
 const DB_NAME = "viewflare-db";
-const NPX = process.platform === "win32" ? "npx.cmd" : "npx";
-const NPM = process.platform === "win32" ? "npm.cmd" : "npm";
+
+// wrangler runs as a plain node script rather than through npx. Since Node
+// 18.20.2 a bare spawn of "npx.cmd" on Windows fails with EINVAL, and the usual
+// `shell: true` workaround then warns about unescaped arguments. Calling the
+// installed entry point directly avoids both and skips npx's own resolution.
+const WRANGLER = join(ROOT, "node_modules", "wrangler", "bin", "wrangler.js");
 
 let step = 0;
 const say = (msg) => console.log(`\n[${++step}] ${msg}`);
@@ -38,16 +42,19 @@ function die(msg, hint) {
 
 /** Run wrangler and capture its output. */
 function wrangler(args, { inherit = false } = {}) {
-	const result = spawnSync(NPX, ["wrangler", ...args], {
+	if (!existsSync(WRANGLER)) {
+		die(
+			"wrangler is not installed in this checkout",
+			"Run `npm install` first, then `npm run setup` again.",
+		);
+	}
+	const result = spawnSync(process.execPath, [WRANGLER, ...args], {
 		cwd: ROOT,
 		encoding: "utf8",
 		stdio: inherit ? "inherit" : "pipe",
 	});
 	if (result.error) {
-		die(
-			`could not run wrangler (${result.error.message})`,
-			"Run `npm install` first so wrangler is available.",
-		);
+		die(`could not run wrangler (${result.error.message})`);
 	}
 	return {
 		code: result.status ?? 1,
@@ -173,10 +180,14 @@ if (process.stdin.isTTY) {
 
 // ----------------------------------------------------------------- 6. deploy
 say("Building and deploying");
-const deploy = spawnSync(NPM, ["run", "deploy"], {
+// A single command string rather than an argument array: npm needs a shell on
+// Windows for the same EINVAL reason as above, and passing args alongside
+// `shell` warns about escaping. Nothing here is user supplied.
+const deploy = spawnSync("npm run deploy", {
 	cwd: ROOT,
 	encoding: "utf8",
 	stdio: "pipe",
+	shell: true,
 });
 const deployOut = (deploy.stdout || "") + (deploy.stderr || "");
 if ((deploy.status ?? 1) !== 0) {

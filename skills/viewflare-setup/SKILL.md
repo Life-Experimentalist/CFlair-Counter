@@ -102,8 +102,9 @@ explain.
 ## Bot protection on a custom domain
 
 If the instance sits on a zone with Cloudflare's Bot Fight Mode turned on,
-requests from datacenter IPs get challenged, and the challenge arrives at the
-caller as an HTML page where it expected JSON. The usual symptom is
+requests from datacenter IPs can be challenged, and the challenge arrives at
+the caller as an HTML page where it expected JSON. Scoring is on IP reputation
+and request signature, so it is intermittent and a passing call proves nothing. The usual symptom is
 `Unexpected token '<' at 1:1` from a CI job or a server-side caller. Browsers
 are unaffected.
 

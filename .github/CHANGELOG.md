@@ -43,12 +43,25 @@ Nothing was recorded here for 2.3.0 or 2.4.0. The git history covers them.
   the public internet from a GitHub runner, which Cloudflare's Bot Fight Mode
   answered with a challenge page. It had not completed a run since 2026-09-08.
   The Cron Trigger replaces it.
+- **`setup.ps1`.** It deployed to Cloudflare Pages, was Windows only, and took
+  the admin password as a command-line argument, which put it in shell history.
+  `npm run setup` replaces it on every platform and never handles the password.
 
 ### Fixed
 - The Newman CI job now runs `wrangler dev` inside the runner and tests against
   that, instead of a deployed instance. A fork gets a green run with no
   repository secrets and no account. It also type-checks before building,
   because esbuild strips types without checking them.
+- `npm run setup` runs wrangler as a plain node script rather than through
+  `npx`. Since Node 18.20.2, spawning `npx.cmd` on Windows without a shell
+  fails with `EINVAL`, which stopped the script at its first step.
+- `.env.example` named four variables that no code path reads (`CACHE_TTL`,
+  `RATE_LIMIT`, `DEBUG_MODE`, and `MAX_PROJECTS`, which is set in
+  `wrangler.toml` but never read). It now lists the real names with their
+  defaults, and says which of them belong in a secret rather than a var.
+- The landing page description, `llms.txt` and `openapi.yaml` still said
+  Cloudflare Pages. `openapi.yaml` also offered `your-instance.pages.dev` as
+  the server default.
 
 ## [2.2.0]() - 2025-01-14
 

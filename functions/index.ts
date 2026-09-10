@@ -2382,8 +2382,9 @@ app.put("/api/admin/installs/:projectName", async (c) => {
 // The registries only report a current figure, and two of them (npm, pypi)
 // report a rolling last-month window that nothing else can reconstruct later.
 // Charting any of it over time means writing down what was true each day.
-// Pages Functions have no cron trigger, so the schedule lives in
-// .github/workflows/snapshot.yml and calls the endpoint below.
+// The nightly sweep is a Cron Trigger declared in wrangler.toml and handled by
+// scheduled() at the bottom of this file. It calls runSnapshot() directly, so
+// the endpoint below exists only for running a sweep by hand.
 // ---------------------------------------------------------------------------
 
 // The same three ways the other admin routes accept a password: JSON body,

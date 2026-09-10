@@ -74,8 +74,9 @@ migration path if you deployed an older version on Cloudflare Pages.
 ### Warning about bot protection
 
 If you put ViewFlare on a domain with Cloudflare's Bot Fight Mode on, requests
-from datacenter IPs get challenged, and a challenge page arrives at a caller as
-HTML where it expected JSON. That affects CI runners and server-side callers,
+from datacenter IPs can be challenged, and a challenge page arrives at a caller
+as HTML where it expected JSON. It is scored on IP reputation and request
+signature, so it is intermittent rather than a flat block. That affects CI runners and server-side callers,
 not browsers. The `*.workers.dev` hostname is not on your zone, so it is not
 subject to it. Bot Fight Mode is zone-level and outside the Ruleset Engine, so a
 WAF skip rule cannot exempt a path from it.
@@ -277,9 +278,10 @@ which is a deployed instance. To point it at a local one, pass
 - `docs/postman-guide.md` - Postman/Newman collection usage.
 - `docs/BRAND-PROMPTS.md` - image-generation prompts for the logo and banner.
 - `skills/viewflare-setup/SKILL.md` and `skills/viewflare-integration/SKILL.md`
-  - the two Claude Code skills, shipped together as the `viewflare` plugin.
-  Install with `/plugin marketplace add Life-Experimentalist/ViewFlare`, or copy
-  the directories into `~/.claude/skills/`.
+  - the two Claude Code skills, shipped together as the `viewflare-integration`
+  plugin in the `viewflare` marketplace. Install with the two commands under
+  [Install It Into Your Agent](#install-it-into-your-agent), or copy the directories into
+  `~/.claude/skills/`.
 - `integrations/agents/README.md` - the same guidance as a copy-in rules file
   for Codex, Cursor, Windsurf, Antigravity, Copilot and Kiro.
 - `public/llms.txt` - served at `https://your-domain.com/llms.txt`, the short
