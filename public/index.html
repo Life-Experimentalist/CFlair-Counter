@@ -446,10 +446,6 @@
 						<div class="stat-value" id="s-projects">unavailable</div>
 						<div class="stat-label">Projects tracked</div>
 					</div>
-					<div class="stat" id="s-unique-wrap" hidden>
-						<div class="stat-value" id="s-unique">unavailable</div>
-						<div class="stat-label">Unique visitors</div>
-					</div>
 				</div>
 			</section>
 
@@ -487,10 +483,6 @@
 								<span class="n" id="demo-total">unavailable</span>
 								<span class="l">Total views</span>
 							</div>
-							<div>
-								<span class="n" id="demo-unique">unavailable</span>
-								<span class="l">Unique</span>
-							</div>
 						</div>
 						<div class="badge-strip" id="badge-strip"></div>
 					</div>
@@ -502,17 +494,16 @@
 						</h3>
 						<p class="hint" style="margin-bottom: 1rem">
 							Arithmetic over views, installs and events. Variables are
-							<code>views.total</code>, <code>views.unique</code>,
-							<code>installs.total</code>, <code>installs.SOURCE</code> and
-							<code>events.CATEGORY</code>. A missing input makes the whole
-							metric unavailable, never a zero.
+							<code>views.total</code>, <code>installs.total</code>,
+							<code>installs.SOURCE</code> and <code>events.CATEGORY</code>. A
+							missing input makes the whole metric unavailable, never a zero.
 						</p>
 						<div class="field">
 							<label for="expr">Expression</label>
 							<input
 								type="text"
 								id="expr"
-								value="round(pct(views.unique,views.total),1)"
+								value="round(views.total/1000,2)"
 							/>
 							<span class="hint"
 								>A <code>+</code> in a URL decodes to a space, so write it as
@@ -650,9 +641,9 @@ curl <span class="s">"$BASE/api/views/acme?rollup=1"</span>
 							Views
 						</h3>
 						<p>
-							Total and unique per project, plus a daily series. Unique
-							counting is opt in, so an instance can run with no visitor
-							tracking at all.
+							A running total per project, plus a daily series from the
+							nightly snapshot. One number, nothing derived from guessing at
+							who a visitor is.
 						</p>
 					</div>
 					<div class="card feature">
@@ -922,13 +913,6 @@ curl <span class="s">"$BASE/api/views/acme?rollup=1"</span>
 						if (!data.success) return;
 						show($("s-views"), data.statistics.totalViews);
 						show($("s-projects"), data.statistics.totalProjects);
-						if (
-							data.statistics.analyticsEnabled &&
-							typeof data.statistics.uniqueViews === "number"
-						) {
-							$("s-unique-wrap").hidden = false;
-							show($("s-unique"), data.statistics.uniqueViews);
-						}
 					})
 					.catch(function () {
 						/* The markup already reads unavailable. Leave it saying so. */
@@ -949,10 +933,6 @@ curl <span class="s">"$BASE/api/views/acme?rollup=1"</span>
 					show(
 						$("demo-total"),
 						typeof data.totalViews === "number" ? data.totalViews : null,
-					);
-					show(
-						$("demo-unique"),
-						typeof data.uniqueViews === "number" ? data.uniqueViews : null,
 					);
 					paintBadges($("demo-project").value.trim());
 				}

@@ -81,13 +81,13 @@ ViewFlare is hyper-optimized to operate completely inside Cloudflare's free tier
 
 ### Cost Analysis (Per 1 Million Webhook Hits):
 - **Workers Requests**: Free (well within the 10M monthly free quota)
-- **D1 Database Writes**: ~$1.00 - $3.00 (depending on analytics settings)
+- **D1 Database Writes**: ~$1.00 - $3.00 (depending on the tracking toggles)
 - **D1 Database Reads**: ~$0.00 - $0.10 (badge rendering utilizes intelligent, lightweight queries)
 
 ### Optimization Strategies Implemented:
 - **Index Optimization:** Database indexes have been pruned to reduce write costs and D1 transaction logs.
 - **Single-Query Increments:** The tracking endpoint uses a single query to track views (1 read + 1 write vs. multiple reads/writes).
-- **Environment Toggles:** Turn off granular analytics entirely by setting `ENABLE_ANALYTICS=false` in your env variables, saving 50%+ on D1 write operations.
+- **Environment Toggles:** `TRACK_USAGE=false` and `TRACK_BREAKDOWN=false` each remove a D1 write per view. `DAILY_WRITE_BUDGET` caps the tracked writes for a day so a busy instance sheds new views rather than exhausting the free tier.
 
 ---
 

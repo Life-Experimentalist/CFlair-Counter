@@ -90,7 +90,7 @@ If the user already has a deployed instance of ViewFlare (or is using the public
      ```
    - The response is JSON and carries the new count, so any of these can read
      it back instead of discarding it:
-     `{"success": true, "projectName": "...", "totalViews": 2, "uniqueViews": 1}`.
+     `{"success": true, "projectName": "...", "totalViews": 2}`.
 4. **Display a Badge (Markdown / HTML)**:
    - Insert an image pointing to the badge generator endpoint.
    - **Markdown**:
@@ -113,7 +113,6 @@ curl "https://counter.vkrishna04.me/api/views?names=ViewFlare,RanobeGemini,does-
 {
   "success": true,
   "views": { "ViewFlare": 2481, "RanobeGemini": 190 },
-  "uniqueViews": { "ViewFlare": 1204, "RanobeGemini": 88 },
   "missing": ["does-not-exist"],
   "requested": 3,
   "found": 2,
@@ -467,13 +466,12 @@ Sources are deliberately not summed here. They measure different things over
 different windows; `GET /api/installs/{project}` is the endpoint that carries
 the labelled aggregate.
 
-### `GET /api/views/{project}/history?series=snapshots`
+### `GET /api/views/{project}/history`
 
-The default response of this endpoint is unchanged: a visitor-derived daily
-count for the last 30 days, from `visitor_tracking`. That table stores one row
-per visitor with the *last* visit time, so it is an approximation, not a series.
-
-`series=snapshots` reads the real thing, recorded by the same nightly job:
+One row per project per night, written by the nightly snapshot job: a real
+running total per day rather than something reconstructed. `series=snapshots`
+is accepted and means the same thing, so existing callers keep working. A young
+instance has few points here, which is the honest answer.
 
 ```bash
 curl "https://counter.vkrishna04.me/api/views/MyProject/history?series=snapshots&days=90&bucket=week"
@@ -488,7 +486,7 @@ curl "https://counter.vkrishna04.me/api/views/MyProject/history?series=snapshots
   "bucket": "day",
   "summary": { "points": 1, "first": 2, "last": 2,
                "change": null, "changePercent": null, "perDay": null },
-  "points": [ { "day": "2026-09-08", "value": 2, "uniqueViews": 1 } ]
+  "points": [ { "day": "2026-09-08", "value": 2 } ]
 }
 ```
 
@@ -707,7 +705,6 @@ clients, though `%` inside a value is safer as `%25`.
 | Variable | Scope | Value |
 | --- | --- | --- |
 | `views.total` | this project | Lifetime view count |
-| `views.unique` | this project | Distinct visitor hashes |
 | `installs.total` | this project | Sum across the configured registries |
 | `installs.<source>` | this project | One registry: `vscode`, `openvsx`, `pypi`, `github`, `npm`, `crates` |
 | `events.<category>` | whole instance | All events in that category |
@@ -726,7 +723,7 @@ Expressions are capped at 200 characters and 24 levels of nesting. Anything
 unrecognised is a 400 that names it:
 
 ```json
-{ "success": false, "error": "Unknown variable \"views.bogus\". Try views.total or views.unique." }
+{ "success": false, "error": "Unknown variable \"views.bogus\". Try views.total." }
 ```
 
 ### Unavailable beats a made-up number
@@ -824,7 +821,7 @@ curl "https://[DOMAIN]/api/compute/computedemo/shields.json?expr=round(pct(event
 
 ```text
 expr=views.total%2Finstalls.total                     views per install
-expr=round(pct(views.unique%2Cviews.total),1)         unique share, one decimal
+expr=round(pct(installs.npm%2Cinstalls.total),1)       npm share of installs, one decimal
 expr=max(views.total%2Cinstalls.total)                whichever is larger
 expr=installs.npm%2Binstalls.pypi                     two registries only
 expr=round(views.total%2F30)                          rough views per day over a month
@@ -864,13 +861,12 @@ curl "https://your-domain.com/api/views/acme?rollup=1"
   "projectName": "acme",
   "rollup": true,
   "totalViews": 3140,
-  "uniqueViews": 902,
   "memberCount": 4,
   "members": [
-    { "projectName": "acme",            "totalViews": 12,   "uniqueViews": 8 },
-    { "projectName": "acme.api.docs",   "totalViews": 1880, "uniqueViews": 540 },
-    { "projectName": "acme.cli",        "totalViews": 402,  "uniqueViews": 121 },
-    { "projectName": "acme.web.landing","totalViews": 846,  "uniqueViews": 233 }
+    { "projectName": "acme",             "totalViews": 12 },
+    { "projectName": "acme.api.docs",    "totalViews": 1880 },
+    { "projectName": "acme.cli",         "totalViews": 402 },
+    { "projectName": "acme.web.landing", "totalViews": 846 }
   ]
 }
 ```
@@ -880,7 +876,7 @@ it directly. `members` is the breakdown, so you get the sum and the parts in one
 request rather than one request per project.
 
 Without `rollup` the response is unchanged from what it has always been:
-`totalViews`, `uniqueViews`, `description`, `createdAt`, for that one project.
+`totalViews`, `description`, `createdAt`, for that one project.
 
 ### Badges and computed metrics
 

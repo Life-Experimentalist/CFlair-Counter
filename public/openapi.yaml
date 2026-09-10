@@ -91,9 +91,7 @@ paths:
                     type: object
                     properties:
                       totalViews: { type: integer }
-                      uniqueViews: { type: integer }
                       totalProjects: { type: integer }
-                      analyticsEnabled: { type: boolean }
                   timestamp: { type: string, format: date-time }
 
   /api/views:
@@ -119,9 +117,6 @@ paths:
                 properties:
                   success: { type: boolean }
                   views:
-                    type: object
-                    additionalProperties: { type: integer }
-                  uniqueViews:
                     type: object
                     additionalProperties: { type: integer }
                   missing:
@@ -160,7 +155,6 @@ paths:
                   projectName: { type: string }
                   rollup: { type: boolean }
                   totalViews: { type: integer }
-                  uniqueViews: { type: integer }
                   memberCount: { type: integer }
                   members:
                     type: array
@@ -169,7 +163,6 @@ paths:
                       properties:
                         projectName: { type: string }
                         totalViews: { type: integer }
-                        uniqueViews: { type: integer }
                   description: { type: [string, "null"] }
                   createdAt: { type: [string, "null"] }
         "400":
@@ -193,7 +186,6 @@ paths:
                   success: { type: boolean }
                   projectName: { type: string }
                   totalViews: { type: integer }
-                  uniqueViews: { type: integer }
         "400":
           $ref: "#/components/responses/BadRequest"
         "429":
@@ -530,7 +522,7 @@ paths:
         Evaluates arithmetic over the numbers ViewFlare already holds and
         answers with a single value.
 
-        Variables: `views.total`, `views.unique`, `installs.total`,
+        Variables: `views.total`, `installs.total`,
         `installs.<source>` (vscode, openvsx, pypi, github, npm, crates),
         `events.<category>`, `events.<category>.<name>`. Views and installs are
         scoped to the project in the URL; event counts are instance wide,
@@ -595,7 +587,7 @@ paths:
                 unknownVariable:
                   value:
                     success: false
-                    error: 'Unknown variable "views.bogus". Try views.total or views.unique.'
+                    error: 'Unknown variable "views.bogus". Try views.total.'
         "429":
           $ref: "#/components/responses/RateLimited"
 
@@ -713,7 +705,6 @@ paths:
                       properties:
                         project_name: { type: string }
                         view_count: { type: integer }
-                        unique_views: { type: integer }
                         description: { type: [string, "null"] }
                         created_at: { type: [string, "null"] }
                         updated_at: { type: [string, "null"] }
@@ -749,7 +740,6 @@ paths:
                 newName: { type: string }
                 description: { type: [string, "null"] }
                 viewCount: { type: integer }
-                uniqueViews: { type: integer }
       responses:
         "200":
           description: Updated.

@@ -63,8 +63,8 @@ contract.
 ViewFlare already holds and answers with a single value, plus `/badge` and
 `/shields.json` siblings that take the same `expr`.
 
-Variables are `views.total`, `views.unique`, `installs.total`,
-`installs.<source>`, `events.<category>` and `events.<category>.<name>`.
+Variables are `views.total`, `installs.total`, `installs.<source>`,
+`events.<category>` and `events.<category>.<name>`.
 Operators are `+ - * / %` with parentheses, and the functions are `min`, `max`,
 `abs`, `round`, `floor`, `ceil` and `pct(part, whole)`.
 

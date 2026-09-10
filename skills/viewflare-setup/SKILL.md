@@ -61,9 +61,9 @@ change. Step 5 of the setup script prints the list.
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `ENABLE_ADMIN` | `true` | Serve the admin console and admin API |
-| `ENABLE_ANALYTICS` | `false` | Heavier analytics queries. `false` saves D1 reads |
-| `MAX_PROJECTS` | `100` | Read by nothing. Set and typed, but no code path enforces a cap |
-| `RATE_LIMIT_REQUESTS` | `60` | Requests allowed per visitor per window |
+| `MAX_PROJECTS` | `1000` | Most projects this instance will create. A new name is refused with a 409 at the cap; the ones that exist keep counting. `0` turns it off |
+| `DAILY_WRITE_BUDGET` | `90000` | Tracked writes allowed a day before new views get a 503 and a `Retry-After`. Reads are never shed. Counts only while `TRACK_USAGE` is `true`. `0` turns it off |
+| `RATE_LIMIT_REQUESTS` | `60` | Requests allowed per client IP per window |
 | `RATE_LIMIT_WINDOW` | `60000` | That window, in milliseconds |
 | `INSTALL_CACHE_TTL` | `21600` | Seconds an install count is reused before repolling |
 | `TRACK_USAGE` | `true` | Daily row in `usage_stats`. One extra D1 write per view |

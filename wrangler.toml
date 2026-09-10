@@ -49,16 +49,25 @@ binding = "ASSETS"
 # Serve the /admin console. Requires the ADMIN_PASSWORD secret to be useful.
 ENABLE_ADMIN = "true"
 
-# Per-visitor breakdowns and the heavier aggregate queries. Off to stay well
-# inside the D1 free tier's 5M row reads per day.
-ENABLE_ANALYTICS = "false"
+# The most projects one instance will create. Projects are made implicitly by
+# the first view posted against a name, so this is what stops a stray script or
+# a typo'd name from filling the database. Projects that already exist keep
+# counting when the cap is reached; only new names are refused. "0" turns it off.
+MAX_PROJECTS = "1000"
 
-# Read by nothing. It is declared in the Bindings type in functions/index.ts
-# and set here, but no code path enforces a project limit. Left in place rather
-# than removed so an existing deployment's config does not change meaning.
-MAX_PROJECTS = "100"
+# How many tracked writes this instance allows itself in a day before it stops
+# recording new ones and starts answering 503 with a Retry-After. Reads are
+# never shed. Cloudflare's free plan allows 100,000 D1 row writes per day, and
+# the default here sits under that so the writes this counter does not see still
+# have room. "0" turns the ceiling off.
+#
+# It only counts the writes that call the usage tracker, so it does nothing
+# unless TRACK_USAGE below is "true". The daily Workers *request* limit is a
+# different thing that no setting here can help with: past 100,000 requests
+# Cloudflare stops invoking the Worker and answers with its own error page.
+DAILY_WRITE_BUDGET = "90000"
 
-# Rate limit, per visitor hash: requests allowed per window, and the window in
+# Rate limit, per client IP: requests allowed per window, and the window in
 # milliseconds. 60 per minute.
 RATE_LIMIT_REQUESTS = "60"
 RATE_LIMIT_WINDOW = "60000"

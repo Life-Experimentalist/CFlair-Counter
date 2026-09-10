@@ -29,7 +29,7 @@ Provide a fast, low-cost telemetry API that can be integrated in minutes and run
 ### Action
 This project implements:
 - A Cloudflare Worker API for view tracking and stats.
-- D1-backed persistence with optional unique-visitor analytics.
+- D1-backed persistence with a project cap and a daily write budget.
 - SVG badge generation with style and color customization.
 - Admin endpoints for protected project-level operations.
 - CI health checks via Postman/Newman.
@@ -124,7 +124,7 @@ fetch("https://your-domain.com/api/views/my-project", {
 | `/api/views/:project` | GET | No | Get one project's stats, `?rollup=1` to include everything under it |
 | `/api/views/:project` | POST | No | Increment project views |
 | `/api/views/:project/badge` | GET | No | SVG views badge |
-| `/api/views/:project/history` | GET | No | Daily series, `?series=snapshots` for the recorded one |
+| `/api/views/:project/history` | GET | No | Daily series from the nightly snapshot, `?series=breakdown` for country and referrer |
 | `/api/installs/:project` | GET | No | Aggregated install counts across registries |
 | `/api/installs/:project/badge` | GET | No | SVG installs badge |
 | `/api/installs/:project/shields.json` | GET | No | shields.io endpoint badge |
@@ -176,12 +176,12 @@ curl "https://your-domain.com/api/compute/my-project?expr=views.total%2Binstalls
 ```
 
 ```text
-/api/compute/my-project/badge?expr=round(pct(views.unique%2Cviews.total),1)&label=unique%20share
+/api/compute/my-project/badge?expr=round(pct(installs.npm%2Cinstalls.total),1)&label=npm%20share
 /api/compute/my-project/shields.json?expr=views.total%2Finstalls.total
 ```
 
-- Variables: `views.total`, `views.unique`, `installs.total`,
-  `installs.<source>`, `events.<category>`, `events.<category>.<name>`.
+- Variables: `views.total`, `installs.total`, `installs.<source>`,
+  `events.<category>`, `events.<category>.<name>`.
 - Operators `+ - * / %`, parentheses, and `min`, `max`, `abs`, `round`,
   `floor`, `ceil`, `pct`.
 - A `+` in a URL decodes to a space, so write it as `%2B`.
@@ -250,8 +250,8 @@ the frontmatter each one needs.
 | --------------------- | ------------------- | ------- | ------------------------------ |
 | `ADMIN_PASSWORD`      | Yes (for admin use) | empty   | Set with `npx wrangler secret put ADMIN_PASSWORD`. It is a secret, never a `[vars]` entry |
 | `ENABLE_ADMIN`        | No                  | `true`  | Toggle admin APIs              |
-| `ENABLE_ANALYTICS`    | No                  | `false` | Enable unique-visitor tracking |
-| `MAX_PROJECTS`        | No                  | `100`   | Soft project cap               |
+| `MAX_PROJECTS`        | No                  | `1000`  | Most projects this instance will create. A new name is refused with a 409 at the cap; existing ones keep counting. `0` turns it off |
+| `DAILY_WRITE_BUDGET`  | No                  | `90000` | Tracked writes allowed a day before new views get a 503 and a `Retry-After`. Reads are never shed. Counts only while `TRACK_USAGE` is `true`. `0` turns it off |
 | `RATE_LIMIT_REQUESTS` | No                  | `60`    | Requests per window            |
 | `RATE_LIMIT_WINDOW`   | No                  | `60000` | Rate-limit window in ms        |
 | `TRACK_USAGE`         | No                  | `false` | Write a daily row to `usage_stats`. Off because it costs one extra D1 write per view and duplicates the Cloudflare dashboard |

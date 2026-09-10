@@ -64,7 +64,7 @@ Full docs: https://github.com/Life-Experimentalist/ViewFlare
 GET /api/compute/{project}?expr=EXPRESSION evaluates arithmetic over the
 numbers above and answers with a single value.
 
-- Variables: views.total, views.unique, installs.total, installs.SOURCE
+- Variables: views.total, installs.total, installs.SOURCE
   (vscode, openvsx, pypi, github, npm, crates), events.CATEGORY,
   events.CATEGORY.NAME.
 - Operators + - * / %, parentheses, and the functions min, max, abs, round,

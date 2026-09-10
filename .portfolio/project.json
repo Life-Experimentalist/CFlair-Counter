@@ -22,7 +22,7 @@
 	"highlights": [
 		"Integrates in one request: a single POST increments a counter, and a single image URL renders the badge.",
 		"Generates SVG badges with configurable style and colour, so it drops into an existing README badge row.",
-		"Persists to Cloudflare D1 with optional unique-visitor analytics, and admin endpoints for project-level operations.",
+		"Persists to Cloudflare D1 with a project cap and a daily write budget, and admin endpoints for project-level operations.",
 		"Endpoint behaviour is checked continuously in CI rather than only at deploy time.",
 		"Serves the live view counters on several of the other projects listed here."
 	],

@@ -59,8 +59,8 @@ segments, so `acme_other` is never counted under `acme`.
 instance already holds and answers with a single value. It has `/badge` and
 `/shields.json` siblings that take the same `expr`.
 
-Variables are `views.total`, `views.unique`, `installs.total`,
-`installs.<source>`, `events.<category>` and `events.<category>.<name>`.
+Variables are `views.total`, `installs.total`, `installs.<source>`,
+`events.<category>` and `events.<category>.<name>`.
 `/llms.txt` lists the operators and functions.
 
 ```

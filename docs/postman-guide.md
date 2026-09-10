@@ -219,7 +219,6 @@ POST https://counter.vkrishna04.me/api/views/my-project
   "success": true,
   "projectName": "my-project",
   "totalViews": 1,
-  "uniqueViews": 0,
   "timestamp": "2025-11-09T16:10:44.156Z"
 }
 ```
@@ -236,7 +235,6 @@ GET https://counter.vkrishna04.me/api/views/my-project
   "success": true,
   "projectName": "my-project",
   "totalViews": 5,
-  "uniqueViews": 0,
   "description": "My Awesome Project",
   "timestamp": "2025-11-09T16:10:44.156Z"
 }
@@ -276,7 +274,6 @@ Content-Type: application/json
     {
       "project_name": "project-1",
       "view_count": 42,
-      "unique_views": 0,
       "description": "Project Description",
       "created_at": "2025-11-09T16:00:00.000Z"
     }

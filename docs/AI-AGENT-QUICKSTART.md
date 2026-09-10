@@ -31,10 +31,11 @@ Integrate and validate ViewFlare as a telemetry microservice that can:
 
 - `ADMIN_PASSWORD` (required for admin routes)
 - `ENABLE_ADMIN` (`true`/`false`, default enabled)
-- `ENABLE_ANALYTICS` (`true`/`false`, default disabled)
+- `MAX_PROJECTS` (default `1000`, `0` for no cap)
+- `DAILY_WRITE_BUDGET` (default `90000` tracked writes a day, `0` for no budget)
 - `RATE_LIMIT_REQUESTS` (default `60`)
 - `RATE_LIMIT_WINDOW` (default `60000` ms)
-- `TRACK_USAGE` (`true`/`false`, default disabled)
+- `TRACK_USAGE` (`true`/`false`, `wrangler.toml` ships it as `true`)
 - `DEBUG` (`true`/`false`)
 
 ### D1 Binding
@@ -89,9 +90,7 @@ Response shape:
   "success": true,
   "statistics": {
     "totalViews": 0,
-    "uniqueViews": 0,
-    "totalProjects": 0,
-    "analyticsEnabled": false
+    "totalProjects": 0
   },
   "timestamp": "..."
 }
@@ -252,8 +251,8 @@ curl "https://<your-domain>/api/compute/my-project?expr=views.total%2Binstalls.t
 ![Reach](https://<your-domain>/api/compute/my-project/badge?expr=views.total%2Binstalls.total&label=reach)
 ```
 
-Variables are `views.total`, `views.unique`, `installs.total`,
-`installs.<source>`, `events.<category>` and `events.<category>.<name>`.
+Variables are `views.total`, `installs.total`, `installs.<source>`,
+`events.<category>` and `events.<category>.<name>`.
 Operators are `+ - * / %` with parentheses, plus `min`, `max`, `abs`, `round`,
 `floor`, `ceil` and `pct(part, whole)`.
 
