@@ -37,13 +37,17 @@ count keeps working unchanged. Anything that read a unique count has to change.
   counting. There is no admin create-project route, so the cap sits on the two
   paths that create a project implicitly: `POST /api/views/{project}` and the
   badge with `?inc=true`.
-- **`DAILY_WRITE_BUDGET`**, at `90000`. D1's free tier allows 100,000 rows
+- **`DAILY_WRITE_BUDGET`**, at `30000`. D1's free tier allows 100,000 rows
   written a day, and reaching it turns every write into an error with no
-  warning. Past the budget a view POST is refused with a 503 and a `Retry-After`
-  counting down to UTC midnight, while a badge still renders and silently skips
-  the increment, because a badge that errors is a broken image in someone's
-  README. Reads are never shed. The count only happens while `TRACK_USAGE` is
-  `true`, since that is the code doing the counting. `0` turns the budget off.
+  warning. The budget counts requests rather than rows, and one recorded view is
+  two rows at the shipped settings, the usage counter and the project row, or
+  three with `TRACK_BREAKDOWN` on. So the default is 60,000 rows and 90,000
+  respectively, which leaves the nightly snapshot room to run. Past the budget a
+  view POST is refused with a 503 and a `Retry-After` counting down to UTC
+  midnight, while a badge still renders and silently skips the increment,
+  because a badge that errors is a broken image in someone's README. Reads are
+  never shed. The count only happens while `TRACK_USAGE` is `true`, since that
+  is the code doing the counting. `0` turns the budget off.
 
   This does nothing for the Workers request limit, 100,000 a day on the free
   plan. Cloudflare stops invoking the worker at that point, so no code inside

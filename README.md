@@ -257,7 +257,7 @@ the frontmatter each one needs.
 | `ADMIN_PASSWORD`      | Yes (for admin use) | empty   | Set with `npx wrangler secret put ADMIN_PASSWORD`. It is a secret, never a `[vars]` entry |
 | `ENABLE_ADMIN`        | No                  | `true`  | Toggle admin APIs              |
 | `MAX_PROJECTS`        | No                  | `1000`  | Most projects this instance will create. A new name is refused with a 409 at the cap; existing ones keep counting. `0` turns it off |
-| `DAILY_WRITE_BUDGET`  | No                  | `90000` | Tracked writes allowed a day before new views get a 503 and a `Retry-After`. Reads are never shed. Counts only while `TRACK_USAGE` is `true`. `0` turns it off |
+| `DAILY_WRITE_BUDGET`  | No                  | `30000` | Tracked requests allowed a day before new views get a 503 and a `Retry-After`. One recorded view is 2 D1 rows, 3 with `TRACK_BREAKDOWN`, against a free-tier 100,000 rows a day. Reads are never shed. Counts only while `TRACK_USAGE` is `true`. `0` turns it off |
 | `RATE_LIMIT_REQUESTS` | No                  | `60`    | Requests per window            |
 | `RATE_LIMIT_WINDOW`   | No                  | `60000` | Rate-limit window in ms        |
 | `TRACK_USAGE`         | No                  | `false` | Write a daily row to `usage_stats`. Off because it costs one extra D1 write per view and duplicates the Cloudflare dashboard |

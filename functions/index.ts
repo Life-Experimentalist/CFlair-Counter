@@ -1562,9 +1562,14 @@ const trackUsage = async (env: Bindings): Promise<number | null> => {
 };
 
 // How many tracked writes this instance allows itself in a day before it stops
-// recording new ones. Cloudflare's free plan allows 100,000 D1 row writes per
-// day; the default here sits under that so the writes this counter does not see
-// still have room. "0" turns the ceiling off.
+// recording new ones. It counts requests, not rows, and one recorded view is
+// more than one row: the counter above, the project row, and the breakdown row
+// when TRACK_BREAKDOWN is on. So 30000 requests is 60,000 rows at the shipped
+// settings and 90,000 with the breakdown on, against the 100,000 D1 row writes
+// a day the free plan allows. What is left over covers the nightly snapshot and
+// the counter row that each refused request still writes, since that counter is
+// what says the budget is spent. Raise this only alongside that arithmetic.
+// "0" turns the ceiling off.
 //
 // This is a ceiling the instance keeps for itself, not a reading of the real
 // Cloudflare allowance, which nothing exposes to a running Worker. It counts
@@ -1574,7 +1579,7 @@ const trackUsage = async (env: Bindings): Promise<number | null> => {
 // The daily Workers request limit is a different thing and cannot be handled
 // here at all: past 100,000 requests Cloudflare stops invoking the Worker and
 // answers with its own error page, so no code in this file runs to see it.
-const DEFAULT_DAILY_WRITE_BUDGET = 90000;
+const DEFAULT_DAILY_WRITE_BUDGET = 30000;
 
 const dailyWriteBudget = (env: Bindings): number => {
 	const raw = parseInt(env.DAILY_WRITE_BUDGET || "", 10);

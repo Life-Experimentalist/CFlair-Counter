@@ -65,7 +65,7 @@ name. All nine:
 | --- | --- | --- |
 | `ENABLE_ADMIN` | `true` | Serve the admin console and admin API at all |
 | `MAX_PROJECTS` | `1000` | Most projects this instance will create. A new name is refused with a 409 once the cap is reached; the ones that exist keep counting. `0` turns the cap off |
-| `DAILY_WRITE_BUDGET` | `90000` | Tracked writes allowed a day before new views are refused with a 503 and a `Retry-After`. Reads are never shed. Counts only while `TRACK_USAGE` is `true`, because that is what does the counting. `0` turns it off |
+| `DAILY_WRITE_BUDGET` | `30000` | Tracked requests allowed a day before new views are refused with a 503 and a `Retry-After`. It counts requests, and one recorded view is 2 D1 rows, 3 with `TRACK_BREAKDOWN`, against the free tier's 100,000 rows a day. Reads are never shed. Counts only while `TRACK_USAGE` is `true`, because that is what does the counting. `0` turns it off |
 | `RATE_LIMIT_REQUESTS` | `60` | Requests allowed per client IP per window |
 | `RATE_LIMIT_WINDOW` | `60000` | Length of that window, in milliseconds |
 | `INSTALL_CACHE_TTL` | `21600` | Seconds an install count is reused before the source is polled again |

@@ -32,7 +32,7 @@ Integrate and validate ViewFlare as a telemetry microservice that can:
 - `ADMIN_PASSWORD` (required for admin routes)
 - `ENABLE_ADMIN` (`true`/`false`, default enabled)
 - `MAX_PROJECTS` (default `1000`, `0` for no cap)
-- `DAILY_WRITE_BUDGET` (default `90000` tracked writes a day, `0` for no budget)
+- `DAILY_WRITE_BUDGET` (default `30000` tracked requests a day, 2 D1 rows each, `0` for no budget)
 - `RATE_LIMIT_REQUESTS` (default `60`)
 - `RATE_LIMIT_WINDOW` (default `60000` ms)
 - `TRACK_USAGE` (`true`/`false`, `wrangler.toml` ships it as `true`)

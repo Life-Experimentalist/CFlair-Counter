@@ -57,15 +57,19 @@ MAX_PROJECTS = "1000"
 
 # How many tracked writes this instance allows itself in a day before it stops
 # recording new ones and starts answering 503 with a Retry-After. Reads are
-# never shed. Cloudflare's free plan allows 100,000 D1 row writes per day, and
-# the default here sits under that so the writes this counter does not see still
-# have room. "0" turns the ceiling off.
+# never shed.
+#
+# It counts requests, not rows, and one recorded view is more than one row: the
+# usage counter, the project row, and the breakdown row when TRACK_BREAKDOWN is
+# on. So 30000 requests is 60,000 rows at these settings and 90,000 with the
+# breakdown on, against the 100,000 D1 row writes a day Cloudflare's free plan
+# allows. Raise it only alongside that arithmetic. "0" turns the ceiling off.
 #
 # It only counts the writes that call the usage tracker, so it does nothing
 # unless TRACK_USAGE below is "true". The daily Workers *request* limit is a
 # different thing that no setting here can help with: past 100,000 requests
 # Cloudflare stops invoking the Worker and answers with its own error page.
-DAILY_WRITE_BUDGET = "90000"
+DAILY_WRITE_BUDGET = "30000"
 
 # Rate limit, per client IP: requests allowed per window, and the window in
 # milliseconds. 60 per minute.
