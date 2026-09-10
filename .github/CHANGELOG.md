@@ -37,6 +37,20 @@ Nothing was recorded here for 2.3.0 or 2.4.0. The git history covers them.
   compared against the latest release.
 - `public/.assetsignore`, without which Workers static assets would publish the
   bundled worker source at `/_worker.js`.
+- **Every variable the code reads is now declared in `[vars]`**, each set to the
+  value the code already fell back to, so the full configuration surface is
+  visible in one file: `RATE_LIMIT_REQUESTS`, `RATE_LIMIT_WINDOW`,
+  `INSTALL_CACHE_TTL`, `TRACK_USAGE`, `TRACK_BREAKDOWN` and `DEBUG` join the
+  three that were already there. Runtime behaviour is unchanged except for
+  `TRACK_USAGE`, which is `"true"`. This matters because `wrangler deploy`
+  replaces the whole deployed variable list, so a variable set only in the
+  Cloudflare dashboard is erased by the next deploy without an error.
+- **`[observability]`**, enabling log and trace retention with full head
+  sampling and invocation logs. Declared in the config for the same reason: a
+  deploy owns the setting, so an absent block turns it back off.
+- **`[build]`**, so a bare `wrangler deploy` builds the worker first. That is
+  what Cloudflare Workers Builds runs when its build command is blank.
+- **`.dev.vars.example`**, listing the same names for local `wrangler dev`.
 
 ### Removed
 - **`.github/workflows/snapshot.yml`.** It called the deployed instance over

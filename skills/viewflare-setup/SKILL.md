@@ -52,6 +52,45 @@ If `npm run setup` reports that wrangler is not logged in, the fix is
 `npx wrangler login`, which opens a browser for the user to approve. Wait for
 them; do not try to authenticate on their behalf.
 
+## Configuration
+
+Every variable the code reads is already present in `[vars]` in `wrangler.toml`,
+set to the value the code falls back to. There is nothing to add, only values to
+change. Step 5 of the setup script prints the list.
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `ENABLE_ADMIN` | `true` | Serve the admin console and admin API |
+| `ENABLE_ANALYTICS` | `false` | Heavier analytics queries. `false` saves D1 reads |
+| `MAX_PROJECTS` | `100` | Read by nothing. Set and typed, but no code path enforces a cap |
+| `RATE_LIMIT_REQUESTS` | `60` | Requests allowed per visitor per window |
+| `RATE_LIMIT_WINDOW` | `60000` | That window, in milliseconds |
+| `INSTALL_CACHE_TTL` | `21600` | Seconds an install count is reused before repolling |
+| `TRACK_USAGE` | `true` | Daily row in `usage_stats`. One extra D1 write per view |
+| `TRACK_BREAKDOWN` | `false` | Per-referrer and per-country rows. Another write per view |
+| `DEBUG` | `false` | Verbose console logging |
+
+`ENABLE_*` are on unless the value is exactly `"false"`. `TRACK_*` and `DEBUG`
+are off unless it is exactly `"true"`. Anything else leaves the default.
+
+Changing one is an edit plus `npm run deploy`. The commands are identical in
+bash and PowerShell, since both are npm scripts; only the local-dev file copy
+differs (`cp` against `Copy-Item`).
+
+Never suggest setting these in the Cloudflare dashboard. `wrangler deploy`
+replaces the entire deployed variable list with what is in `wrangler.toml`, so a
+dashboard-only variable survives until the next deploy and then disappears with
+no error. `wrangler.toml` is the source of truth. Secrets are the exception:
+they are stored separately and a deploy does not touch them.
+
+`ADMIN_PASSWORD` is the only secret. For local development `.dev.vars` holds the
+same names and is read by `wrangler dev` instead of `[vars]`; copy
+`.dev.vars.example` to `.dev.vars`. That file is gitignored and must stay so.
+
+The same rule governs `[observability]`, which turns on log and trace retention.
+It is declared in `wrangler.toml` for exactly the reason above: with the block
+absent, a deploy switches observability back off.
+
 ## When something fails
 
 The script prints the failing wrangler output rather than a summary of it. Read

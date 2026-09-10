@@ -31,10 +31,56 @@ binding = "ASSETS"
 # separate Worker named viewflare-X, so they belong at the top level instead.
 # ADMIN_PASSWORD is deliberately absent: it is a secret, set once per deployment
 # with `npx wrangler secret put ADMIN_PASSWORD`, never written to this file.
+#
+# THIS BLOCK IS THE ONLY SOURCE OF TRUTH. `wrangler deploy` replaces the whole
+# deployed variable list with what is written here, so a variable added in the
+# Cloudflare dashboard survives only until the next deploy. That is not a
+# theory: TRACK_USAGE was added in the dashboard at 14:48:42 on 2026-09-10 and
+# was gone four seconds later, wiped by the deploy at 14:48:46. Change values
+# here and deploy, not in the dashboard. Secrets are the exception and are
+# never touched by a deploy.
+#
+# Every variable the code reads is listed, set to the same default the code
+# already falls back to, so a fork can see the full surface in one place and
+# change one line instead of hunting for the name. Note the two idioms:
+# ENABLE_* are on unless the value is exactly "false", TRACK_* and DEBUG are
+# off unless the value is exactly "true".
 [vars]
+# Serve the /admin console. Requires the ADMIN_PASSWORD secret to be useful.
 ENABLE_ADMIN = "true"
-ENABLE_ANALYTICS = "false"  # Disable heavy analytics to save queries
-MAX_PROJECTS = "100"        # Limit projects to control usage
+
+# Per-visitor breakdowns and the heavier aggregate queries. Off to stay well
+# inside the D1 free tier's 5M row reads per day.
+ENABLE_ANALYTICS = "false"
+
+# Read by nothing. It is declared in the Bindings type in functions/index.ts
+# and set here, but no code path enforces a project limit. Left in place rather
+# than removed so an existing deployment's config does not change meaning.
+MAX_PROJECTS = "100"
+
+# Rate limit, per visitor hash: requests allowed per window, and the window in
+# milliseconds. 60 per minute.
+RATE_LIMIT_REQUESTS = "60"
+RATE_LIMIT_WINDOW = "60000"
+
+# How long a fetched install count is reused before the source is polled again,
+# in seconds. 21600 is six hours, which keeps a busy badge well under the free
+# tier's 50 subrequests per invocation.
+INSTALL_CACHE_TTL = "21600"
+
+# One extra D1 write per tracked view into usage_stats. Set to "true" in the
+# dashboard on 2026-09-10 and restored here so it survives deploys. It
+# duplicates request numbers the Cloudflare dashboard already reports, so set
+# it back to "false" if the write volume matters more than having them in D1.
+TRACK_USAGE = "true"
+
+# Per-referrer and per-country rows in view_breakdown. Another write per view,
+# off by default.
+TRACK_BREAKDOWN = "false"
+
+# Verbose console logging. Off outside debugging: with observability below,
+# every line is retained and counts toward the log quota.
+DEBUG = "false"
 
 # Dev server configuration
 [dev]
@@ -61,3 +107,35 @@ crons = ["23 2 * * *"]
 binding = "DB"
 database_name = "viewflare-db"
 database_id = "41b376ca-8f65-4be9-8443-f7060b60b6ce"
+
+# Logs and traces, the TOML form of the block the Cloudflare dashboard offers.
+# This has to live here rather than being toggled in the dashboard for the same
+# reason as [vars]: `wrangler deploy` owns the setting, so with the block absent
+# a deploy turns observability back off.
+#
+# head_sampling_rate = 1 keeps every event. Lower it toward 0 if the free
+# tier's daily log allowance starts to bite; on this traffic it does not.
+# invocation_logs records the request line for each invocation, which is what
+# makes a log searchable by path and status rather than only by console output.
+[observability]
+enabled = true
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true
+persist = true
+
+[observability.traces]
+enabled = true
+head_sampling_rate = 1
+persist = true
+
+# The build that produces main = "./public/_worker.js" above. Declared here so a
+# bare `wrangler deploy` is self-sufficient: that is what Cloudflare Workers
+# Builds runs when the dashboard's build command is left blank, and it is what
+# someone who forked this and never read package.json will type. `npm run
+# deploy` calls wrangler after building, and wrangler skips this command when
+# the build has already run in the same invocation.
+[build]
+command = "npm run build"

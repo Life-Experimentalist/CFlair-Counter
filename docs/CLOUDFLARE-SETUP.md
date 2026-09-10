@@ -50,14 +50,52 @@ secret to take effect. Rotating every 90 days is a reasonable habit.
 A secret cannot be read back, by you or by anyone else. If you lose it, set a
 new one. There is no recovery, which is the point.
 
-The non-secret settings live in `[vars]` in `wrangler.toml` and are applied by
-`npm run deploy`:
+The non-secret settings live in `[vars]` in `wrangler.toml`. Every variable the
+code reads is listed there already, set to the same value the code falls back
+to, so configuring an instance is editing one line rather than discovering a
+name. All nine:
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `ENABLE_ADMIN` | `true` | Serve the admin console and admin API at all |
 | `ENABLE_ANALYTICS` | `false` | Heavier analytics queries. `false` saves D1 reads |
-| `MAX_PROJECTS` | `100` | Cap on distinct tracked projects |
+| `MAX_PROJECTS` | `100` | Read by nothing. Declared and set, but no code path enforces a cap |
+| `RATE_LIMIT_REQUESTS` | `60` | Requests allowed per visitor per window |
+| `RATE_LIMIT_WINDOW` | `60000` | Length of that window, in milliseconds |
+| `INSTALL_CACHE_TTL` | `21600` | Seconds an install count is reused before the source is polled again |
+| `TRACK_USAGE` | `true` | Write a daily row to `usage_stats`. One extra D1 write per view |
+| `TRACK_BREAKDOWN` | `false` | Write per-referrer and per-country rows. Another write per view |
+| `DEBUG` | `false` | Verbose console logging |
+
+Two different idioms, worth knowing before you set one: `ENABLE_*` are on
+unless the value is exactly `"false"`, and `TRACK_*` and `DEBUG` are off unless
+the value is exactly `"true"`. Anything else, including `"1"` and `"yes"`,
+leaves the default in place.
+
+### Changing a setting
+
+Edit the value in `wrangler.toml`, then deploy. Same two commands in bash and
+in PowerShell, because both are npm scripts:
+
+```bash
+npx wrangler whoami && npm run deploy
+```
+
+Do not set these in the Cloudflare dashboard. `wrangler deploy` replaces the
+whole deployed variable list with what is in `wrangler.toml`, so a variable
+added in the dashboard lasts until the next deploy and then disappears without
+an error. This file is the source of truth; the dashboard is a view of it.
+
+Secrets are the exception. They are stored separately, are not touched by a
+deploy, and cannot be read back:
+
+```bash
+npx wrangler secret put ADMIN_PASSWORD
+```
+
+For local development, `.dev.vars` holds the same names and is read by
+`wrangler dev` instead of `[vars]`. Copy `.dev.vars.example` to `.dev.vars` and
+edit it. It is gitignored, and it must stay that way.
 
 ### Custom domain
 

@@ -166,7 +166,36 @@ if (schema.code !== 0) {
 }
 ok("schema applied, existing tables left as they were");
 
-// --------------------------------------------------------------- 5. password
+// ---------------------------------------------------------- 5. configuration
+// Nothing to prompt for. Every variable the code reads is already in [vars]
+// with the value the code falls back to, so an instance is configured by
+// editing a line rather than by discovering a name. This step exists to show
+// the list, because a fork that does not know a setting exists cannot use it.
+say("Configuration");
+const tomlLines = patched.split(/\r?\n/);
+const varsAt = tomlLines.findIndex((line) => line.trim() === "[vars]");
+const settings = [];
+for (let i = varsAt + 1; varsAt !== -1 && i < tomlLines.length; i++) {
+	if (tomlLines[i].startsWith("[")) break;
+	const match = tomlLines[i].match(/^([A-Z][A-Z0-9_]*)\s*=\s*(".*?")/);
+	if (match) settings.push(`${match[1]} = ${match[2]}`);
+}
+if (settings.length) {
+	info(`${settings.length} settings, already initialised in wrangler.toml:`);
+	for (const line of settings) info(`    ${line}`);
+	info("");
+	info("ENABLE_* are on unless the value is exactly \"false\".");
+	info("TRACK_* and DEBUG are off unless it is exactly \"true\".");
+	info("");
+	info("To change one: edit that line, then `npm run deploy`.");
+	info("Do not set these in the Cloudflare dashboard. A deploy replaces the");
+	info("whole list, so a dashboard-only variable vanishes with no error.");
+} else {
+	info("No [vars] block found in wrangler.toml, which is unexpected.");
+	info("The code falls back to its own defaults, so this is not fatal.");
+}
+
+// --------------------------------------------------------------- 6. password
 say("Admin password");
 if (process.stdin.isTTY) {
 	info("wrangler prompts you next. This script never sees what you type.");
@@ -178,7 +207,7 @@ if (process.stdin.isTTY) {
 	info("    npx wrangler secret put ADMIN_PASSWORD");
 }
 
-// ----------------------------------------------------------------- 6. deploy
+// ----------------------------------------------------------------- 7. deploy
 say("Building and deploying");
 // A single command string rather than an argument array: npm needs a shell on
 // Windows for the same EINVAL reason as above, and passing args alongside
@@ -196,7 +225,7 @@ if ((deploy.status ?? 1) !== 0) {
 const url = (deployOut.match(/https:\/\/[^\s]+\.workers\.dev/) || [])[0];
 ok("deployed");
 
-// ------------------------------------------------------------------- 7. done
+// ------------------------------------------------------------------- 8. done
 mkdirSync(dirname(MARKER), { recursive: true });
 writeFileSync(MARKER, `${new Date().toISOString()}\n`, "utf8");
 
